@@ -17,7 +17,7 @@ const SliceStyle& slice_style(LatencySlice latency_slice) {
       "Committed and unblocked, but the GPU had not started the buffer."};
   static const SliceStyle compute_style{
       "slice-compute", "compute", "Executor Computing Time",
-      "GPU execution of the node's command buffer (measured)."};
+      "GPU execution of the timed unit's command buffer(s) (measured)."};
   static const SliceStyle result_style{
       "slice-result", "result", "Getting Result Time",
       "GPU finished → host noticed. Observation cost; never sets the class."};

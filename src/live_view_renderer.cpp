@@ -4,7 +4,7 @@
 #include "report_gantt_section.h"
 #include "report_memory_section.h"
 #include "report_summary_section.h"
-#include "report_task_table_section.h"
+#include "report_writer.h"
 #include "text_format.h"
 
 #include <sstream>
@@ -47,7 +47,7 @@ RenderedViews render_live_views(
     stages_html << variant_heading(*variant_measurement)
                 << render_gantt_section(report_inputs);
     tasks_html << variant_heading(*variant_measurement)
-               << render_task_table_section(report_inputs);
+               << render_tasks_section(report_inputs);
     memory_html << "<section>" << variant_heading(*variant_measurement)
                 << render_memory_section(*variant_measurement) << "</section>";
   }

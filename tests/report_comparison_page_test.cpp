@@ -52,6 +52,28 @@ void should_render_metrics_plans_shared_timelines_and_primitive_mix() {
   EXPECT_TRUE(document.find("<svg id=\"a\">") != std::string::npos);
 }
 
+// A stage-timed variant has no per-node GPU time: its primitive mix must
+// come from the serial pass (labeled), and the page must say the two
+// variants were timed at different granularities.
+void should_flag_mixed_granularities_and_tally_stage_timed_primitives_from_serial() {
+  VariantMeasurement node_timed;
+  VariantMeasurement stage_timed;
+  populate_variant(node_timed, "eager", 200);
+  report_fixture::populate_two_stage_run(stage_timed);
+  stage_timed.variant_name = "compiled";
+  stage_timed.serial_telemetry.attributed_nodes = {
+      {&stage_timed.timeline_graph.nodes[0], 33.0, 0, 64},
+      {&stage_timed.timeline_graph.nodes[1], 4.0, 0, 64}};
+  const std::string metrics_html = render_comparison_metrics(node_timed, stage_timed);
+  EXPECT_TRUE(metrics_html.find("eager timed per-node, compiled timed per-stage") !=
+              std::string::npos);
+  EXPECT_TRUE(metrics_html.find("not like for like") != std::string::npos);
+  const std::string document = build_comparison_document(
+      "Job", {node_timed, "", "eager.html"}, {stage_timed, "", "compiled.html"});
+  EXPECT_TRUE(document.find("compiled serial Σ (stage-timed)") != std::string::npos);
+  EXPECT_TRUE(document.find("data-sort-value=\"33\"") != std::string::npos);
+}
+
 // --- edge / boundary ---
 
 void should_leave_a_bare_compiled_name_and_single_primitive_sensible() {
@@ -94,6 +116,7 @@ int main() {
   return test_harness::run_all({
       TEST_CASE(should_split_a_compiled_name_into_its_fused_primitives),
       TEST_CASE(should_render_metrics_plans_shared_timelines_and_primitive_mix),
+      TEST_CASE(should_flag_mixed_granularities_and_tally_stage_timed_primitives_from_serial),
       TEST_CASE(should_leave_a_bare_compiled_name_and_single_primitive_sensible),
       TEST_CASE(should_show_dash_for_change_when_baseline_is_zero),
       TEST_CASE(should_not_describe_non_compiled_primitives_as_fused),

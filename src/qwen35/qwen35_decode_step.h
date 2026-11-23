@@ -40,6 +40,17 @@ struct DecodeStepResult {
   DecodeState next_state;
 };
 
+// Told each decoder layer's outputs as the step is BUILT (lazily, before any
+// evaluation) — how a profiler learns where one layer ends while the model
+// math stays free of profiling concerns.
+class DecoderLayerObserver {
+ public:
+  virtual ~DecoderLayerObserver() = default;
+  virtual void on_layer_built(std::size_t layer_index,
+                              const mlx::core::array& layer_output,
+                              const LayerCache& next_layer_cache) = 0;
+};
+
 // Zero state at position 0, for real generation.
 DecodeState make_empty_decode_state(const Qwen35TextConfig& config);
 
@@ -52,7 +63,8 @@ DecodeState make_synthetic_decode_state(const Qwen35TextConfig& config,
 DecodeStepResult run_decode_step(const Qwen35Weights& weights,
                                  const Qwen35TextConfig& config,
                                  const mlx::core::array& token_ids,  // [1, 1] int32
-                                 const DecodeState& decode_state);
+                                 const DecodeState& decode_state,
+                                 DecoderLayerObserver* layer_observer = nullptr);
 
 // Flattening for mlx::core::compile, which traces vector<array> → vector<array>.
 // Order: token_ids, position, then each layer's two cache arrays.

@@ -282,7 +282,8 @@ DecodeState make_synthetic_decode_state(const Qwen35TextConfig& config, int cont
 }
 
 DecodeStepResult run_decode_step(const Qwen35Weights& weights, const Qwen35TextConfig& config,
-                                 const array& token_ids, const DecodeState& decode_state) {
+                                 const array& token_ids, const DecodeState& decode_state,
+                                 DecoderLayerObserver* layer_observer) {
   if (decode_state.layer_caches.size() != weights.layers.size()) {
     throw std::invalid_argument("decode state and weights disagree on layer count");
   }
@@ -294,6 +295,9 @@ DecodeStepResult run_decode_step(const Qwen35Weights& weights, const Qwen35TextC
     hidden = decoder_layer_step(hidden, weights.layers[layer_index], config,
                                 decode_state.layer_caches[layer_index], decode_state.position,
                                 next_state.layer_caches[layer_index]);
+    if (layer_observer != nullptr) {
+      layer_observer->on_layer_built(layer_index, hidden, next_state.layer_caches[layer_index]);
+    }
   }
   const array final_hidden =
       fast::rms_norm(hidden, weights.final_norm_weight, config.rms_norm_epsilon);

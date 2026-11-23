@@ -92,6 +92,22 @@ void should_escape_hostile_titles_and_node_labels() {
   EXPECT_TRUE(document.find("B&lt;x&gt;") != std::string::npos);
 }
 
+// A per-stage measurement renders the stage table (one row per stage task)
+// and stage bars on the Gantt, never per-node rows of zeros.
+void should_render_stage_rows_and_stage_bars_for_a_per_stage_timeline() {
+  SyntheticRun synthetic_run;
+  report_fixture::populate_two_stage_run(synthetic_run);
+  const std::string document = render_synthetic_document(synthetic_run, "staged");
+  EXPECT_TRUE(document.find("Tasks (one per stage and stream)") != std::string::npos);
+  EXPECT_TRUE(document.find("one bar per stage") != std::string::npos);
+  EXPECT_TRUE(document.find("layer 1 (stream 0, 1 nodes)") != std::string::npos);
+  EXPECT_TRUE(document.find("This report was timed per stage") != std::string::npos);
+  // One summary bar plus one per stage task.
+  EXPECT_TRUE(count_occurrences(document, "class=\"stacked-bar\"") == 3);
+  EXPECT_TRUE(count_occurrences(document, "class=\"dependency-arrow\"") == 1);
+  EXPECT_TRUE(document.find("Where stage time went") != std::string::npos);
+}
+
 } // namespace
 
 int main() {
@@ -102,5 +118,6 @@ int main() {
       TEST_CASE(should_render_empty_measurement_without_nan_or_infinity),
       TEST_CASE(should_show_dash_when_serial_pass_has_no_matching_node),
       TEST_CASE(should_escape_hostile_titles_and_node_labels),
+      TEST_CASE(should_render_stage_rows_and_stage_bars_for_a_per_stage_timeline),
   });
 }

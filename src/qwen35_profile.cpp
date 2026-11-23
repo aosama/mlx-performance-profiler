@@ -2,7 +2,8 @@
 // Orchestration only: proves the forward math by greedy generation, then
 // measures the step eagerly and compiled and writes the Spark-style reports.
 //
-//   qwen35_profile <model-directory> [--context N]   (default N = 1024)
+//   qwen35_profile <model-directory> [--context N] [--granularity auto|node|stage]
+//   (defaults: N = 1024; auto times one stage per decoder layer at this size)
 
 #include "graph_model.h"
 #include "measurement_session.h"
@@ -35,21 +36,45 @@ constexpr int DEFAULT_CONTEXT_LENGTH = 1024;
 struct ProfileOptions {
   std::string model_directory;
   int context_length = DEFAULT_CONTEXT_LENGTH;
+  mlx_plan::TimelineOptions timeline_options;
 };
 
-ProfileOptions parse_profile_options(int argument_count, char** argument_values) {
-  if (argument_count != 2 && !(argument_count == 4 &&
-                               std::string(argument_values[2]) == "--context")) {
-    throw std::invalid_argument("usage: qwen35_profile <model-directory> [--context N]");
+const char* const USAGE =
+    "usage: qwen35_profile <model-directory> [--context N] [--granularity auto|node|stage]";
+
+int parse_context_length(const std::string& context_text) {
+  char* parse_end = nullptr;
+  const long context_length = std::strtol(context_text.c_str(), &parse_end, 10);
+  if (context_text.empty() || *parse_end != '\0' || context_length < 0 ||
+      context_length > 1 << 20) {
+    throw std::invalid_argument("--context needs a whole number from 0 to 1048576");
   }
-  ProfileOptions profile_options{argument_values[1], DEFAULT_CONTEXT_LENGTH};
-  if (argument_count == 4) {
-    char* parse_end = nullptr;
-    const long context_length = std::strtol(argument_values[3], &parse_end, 10);
-    if (*parse_end != '\0' || context_length < 0 || context_length > 1 << 20) {
-      throw std::invalid_argument("--context needs a whole number from 0 to 1048576");
+  return static_cast<int>(context_length);
+}
+
+mlx_plan::GranularityChoice parse_granularity(const std::string& granularity_text) {
+  if (granularity_text == "auto") return mlx_plan::GranularityChoice::automatic;
+  if (granularity_text == "node") return mlx_plan::GranularityChoice::per_node;
+  if (granularity_text == "stage") return mlx_plan::GranularityChoice::per_stage;
+  throw std::invalid_argument("--granularity needs auto, node or stage");
+}
+
+// Flags come in name/value pairs after the model directory, in any order.
+ProfileOptions parse_profile_options(int argument_count, char** argument_values) {
+  if (argument_count < 2 || argument_count % 2 != 0) {
+    throw std::invalid_argument(USAGE);
+  }
+  ProfileOptions profile_options{argument_values[1], DEFAULT_CONTEXT_LENGTH, {}};
+  for (int flag_index = 2; flag_index < argument_count; flag_index += 2) {
+    const std::string flag_name = argument_values[flag_index];
+    const std::string flag_value = argument_values[flag_index + 1];
+    if (flag_name == "--context") {
+      profile_options.context_length = parse_context_length(flag_value);
+    } else if (flag_name == "--granularity") {
+      profile_options.timeline_options.granularity_choice = parse_granularity(flag_value);
+    } else {
+      throw std::invalid_argument(USAGE);
     }
-    profile_options.context_length = static_cast<int>(context_length);
   }
   return profile_options;
 }
@@ -90,6 +115,7 @@ void print_variant_summary(const mlx_plan::VariantMeasurement& variant_measureme
   mlx_plan::print_job_summary(variant_measurement.job_totals,
                               variant_measurement.gpu_timeline);
   mlx_plan::print_stream_table(variant_measurement.gpu_timeline);
+  mlx_plan::print_stage_table(variant_measurement.gpu_timeline);
 }
 
 // Measures one decode step at `context_length`, eager vs compiled.
@@ -104,9 +130,11 @@ bool profile_decode_step(const Qwen35Weights& weights, const Qwen35TextConfig& c
   const auto stream_index_to_stream =
       mlx_plan::collect_streams(mlx_plan::capture_graph(eager_factory.build_fresh_graph()));
   const auto eager_measurement =
-      mlx_plan::measure_variant("eager", eager_factory, stream_index_to_stream);
+      mlx_plan::measure_variant("eager", eager_factory, stream_index_to_stream, nullptr,
+                                profile_options.timeline_options);
   const auto compiled_measurement =
-      mlx_plan::measure_variant("compiled", compiled_factory, stream_index_to_stream);
+      mlx_plan::measure_variant("compiled", compiled_factory, stream_index_to_stream, nullptr,
+                                profile_options.timeline_options);
   print_variant_summary(eager_measurement);
   print_variant_summary(compiled_measurement);
   std::printf("\n");

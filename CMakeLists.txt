@@ -36,6 +36,10 @@ add_library(mlx_plan STATIC
     src/progress_reporter.cpp
     src/metal_command_buffer_probe.cpp
     src/gpu_timeline.cpp
+    src/timeline_dependencies.cpp
+    src/timed_units.cpp
+    src/stage_plan.cpp
+    src/stage_timeline.cpp
     src/timeline_console.cpp
     src/text_format.cpp
     src/latency_slices.cpp
@@ -45,6 +49,7 @@ add_library(mlx_plan STATIC
     src/report_components.cpp
     src/report_summary_section.cpp
     src/report_task_table_section.cpp
+    src/report_stage_table_section.cpp
     src/report_gantt_section.cpp
     src/report_comparison_page.cpp
     src/report_writer.cpp
@@ -66,6 +71,7 @@ add_library(mlx_plan STATIC
     src/qwen35/qwen35_generation.cpp
     src/qwen35/token_text.cpp
     src/qwen35/qwen35_decode_job.cpp
+    src/qwen35/qwen35_layer_stages.cpp
     src/report_bundle.cpp)
 
 target_include_directories(mlx_plan PUBLIC src)
@@ -178,6 +184,22 @@ add_executable(progress_reporter_test tests/progress_reporter_test.cpp)
 target_link_libraries(progress_reporter_test PRIVATE mlx_plan)
 add_test(NAME progress_reporter_test COMMAND progress_reporter_test)
 
+add_executable(stage_plan_test tests/stage_plan_test.cpp)
+target_link_libraries(stage_plan_test PRIVATE mlx_plan)
+add_test(NAME stage_plan_test COMMAND stage_plan_test)
+
+add_executable(report_stage_table_section_test tests/report_stage_table_section_test.cpp)
+target_link_libraries(report_stage_table_section_test PRIVATE mlx_plan)
+add_test(NAME report_stage_table_section_test COMMAND report_stage_table_section_test)
+
+add_executable(dot_writer_test tests/dot_writer_test.cpp)
+target_link_libraries(dot_writer_test PRIVATE mlx_plan)
+add_test(NAME dot_writer_test COMMAND dot_writer_test)
+
+add_executable(timed_units_test tests/timed_units_test.cpp)
+target_link_libraries(timed_units_test PRIVATE mlx_plan)
+add_test(NAME timed_units_test COMMAND timed_units_test)
+
 # Integration: drives real MLX streams on the Metal GPU.
 add_executable(graph_model_test tests/graph_model_test.cpp)
 target_link_libraries(graph_model_test PRIVATE mlx_plan)
@@ -214,3 +236,15 @@ add_test(NAME qwen35_decode_step_test COMMAND qwen35_decode_step_test)
 add_executable(gpu_timeline_test tests/gpu_timeline_test.cpp)
 target_link_libraries(gpu_timeline_test PRIVATE mlx_plan)
 add_test(NAME gpu_timeline_test COMMAND gpu_timeline_test)
+
+add_executable(stage_timeline_test tests/stage_timeline_test.cpp)
+target_link_libraries(stage_timeline_test PRIVATE mlx_plan)
+add_test(NAME stage_timeline_test COMMAND stage_timeline_test)
+
+add_executable(timeline_dependencies_test tests/timeline_dependencies_test.cpp)
+target_link_libraries(timeline_dependencies_test PRIVATE mlx_plan)
+add_test(NAME timeline_dependencies_test COMMAND timeline_dependencies_test)
+
+add_executable(qwen35_layer_stages_test tests/qwen35_layer_stages_test.cpp)
+target_link_libraries(qwen35_layer_stages_test PRIVATE mlx_plan)
+add_test(NAME qwen35_layer_stages_test COMMAND qwen35_layer_stages_test)

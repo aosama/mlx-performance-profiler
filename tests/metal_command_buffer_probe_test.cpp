@@ -50,7 +50,48 @@ void should_measure_gpu_window_aligned_to_the_host_clock() {
               observed_microseconds + ANCHOR_SLACK_MICROSECONDS);
 }
 
+// A chain far over MLX's per-buffer op budget commits mid-eval, so the held
+// first buffer ends long before the work does; the end marker must extend
+// the window to the last buffer.
+void should_extend_the_window_to_the_last_buffer_with_an_end_marker() {
+  constexpr int CHAIN_LENGTH_OVER_BUFFER_BUDGET = 300;
+  const Stream gpu_stream = new_stream(Device::gpu);
+  array chain = ones({1 << 20}, float32, gpu_stream);
+  eval(chain);
+  for (int add_index = 0; add_index < CHAIN_LENGTH_OVER_BUFFER_BUDGET; ++add_index) {
+    chain = add(chain, array(1.0f), gpu_stream);
+  }
+  const Clock::time_point pass_started_at = Clock::now();
+  MetalCommandBufferProbe first_buffer_only(1, pass_started_at);
+  MetalCommandBufferProbe with_end_marker(1, pass_started_at);
+  first_buffer_only.hold_buffer_for(0, gpu_stream);
+  with_end_marker.hold_buffer_for(0, gpu_stream);
+  async_eval({chain});
+  with_end_marker.commit_end_marker_for(0);
+  chain.wait();
+  const GpuExecutionWindow first_window = first_buffer_only.read_windows()[0];
+  const GpuExecutionWindow marked_window = with_end_marker.read_windows()[0];
+  EXPECT_TRUE(first_window.is_measured && !first_window.is_end_bounded_by_marker);
+  EXPECT_TRUE(marked_window.is_measured && marked_window.is_end_bounded_by_marker);
+  // Same first buffer, so the same start up to the two probes' independent
+  // clock-anchor samples (each takes two back-to-back clock reads).
+  constexpr double ANCHOR_JITTER_MICROSECONDS = 5.0;
+  EXPECT_NEAR(marked_window.started_microseconds, first_window.started_microseconds,
+              ANCHOR_JITTER_MICROSECONDS);
+  // The marked end is strictly later than the first buffer's end.
+  EXPECT_TRUE(marked_window.finished_microseconds > first_window.finished_microseconds);
+}
+
 // --- edge / boundary ---
+
+void should_ignore_an_end_marker_on_a_cpu_stream() {
+  const Stream cpu_stream = new_stream(Device::cpu);
+  MetalCommandBufferProbe command_buffer_probe(1, Clock::now());
+  command_buffer_probe.hold_buffer_for(0, cpu_stream);
+  command_buffer_probe.commit_end_marker_for(0);
+  const GpuExecutionWindow window = command_buffer_probe.read_windows()[0];
+  EXPECT_TRUE(!window.is_measured && !window.is_end_bounded_by_marker);
+}
 
 void should_leave_cpu_stream_nodes_unmeasured() {
   const Stream cpu_stream = new_stream(Device::cpu);
@@ -81,6 +122,15 @@ void should_report_uncommitted_buffer_as_unmeasured_without_blocking() {
   EXPECT_TRUE(!windows[1].is_measured);
 }
 
+// A marker without a held buffer has no queue to join; it must be a no-op,
+// not a crash, and must not invent a window.
+void should_not_commit_an_end_marker_without_a_held_buffer() {
+  MetalCommandBufferProbe command_buffer_probe(1, Clock::now());
+  command_buffer_probe.commit_end_marker_for(0);
+  const GpuExecutionWindow window = command_buffer_probe.read_windows()[0];
+  EXPECT_TRUE(!window.is_measured && !window.is_end_bounded_by_marker);
+}
+
 } // namespace
 
 int main() {
@@ -89,5 +139,8 @@ int main() {
       TEST_CASE(should_leave_cpu_stream_nodes_unmeasured),
       TEST_CASE(should_return_no_windows_for_zero_nodes),
       TEST_CASE(should_report_uncommitted_buffer_as_unmeasured_without_blocking),
+      TEST_CASE(should_extend_the_window_to_the_last_buffer_with_an_end_marker),
+      TEST_CASE(should_ignore_an_end_marker_on_a_cpu_stream),
+      TEST_CASE(should_not_commit_an_end_marker_without_a_held_buffer),
   });
 }

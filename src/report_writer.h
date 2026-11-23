@@ -28,6 +28,10 @@ ReportPaths write_report(
     const std::string& output_directory,
     const std::string& plan_file_base);
 
+// The task table matching the timeline's granularity: one row per node, or
+// one per stage task. Shared by the static report and the live view.
+std::string render_tasks_section(const ReportInputs& report_inputs);
+
 // The full HTML document, without touching the filesystem (testable).
 bool write_text_file(const std::string& file_path, const std::string& file_text);
 

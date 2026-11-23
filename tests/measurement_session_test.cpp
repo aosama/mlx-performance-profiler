@@ -38,6 +38,23 @@ class MaterializedJobFactory final : public GraphFactory {
   }
 };
 
+// The same small job, but naming one stage cut (after the matmul).
+class StagedSmallJobFactory final : public GraphFactory {
+ public:
+  explicit StagedSmallJobFactory(const Stream& job_stream) : job_stream_(job_stream) {}
+  std::vector<array> build_fresh_graph() const override {
+    return build_fresh_staged_graph().output_arrays;
+  }
+  StagedGraph build_fresh_staged_graph() const override {
+    const array job_input = mlx::core::ones({64, 64}, mlx::core::float32, job_stream_);
+    const array product = mlx::core::matmul(job_input, job_input, job_stream_);
+    return {{mlx::core::exp(product, job_stream_)}, {{"matmul", {product}}}, "exp"};
+  }
+
+ private:
+  Stream job_stream_;
+};
+
 std::unordered_map<int, Stream> map_single_stream(const Stream& job_stream) {
   return {{job_stream.index, job_stream}};
 }
@@ -73,7 +90,45 @@ void should_never_make_sum_of_stages_smaller_than_job_duration() {
               variant_measurement.job_totals.job_wall_min_microseconds);
 }
 
+void should_time_stages_when_asked_and_cover_every_primitive() {
+  const Stream job_stream = mlx::core::new_stream(mlx::core::Device::gpu);
+  const VariantMeasurement variant_measurement = measure_variant(
+      "staged", StagedSmallJobFactory(job_stream), map_single_stream(job_stream), nullptr,
+      {GranularityChoice::per_stage});
+  const GpuTimeline& gpu_timeline = variant_measurement.gpu_timeline;
+  EXPECT_TRUE(gpu_timeline.granularity == TimelineGranularity::per_stage);
+  EXPECT_TRUE(gpu_timeline.stages.size() == 2);
+  if (gpu_timeline.stages.size() == 2) {
+    EXPECT_TRUE(gpu_timeline.stages[0].stage_name == "matmul");
+    EXPECT_TRUE(gpu_timeline.stages[1].stage_name == "exp");
+  }
+  EXPECT_TRUE(gpu_timeline.nodes.size() ==
+              variant_measurement.timeline_graph.topological.size());
+}
+
 // --- edge / boundary ---
+
+// Automatic keeps per-node detail for a graph this small, even with cuts.
+void should_keep_per_node_automatically_for_a_small_staged_job() {
+  const Stream job_stream = mlx::core::new_stream(mlx::core::Device::gpu);
+  const VariantMeasurement variant_measurement = measure_variant(
+      "small staged", StagedSmallJobFactory(job_stream), map_single_stream(job_stream));
+  EXPECT_TRUE(variant_measurement.gpu_timeline.granularity == TimelineGranularity::per_node);
+  EXPECT_TRUE(variant_measurement.gpu_timeline.stages.empty());
+}
+
+// Forcing stages on a job with no cuts times the whole job as one stage.
+void should_time_a_job_without_cuts_as_one_whole_job_stage() {
+  const Stream job_stream = mlx::core::new_stream(mlx::core::Device::gpu);
+  const VariantMeasurement variant_measurement = measure_variant(
+      "whole", SmallJobFactory(job_stream), map_single_stream(job_stream), nullptr,
+      {GranularityChoice::per_stage});
+  const GpuTimeline& gpu_timeline = variant_measurement.gpu_timeline;
+  EXPECT_TRUE(gpu_timeline.stages.size() == 1);
+  if (!gpu_timeline.stages.empty()) {
+    EXPECT_TRUE(gpu_timeline.stages.front().stage_name == "whole job");
+  }
+}
 
 void should_keep_node_pointers_valid_after_the_result_is_moved() {
   const Stream job_stream = mlx::core::new_stream(mlx::core::Device::gpu);
@@ -108,6 +163,9 @@ int main() {
   return test_harness::run_all({
       TEST_CASE(should_measure_all_passes_with_an_ordered_job_wall_range),
       TEST_CASE(should_never_make_sum_of_stages_smaller_than_job_duration),
+      TEST_CASE(should_time_stages_when_asked_and_cover_every_primitive),
+      TEST_CASE(should_keep_per_node_automatically_for_a_small_staged_job),
+      TEST_CASE(should_time_a_job_without_cuts_as_one_whole_job_stage),
       TEST_CASE(should_keep_node_pointers_valid_after_the_result_is_moved),
       TEST_CASE(should_return_empty_measurement_for_an_already_materialized_job),
   });

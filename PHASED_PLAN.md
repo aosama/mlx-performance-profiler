@@ -334,10 +334,61 @@ helpers):
   step is bandwidth-bound in its quantized matmuls.
 - **Limit exposed:** at ~1,000 nodes the per-node timeline pass costs ~8×
   the step, so per-node waiting slices mostly measure the instrumentation.
-  Next: a **stage granularity**, with one dispatch per decoder layer (Spark's
-  stage = a layer), to keep the waiting breakdown meaningful on real
-  models. MoE checkpoints (Ornith 35B-A3B) are the natural next workload,
-  and the config loader rejects them explicitly until then.
+  Addressed by Phase 8. MoE checkpoints (Ornith 35B-A3B) are the natural
+  next workload, and the config loader rejects them explicitly until then.
+
+### Phase 8 — Stage granularity for real models
+- **Status (2026-11-23): implemented.** The timeline pass can time
+  **stages** instead of nodes: one `async_eval` per stage, where the job
+  names its stages (Spark's stage = here, one decoder layer).
+- **The seam stays generic.** `GraphFactory::build_fresh_staged_graph`
+  returns the graph plus ordered `StageBoundary` cuts (arrays). `stage_plan`
+  assigns every node to the first cut that depends on it (Spark's rule).
+  Every stage then reads only from itself or earlier stages, and one
+  `async_eval` on a stage's sinks evaluates exactly that stage. Nodes no cut
+  reaches form a final stage. `src/qwen35/qwen35_layer_stages` supplies one
+  cut per layer. Eager steps cut at each layer's hidden state plus its next
+  cache. `compile` hides intermediates, so compiled steps cut at each
+  layer's next-state outputs, and their stage names ("up to layer k state")
+  say so.
+- **Choosing granularity.** `automatic` (default) times stages only when
+  the job supplied cuts and the graph has ≥ 256 primitives, so the demo
+  and Rust jobs keep per-node detail. `qwen35_profile --granularity
+  auto|node|stage` overrides it.
+- **Timing a stage honestly (the design adapted on evidence).** MLX commits
+  mid-eval whenever a buffer exceeds its op/MB budget (`device.cpp`,
+  20–50 ops), so a layer spans several command buffers, and only the first
+  is visible before dispatch. Holding every buffer would need an MLX hook.
+  A prototype instead showed that an **empty marker buffer** committed on
+  the same `MTLCommandQueue` right after the stage gets GPU timestamps and
+  starts once the stage's last buffer is done (~25 µs after the host sees
+  completion). The stage's GPU end is the smaller of the marker's GPU start
+  and host-observed completion, since both can only trail the true end.
+  `stage_timeline_test` holds a 300-op stage to this: compute must cover
+  most of the post-issue time. It fails if the marker is disabled, because
+  only the first buffer (~1/6 of the work) is then seen. Compute includes
+  GPU gaps while the host was still encoding the stage; the host-issue
+  slice shows that encoding.
+- **Results (Qwen3.5-0.8B-4bit, context 1024):**
+
+  | variant | job wall | per-node timeline | per-stage timeline | GPU execution (per-stage) |
+  |---|---|---|---|---|
+  | eager | 3.15 ms | 24.19 ms (7.7×) | 3.61 ms (1.14×) | 3.06 ms |
+  | compiled | 2.92 ms | 11.29 ms (3.8×) | 3.06 ms (1.05×) | 2.81 ms |
+
+  Per node, 1,143/1,144 eager nodes were `wait_on_gpu`: they were queued
+  behind the instrumentation. Per stage, the breakdown is informative.
+  Encoding an eager layer takes ~80–210 µs of host time against ~75–145 µs
+  of GPU. The second half of the eager step classes as `wait_on_cpu`
+  (host-bound encoding), while compiled stages are mostly `queued` (the
+  host stays ahead). The LM head is the largest stage (~0.55 ms). Summed
+  per-stage GPU time (3.06 ms) now sits just under the job wall, where
+  per-node buffers had inflated it to 4.69 ms.
+- **Limits:** completion is per stage task, so per-node waiting is not
+  observable in this mode. A cross-stream input from an earlier stage
+  counts as a stall until it is ready, which is an upper bound if the stage
+  could start independent work first. Cross-stream reads inside a stage are
+  fences within its window.
 
 ## 5. Module map at the end state
 
@@ -346,6 +397,9 @@ helpers):
 | `graph_model` | Walk the graph into nodes/edges/topo order (the captured plan) | keep |
 | `telemetry` | Serial pass — sum-of-stages total | keep + extend |
 | `gpu_timeline` | Overlap-preserving per-node pass (one `async_eval` per node) | P1 ✓ |
+| `stage_plan` / `stage_timeline` | Stage grouping; overlap-preserving per-stage pass (one `async_eval` per stage, marker-bounded GPU end) | P8 ✓ |
+| `timeline_dependencies` / `timed_units` | Dependency snapshot shared by both passes; one view over nodes or stage tasks for summaries | P8 ✓ |
+| `report_stage_table_section` / `qwen35_layer_stages` | Per-stage task table; Qwen's one-stage-per-layer cuts | P8 ✓ |
 | `latency_breakdown` / `latency_slices` | StagePage decomposition; slice vocabulary | P1–P3 ✓ |
 | `metal_command_buffer_probe` | Per-node GPU window from command-buffer timestamps (replaced `capture_ingestion`) | P2 ✓ |
 | `report_*` sections + `report_writer` | Spark-style HTML (summary, Gantt, task table, DAG) | P3 ✓ |
@@ -358,7 +412,7 @@ helpers):
 
 ## 6. Testing strategy (as built)
 
-`ctest --test-dir build`: 19 suites, one per production module, run against
+`ctest --test-dir build`: 30 suites, one per production module, run against
 `tests/test_harness.h` (no fetched dependencies).
 
 - **Unit (no GPU):** `latency_breakdown`, `latency_slices`, `text_format`,
@@ -368,6 +422,11 @@ helpers):
 - **Component (no GPU):** `report_writer` and `report_comparison_page`
   render whole documents from a synthetic fixture. `live_view_routes` and
   `http_server` run over real loopback sockets.
+- **Unit/component (no GPU), Phase 8:** `stage_plan`, `timed_units`,
+  `report_stage_table_section`, `dot_writer`.
+- **Integration (Metal GPU), Phase 8:** `stage_timeline` (including the
+  multi-buffer marker check), `timeline_dependencies`, `qwen35_layer_stages`
+  (tiny synthetic model, eager and compiled cuts).
 - **Integration (Metal GPU):** `gpu_timeline`, `metal_command_buffer_probe`,
   `telemetry`, `demo_model` (eager and compiled outputs are numerically
   equal), `measurement_session`, and `mlx_plan_c_api` (driven only through
@@ -394,10 +453,12 @@ Resolved:
   instrumented duration, and sum of stages are always side by side.
 
 Remaining limits, documented where they apply:
-- GPU time has command-buffer granularity. A primitive that overflows MLX's
-  per-buffer op budget spans several buffers, and only the first is seen.
-- The timeline pass's one-command-buffer-per-node adds submission cost on
-  large graphs; the report states when the difference is outside the
+- GPU time has command-buffer granularity. In the per-node pass, a primitive
+  that overflows MLX's per-buffer op budget spans several buffers, and only
+  the first is seen. The per-stage pass bounds the end with a marker buffer.
+- The per-node pass's one command buffer per node adds submission cost on
+  large graphs; that is why large staged jobs are timed per stage. The
+  report always states when the instrumented duration is outside the
   job-duration range.
 - Memory added per node is approximate (the capture keeps intermediates
   alive; Metal reuses buffers).

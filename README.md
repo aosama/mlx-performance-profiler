@@ -91,10 +91,43 @@ must continue with " Paris", or the tool refuses to profile. Then it measures
 one decode step at the given context length, eager vs compiled, and writes
 `build/qwen35_decode.html` plus a report per variant.
 
-At about 1,000 nodes per step, the per-node timeline pass costs several
-times the real step. For a model this size, trust the job duration, the sum
-of stages and the per-primitive GPU time; the per-node waiting slices mostly
-reflect the instrumentation itself.
+### Stage granularity
+
+The timeline pass issues one `async_eval` per timed unit, and each one
+commits at least one Metal command buffer. At about 1,100 nodes per step,
+one buffer per node costs several times the real step (eager: 24.2 ms
+instrumented for a 3.1 ms step), so nearly every node reads as queued behind
+the instrumentation. The profiler therefore times **stages** when the job names
+them and the graph is large (≥ 256 primitives). Here a stage is one decoder
+layer (Spark's stage), and it costs one `async_eval`:
+
+| Qwen3.5-0.8B-4bit, context 1024 | job wall | per-node timeline | per-stage timeline |
+|---|---|---|---|
+| eager (1,144 nodes, 25 stages) | 3.15 ms | 24.19 ms (7.7×) | 3.61 ms (1.14×) |
+| compiled (766 nodes, 25 stages) | 2.92 ms | 11.29 ms (3.8×) | 3.06 ms (1.05×) |
+
+With the instrumentation out of the way, the waiting breakdown means
+something again. The host takes about 80–210 µs to encode each eager layer,
+and the GPU takes about 75–145 µs to run it. So the second half of the eager
+step is classed `wait_on_cpu` (host-bound encoding), while the first half
+and most compiled stages are `queued` (the host ran ahead of the GPU). The
+LM head (a 248k-row quantized matmul) is the largest single stage, at
+~0.55 ms.
+
+```sh
+./build/qwen35_profile /path/to/model --granularity node     # force per-node (or: stage, auto)
+```
+
+What a stage row measures: its GPU window runs from the GPU start of the
+stage's first command buffer to the end of its last. MLX commits mid-stage
+when a buffer exceeds its op budget, and the probe cannot see those middle
+buffers. The end is therefore taken from an empty marker buffer queued
+behind the stage on the same Metal queue, tightened by host-observed
+completion. Compute includes any GPU gap while the host was still encoding
+the stage. Members of a stage finish together, so per-node waiting is not
+observable in this mode; per-node detail stays the default for small graphs.
+A job supplies stages by overriding `GraphFactory::build_fresh_staged_graph`.
+The profiler itself knows nothing about Qwen.
 
 ## From Rust (mlx-c-rust)
 
@@ -130,9 +163,12 @@ light/dark theme. A variant report reads top to bottom like a Spark StagePage:
    producer's GPU end to where its cross-stream consumer stopped waiting.
    Below it is a per-stream table with busy, stalled and utilization.
 3. **Tasks.** One sortable row per executed node: each slice, wall, the same
-   node timed alone ("Serial"), its class, and a stacked latency bar.
+   node timed alone ("Serial"), its class, and a stacked latency bar. In a
+   stage-timed report, one row per stage and stream instead, with the ops
+   inside it and the members' serial times summed.
 4. **DAG.** The plan graph: fill = stream, red outline = node stalled on
-   another stream, edges labeled with bytes.
+   another stream, edges labeled with bytes. Stage-timed reports box each
+   stage as a dashed cluster, as Spark's DAG view does.
 
 The six slices, in causal order, always sum to a node's wall:
 
@@ -151,8 +187,9 @@ The six slices, in causal order, always sum to a node's wall:
 ctest --test-dir build --output-on-failure
 ```
 
-`latency_breakdown_test` is a GPU-free unit test of the decomposition;
-`gpu_timeline_test` is an integration test that runs on the Metal GPU.
+`latency_breakdown_test` and `stage_plan_test` are GPU-free unit tests of
+the decomposition and the stage grouping; `gpu_timeline_test` and
+`stage_timeline_test` are integration tests that run on the Metal GPU.
 
 ## License
 

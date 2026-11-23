@@ -18,7 +18,10 @@
 //    dispatching; a spin-yield afterwards).
 //  - Per-node async_eval commits one Metal command buffer per node, which a
 //    plain eval batches. The timeline wall therefore exceeds the
-//    uninstrumented job wall; report both, never one as the whole truth.
+//    uninstrumented job wall; report both, never one as the whole truth. On
+//    ~1,000-node graphs that cost dominates (Qwen3.5 decode: 23 ms vs a
+//    3 ms step), so stage_timeline times job-supplied stages instead; this
+//    struct carries either granularity.
 //  - GPU execution IS measured (Phase 2): metal_command_buffer_probe reads
 //    each node's command-buffer GPUStartTime/GPUEndTime on the host clock,
 //    and producer readiness uses those GPU end times. Granularity is one
@@ -29,6 +32,7 @@
 
 #include "graph_model.h"
 #include "latency_breakdown.h"
+#include "stage_plan.h"
 
 #include "mlx/stream.h"
 
@@ -45,6 +49,27 @@ struct NodeTimeline {
   // Positions (in GpuTimeline::nodes) of producers on other streams — the
   // cross-stream edges a Gantt draws as dependency arrows.
   std::vector<int> cross_stream_producer_positions;
+  // Per-stage pass only: the position (in GpuTimeline::stages) of the stage
+  // task this node ran in. Its own timestamps/breakdown stay zero there —
+  // the node was not timed individually, and must not pretend it was.
+  int stage_position = -1;
+};
+
+// One stage on one stream: Spark's task of a stage (a stage runs as one task
+// per executor; here, per stream it touches). Its window covers every
+// member on that stream, dispatched by ONE async_eval.
+struct StageTimeline {
+  int stage_index = 0;          // into the stage plan's dispatch order
+  std::string stage_name;       // job-supplied, e.g. "layer 3"
+  int stream_index = 0;
+  std::vector<int> node_positions;  // members, positions in GpuTimeline::nodes
+  NodeTimestamps timestamps;
+  LatencyBreakdown breakdown;
+  // Stage tasks on other streams, in EARLIER stages, this task reads from.
+  // Cross-stream reads inside one stage are fences within the window and
+  // count as its compute: per-stage timing cannot separate them.
+  std::vector<int> cross_stream_producer_stage_positions;
+  bool has_cross_stream_input = false;
 };
 
 struct StreamTimeline {
@@ -61,8 +86,12 @@ struct StreamTimeline {
 };
 
 struct GpuTimeline {
-  // One entry per primitive, in topological (dispatch) order.
+  TimelineGranularity granularity = TimelineGranularity::per_node;
+  // One entry per primitive, in topological order. Per-node: each is a timed
+  // unit. Per-stage: identity and stage membership only.
   std::vector<NodeTimeline> nodes;
+  // Per-stage pass only: the timed units, in dispatch order.
+  std::vector<StageTimeline> stages;
   std::vector<StreamTimeline> streams;
   // First issue → last completion of this instrumented pass.
   double timeline_wall_microseconds = 0.0;
@@ -70,7 +99,8 @@ struct GpuTimeline {
   // stream's data, Spark's summed fetchWaitTime. Concurrent stalls on
   // different streams add, so this can exceed the wall.
   double cross_stream_stall_microseconds = 0.0;
-  // Sum of GPU-measured compute, and how many nodes had a GPU window.
+  // Sum of GPU-measured compute, and how many nodes had a GPU window (in the
+  // per-stage pass: how many nodes sat in a stage task with one).
   double measured_gpu_compute_microseconds = 0.0;
   int gpu_measured_node_count = 0;
 };
