@@ -54,9 +54,11 @@ inline mlx_plan::NodeTimestamps make_gpu_timestamps(
   return timestamps;
 }
 
-// Must be called on a SyntheticRun that will not move afterwards: timeline
-// nodes point into timeline_graph.nodes.
-inline void populate_two_stream_run(SyntheticRun& synthetic_run) {
+// Must be called on a run that will not be copied afterwards: timeline nodes
+// point into timeline_graph.nodes. Works for any struct with the same field
+// names (SyntheticRun, mlx_plan::VariantMeasurement).
+template <typename MeasuredRun>
+void populate_two_stream_run(MeasuredRun& synthetic_run) {
   synthetic_run.timeline_graph.nodes = {
       make_graph_node("A", "MatMul", 1), make_graph_node("B<x>", "Add", 0)};
   synthetic_run.timeline_graph.topological = {0, 1};
@@ -83,7 +85,8 @@ inline void populate_two_stream_run(SyntheticRun& synthetic_run) {
   synthetic_run.gpu_timeline.cross_stream_stall_microseconds = 95;
   synthetic_run.gpu_timeline.measured_gpu_compute_microseconds = 107;
   synthetic_run.gpu_timeline.gpu_measured_node_count = 2;
-  synthetic_run.job_totals = {90, 300};
+  synthetic_run.job_totals = {90, 80, 120, 7, 300};
+  synthetic_run.serial_telemetry = {};
 }
 
 } // namespace report_fixture

@@ -43,8 +43,9 @@ RunTelemetry run_attributed_pass(
     const std::unordered_map<int, mlx::core::Stream>& stream_index_to_stream);
 
 // The honest end-to-end number: evaluates `output_nodes` once with a single
-// eval (MLX batches the whole graph, streams overlap) and returns the
-// wall-clock in microseconds. Run it on a freshly built graph, and only after
+// async_eval (MLX batches the whole graph, streams overlap), observes
+// completion by polling like the timeline pass, and returns the wall-clock
+// in microseconds. Run it on a freshly built graph, and only after
 // a warm-up run: the first eval in a process pays one-time Metal library load
 // and kernel compilation, which is not the job's cost.
 double run_pipeline_pass(std::vector<mlx::core::array> output_nodes);

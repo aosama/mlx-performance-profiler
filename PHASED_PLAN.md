@@ -214,6 +214,35 @@ helpers):
   changes per-node timing.
 - **Acceptance:** side-by-side eager vs compiled graphs with a timing-delta
   table.
+- **Status (2026-11-23): implemented.** `hello_world` measures the same job
+  twice (eager, and through `mlx::core::compile`) and writes
+  `hello_world_eager.html`, `hello_world_compiled.html`, and the comparison
+  page `hello_world.html`: metric deltas, both DAGs side by side, both
+  timelines on one shared time scale, and a primitive mix that names what
+  each `Compiled…` kernel fused (MLX names it `Compiled` + the fused ops).
+  Decisions and changes:
+  - **The demo job changed.** Inputs are materialized up front, and the
+    measured job is a pure three-stream function (`demo_model`). Before, about
+    70 of 81 nodes were RNG plumbing, which drowned the signal, and `compile`
+    needs a pure function. The job is sized for real GPU work (a
+    256×1024×1024 addmm and an elementwise chain over 2M elements).
+  - `measurement_session` runs the four passes per variant behind a
+    `GraphFactory` interface, so main only orchestrates. Its result is
+    move-only because timelines point into the captured graphs.
+  - **The job wall is now the median of 7 runs, observed by polling.** A
+    single blocking `eval()` swung ~1 ms on a ~1 ms job (OS wake-up
+    latency), sometimes making the instrumented pass look faster than the
+    uninstrumented one. The job pass now uses one `async_eval` and spins on
+    `is_available()`, the same observer as the timeline pass, and reports
+    the min–max range. When the instrumented wall falls inside that range,
+    the report says "no measurable instrumentation cost" instead of
+    printing noise as a number.
+  - Compile never crosses streams (`compile.cpp` stops fusion at a stream
+    boundary), so both variants keep the same stream structure and compare
+    fairly. A test asserts eager and compiled outputs are `allclose`.
+  - Finding: compile halves executed nodes (18 → 9) and roughly halves job
+    duration; the 5-kernel elementwise chain becomes one ~270 µs kernel, and
+    the cross-stream stall at the join shrinks with it.
 
 ### Phase 5 — Live, interactive server
 - Replace the static HTML with a small local server (Spark-UI-like tabs: Job /

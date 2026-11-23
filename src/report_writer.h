@@ -15,6 +15,9 @@ struct ReportPaths {
   std::string dot_path;
   std::string svg_path; // empty when Graphviz was unavailable
   bool graphviz_available = false;
+  // The rendered DAG markup (empty without Graphviz), kept so a comparison
+  // page can embed it without re-running the layout.
+  std::string plan_svg;
 };
 
 ReportPaths write_report(
@@ -23,6 +26,8 @@ ReportPaths write_report(
     const std::string& plan_file_base);
 
 // The full HTML document, without touching the filesystem (testable).
+bool write_text_file(const std::string& file_path, const std::string& file_text);
+
 std::string build_report_document(
     const ReportInputs& report_inputs,
     const std::string& plan_svg,

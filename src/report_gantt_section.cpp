@@ -4,6 +4,7 @@
 #include "report_components.h"
 #include "text_format.h"
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <map>
@@ -255,11 +256,15 @@ std::string render_stream_table(const GpuTimeline& gpu_timeline) {
   return table_html.str();
 }
 
-std::string render_gantt_svg(const GpuTimeline& gpu_timeline) {
+} // namespace
+
+std::string render_gantt_svg(
+    const GpuTimeline& gpu_timeline, double scale_total_microseconds) {
   const std::map<int, int> stream_index_to_lane =
       build_stream_index_to_lane(gpu_timeline);
   GanttScale scale;
-  scale.total_microseconds = std::max(1.0, gpu_timeline.timeline_wall_microseconds);
+  scale.total_microseconds = std::max(
+      {1.0, scale_total_microseconds, gpu_timeline.timeline_wall_microseconds});
   const int lane_count = static_cast<int>(gpu_timeline.streams.size()) + 1;
   const double chart_height = GanttScale::lane_top(lane_count);
   std::ostringstream gantt_svg;
@@ -278,8 +283,6 @@ std::string render_gantt_svg(const GpuTimeline& gpu_timeline) {
   return gantt_svg.str();
 }
 
-} // namespace
-
 std::string render_gantt_section(const ReportInputs& report_inputs) {
   std::ostringstream section_html;
   section_html << "<section id=\"timeline\"><h2>Timeline (per stream)</h2>"
@@ -292,7 +295,9 @@ std::string render_gantt_section(const ReportInputs& report_inputs) {
                << " run from a producer's GPU end to where its cross-stream"
                << " consumer stopped waiting. Hover any segment for details.</p>"
                << "<div class=\"gantt-wrap\">"
-               << render_gantt_svg(report_inputs.gpu_timeline) << "</div>"
+               << render_gantt_svg(
+                      report_inputs.gpu_timeline,
+                      report_inputs.gpu_timeline.timeline_wall_microseconds) << "</div>"
                << "<h2>Streams</h2>"
                << render_stream_table(report_inputs.gpu_timeline) << "</section>";
   return section_html.str();

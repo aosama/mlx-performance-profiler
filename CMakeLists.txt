@@ -46,7 +46,10 @@ add_library(mlx_plan STATIC
     src/report_summary_section.cpp
     src/report_task_table_section.cpp
     src/report_gantt_section.cpp
-    src/report_writer.cpp)
+    src/report_comparison_page.cpp
+    src/report_writer.cpp
+    src/demo_model.cpp
+    src/measurement_session.cpp)
 
 target_include_directories(mlx_plan PUBLIC src)
 
@@ -108,6 +111,10 @@ add_executable(report_writer_test tests/report_writer_test.cpp)
 target_link_libraries(report_writer_test PRIVATE mlx_plan)
 add_test(NAME report_writer_test COMMAND report_writer_test)
 
+add_executable(report_comparison_page_test tests/report_comparison_page_test.cpp)
+target_link_libraries(report_comparison_page_test PRIVATE mlx_plan)
+add_test(NAME report_comparison_page_test COMMAND report_comparison_page_test)
+
 add_executable(progress_reporter_test tests/progress_reporter_test.cpp)
 target_link_libraries(progress_reporter_test PRIVATE mlx_plan)
 add_test(NAME progress_reporter_test COMMAND progress_reporter_test)
@@ -122,6 +129,14 @@ add_executable(metal_command_buffer_probe_test
 target_link_libraries(metal_command_buffer_probe_test PRIVATE mlx_plan)
 add_test(NAME metal_command_buffer_probe_test
     COMMAND metal_command_buffer_probe_test)
+
+add_executable(demo_model_test tests/demo_model_test.cpp)
+target_link_libraries(demo_model_test PRIVATE mlx_plan)
+add_test(NAME demo_model_test COMMAND demo_model_test)
+
+add_executable(measurement_session_test tests/measurement_session_test.cpp)
+target_link_libraries(measurement_session_test PRIVATE mlx_plan)
+add_test(NAME measurement_session_test COMMAND measurement_session_test)
 
 add_executable(gpu_timeline_test tests/gpu_timeline_test.cpp)
 target_link_libraries(gpu_timeline_test PRIVATE mlx_plan)
