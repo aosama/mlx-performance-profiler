@@ -101,9 +101,10 @@ ReportPaths write_report(
   if (report_paths.graphviz_available) {
     report_paths.svg_path = output_directory + "/" + plan_file_base + ".svg";
   }
-  write_text_file(report_paths.html_path,
-                  build_report_document(report_inputs, plan_svg, plan_dot));
-  write_text_file(report_paths.dot_path, plan_dot);
+  const bool is_html_written = write_text_file(
+      report_paths.html_path, build_report_document(report_inputs, plan_svg, plan_dot));
+  const bool is_dot_written = write_text_file(report_paths.dot_path, plan_dot);
+  report_paths.is_written = is_html_written && is_dot_written;
   return report_paths;
 }
 

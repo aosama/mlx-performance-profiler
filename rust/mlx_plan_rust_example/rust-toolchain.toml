@@ -1,0 +1,5 @@
+[toolchain]
+# Must match ../../../mlx-bridge/rust-toolchain.toml: the bridge requires
+# this nightly (edition 2024, rust-version 1.101).
+channel = "nightly-2026-10-18"
+profile = "minimal"

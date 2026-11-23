@@ -4,6 +4,7 @@
 // every other module consumes. One concern only: walking the graph.
 
 #include "mlx/array.h"
+#include "mlx/stream.h"
 
 #include <string>
 #include <unordered_map>
@@ -50,5 +51,12 @@ struct CapturedGraph {
 // Walks the graph depth-first from `output_nodes`, mirroring MLX's own
 // depth_first_traversal so the capture cannot drift from what MLX executes.
 CapturedGraph capture_graph(const std::vector<mlx::core::array>& output_nodes);
+
+// The Stream handles the graph's primitives run on, keyed by index — read
+// from the primitives themselves, so callers that did not create the streams
+// (e.g. through the C API) need not supply them. Call before evaluation:
+// evaluated nodes drop their primitive.
+std::unordered_map<int, mlx::core::Stream> collect_streams(
+    const CapturedGraph& captured_graph);
 
 } // namespace mlx_plan

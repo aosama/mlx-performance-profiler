@@ -51,6 +51,9 @@ void ProgressReporter::print_line(int completed_units) const {
       percent_complete,
       elapsed_seconds,
       eta_seconds);
+  // stdout is fully buffered when piped (tee, CI, a Rust parent process);
+  // without a flush, "live" progress would only appear at exit.
+  std::fflush(stdout);
 }
 
 } // namespace mlx_plan
