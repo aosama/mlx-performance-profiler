@@ -35,9 +35,19 @@ struct VariantMeasurement {
   VariantMeasurement& operator=(const VariantMeasurement&) = delete;
 };
 
+// Told when each pass begins, so a live view can show progress. Called on
+// the measuring (main) thread.
+class MeasurementObserver {
+ public:
+  virtual ~MeasurementObserver() = default;
+  virtual void on_pass_started(const std::string& variant_name,
+                               const std::string& pass_description) = 0;
+};
+
 VariantMeasurement measure_variant(
     const std::string& variant_name,
     const GraphFactory& graph_factory,
-    const std::unordered_map<int, mlx::core::Stream>& stream_index_to_stream);
+    const std::unordered_map<int, mlx::core::Stream>& stream_index_to_stream,
+    MeasurementObserver* measurement_observer = nullptr);
 
 } // namespace mlx_plan

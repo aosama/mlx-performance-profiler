@@ -13,5 +13,8 @@ std::string_view report_stylesheet();
 // the column carries data-sort-value, text otherwise. No library: ~30 lines
 // do not earn a dependency.
 std::string_view report_sort_script();
+// Just the enableSortableTables(root) definition, for pages that insert
+// tables after load (the live view) and must re-apply it per insertion.
+std::string_view report_sort_function();
 
 } // namespace mlx_plan

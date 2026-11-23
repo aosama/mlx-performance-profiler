@@ -58,6 +58,30 @@ std::string escape_html_text(const std::string& raw_text) {
   return escaped_text;
 }
 
+std::string escape_json_text(const std::string& raw_text) {
+  std::string escaped_text;
+  escaped_text.reserve(raw_text.size());
+  for (const char letter : raw_text) {
+    switch (letter) {
+      case '"': escaped_text += "\\\""; break;
+      case '\\': escaped_text += "\\\\"; break;
+      case '\n': escaped_text += "\\n"; break;
+      case '\r': escaped_text += "\\r"; break;
+      case '\t': escaped_text += "\\t"; break;
+      default:
+        if (static_cast<unsigned char>(letter) < 0x20) {
+          char unicode_escape[8];
+          std::snprintf(unicode_escape, sizeof(unicode_escape), "\\u%04x",
+                        static_cast<unsigned char>(letter));
+          escaped_text += unicode_escape;
+        } else {
+          escaped_text += letter;
+        }
+    }
+  }
+  return escaped_text;
+}
+
 std::string escape_dot_text(const std::string& raw_text) {
   std::string escaped_text;
   escaped_text.reserve(raw_text.size());
