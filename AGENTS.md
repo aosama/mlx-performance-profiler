@@ -1,0 +1,28 @@
+# Instructions for maintaining mlx-visual-plan
+
+## What this repo is
+
+An experiment: reproduce the useful parts of Apache Spark's Web UI
+("what did the engine actually do") for Apple MLX computations, by observing
+MLX's lazy computational graph and adding the telemetry Spark shows per stage.
+
+The engine API surface lives in the sibling project `../mlx-bridge`
+(the `mlx-c-rust` Rust bridge over MLX-C). This repo is the visualization
+sidecar: it observes, it never changes MLX semantics.
+
+## Conventions
+
+- C++20, one job per file: graph capture, telemetry, DOT writing, SVG
+  rendering, and HTML report writing are separate modules with separate
+  headers. `main`-level files only orchestrate.
+- A single function stays around 40 lines; split at natural seams when longer.
+- Comments carry rationale (why this design, what tradeoff), not narration.
+- Variable names describe domain meaning: `output_node_ids`,
+  `stream_index_to_stream`, `node_id_to_telemetry`. No `tmp`/`data`/`info`.
+- Any run longer than a few seconds prints live progress with an ETA.
+- The prebuilt MLX the spike links against lives at
+  `~/.cache/mlx-bridge/native/<identity>/prefix` and is passed as the CMake
+  cache variable `MLX_PREFIX` — never as an environment variable.
+- MLX source of truth for API questions: `../mlx-explore/mlx` (same version
+  0.32.4 as the prebuilt library; headers in the prefix and the source tree
+  are in sync).

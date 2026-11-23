@@ -1,0 +1,17 @@
+# Build output
+build/
+
+# Compiler / linker artifacts
+*.o
+*.obj
+*.a
+*.so
+*.dylib
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+*.swp
