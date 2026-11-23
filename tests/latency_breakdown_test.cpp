@@ -28,11 +28,21 @@ NodeTimestamps make_timestamps(
   return timestamps;
 }
 
+NodeTimestamps with_gpu_window(
+    NodeTimestamps timestamps, double gpu_started, double gpu_finished) {
+  timestamps.has_gpu_window = true;
+  timestamps.gpu_started_microseconds = gpu_started;
+  timestamps.gpu_finished_microseconds = gpu_finished;
+  return timestamps;
+}
+
 double sum_of_slices(const LatencyBreakdown& breakdown) {
   return breakdown.wait_on_cpu_microseconds +
       breakdown.wait_on_gpu_microseconds +
       breakdown.wait_on_dependency_microseconds +
-      breakdown.compute_microseconds;
+      breakdown.scheduler_delay_microseconds +
+      breakdown.compute_microseconds +
+      breakdown.completion_latency_microseconds;
 }
 
 // --- positive ---
@@ -137,6 +147,81 @@ void should_name_every_node_class() {
   EXPECT_TRUE(
       mlx_plan::node_class_name(NodeClass::wait_on_dependency) ==
       "wait_on_dependency");
+  EXPECT_TRUE(
+      mlx_plan::node_class_name(NodeClass::scheduler_delay) ==
+      "scheduler_delay");
+}
+
+// --- GPU-window mode: positive ---
+
+void should_measure_compute_from_gpu_window_and_split_out_result_latency() {
+  // issue 0→2, GPU runs 5→9, host notices at 12.
+  const LatencyBreakdown breakdown = decompose_node_latency(
+      with_gpu_window(make_timestamps(0, 2, 0, 0, 12), 5, 9));
+  EXPECT_TRUE(breakdown.is_compute_measured);
+  EXPECT_NEAR(breakdown.wait_on_cpu_microseconds, 2, EXACT_MICROSECONDS);
+  EXPECT_NEAR(breakdown.wait_on_gpu_microseconds, 0, EXACT_MICROSECONDS);
+  EXPECT_NEAR(breakdown.scheduler_delay_microseconds, 3, EXACT_MICROSECONDS);
+  EXPECT_NEAR(breakdown.compute_microseconds, 4, EXACT_MICROSECONDS);
+  EXPECT_NEAR(breakdown.completion_latency_microseconds, 3, EXACT_MICROSECONDS);
+  EXPECT_NEAR(sum_of_slices(breakdown), 12, EXACT_MICROSECONDS);
+}
+
+void should_exclude_result_latency_from_classification() {
+  // A tiny kernel noticed very late is still a compute node, not "waiting".
+  const LatencyBreakdown breakdown = decompose_node_latency(
+      with_gpu_window(make_timestamps(0, 1, 0, 0, 100), 1, 6));
+  EXPECT_NEAR(breakdown.completion_latency_microseconds, 94, EXACT_MICROSECONDS);
+  EXPECT_TRUE(breakdown.classification == NodeClass::compute);
+}
+
+void should_separate_stream_queueing_from_scheduler_delay() {
+  // Stream busy until 6, GPU starts the buffer at 9: 5 µs queued + 3 µs
+  // submission delay, after 1 µs of issue.
+  const LatencyBreakdown breakdown = decompose_node_latency(
+      with_gpu_window(make_timestamps(0, 1, 6, 0, 12), 9, 11));
+  EXPECT_NEAR(breakdown.wait_on_gpu_microseconds, 5, EXACT_MICROSECONDS);
+  EXPECT_NEAR(breakdown.scheduler_delay_microseconds, 3, EXACT_MICROSECONDS);
+  EXPECT_TRUE(breakdown.classification == NodeClass::wait_on_gpu);
+}
+
+// --- GPU-window mode: edge / boundary ---
+
+void should_charge_remote_wait_inside_gpu_window_to_dependency() {
+  // The buffer starts at 2 but its head waits on a remote producer until 8.
+  const LatencyBreakdown breakdown = decompose_node_latency(
+      with_gpu_window(make_timestamps(0, 1, 0, 8, 12), 2, 10));
+  EXPECT_NEAR(breakdown.wait_on_dependency_microseconds, 7, EXACT_MICROSECONDS);
+  EXPECT_NEAR(breakdown.compute_microseconds, 2, EXACT_MICROSECONDS);
+  EXPECT_TRUE(breakdown.classification == NodeClass::wait_on_dependency);
+}
+
+void should_credit_gpu_start_before_issue_returned_to_compute() {
+  // Commit happens inside issue, so the GPU may start before issue returns.
+  const LatencyBreakdown breakdown = decompose_node_latency(
+      with_gpu_window(make_timestamps(0, 10, 0, 0, 20), 6, 18));
+  EXPECT_NEAR(breakdown.wait_on_cpu_microseconds, 6, EXACT_MICROSECONDS);
+  EXPECT_NEAR(breakdown.compute_microseconds, 12, EXACT_MICROSECONDS);
+}
+
+// --- GPU-window mode: negative ---
+
+void should_clamp_gpu_window_outside_host_window() {
+  // Clock-anchor error could place the GPU window outside the host window;
+  // slices must stay non-negative and still sum to the wall.
+  const LatencyBreakdown breakdown = decompose_node_latency(
+      with_gpu_window(make_timestamps(10, 12, 0, 0, 20), 5, 30));
+  EXPECT_TRUE(breakdown.wait_on_cpu_microseconds >= 0);
+  EXPECT_TRUE(breakdown.compute_microseconds >= 0);
+  EXPECT_TRUE(breakdown.completion_latency_microseconds >= 0);
+  EXPECT_NEAR(sum_of_slices(breakdown), 10, EXACT_MICROSECONDS);
+}
+
+void should_report_host_residual_compute_as_unmeasured() {
+  const LatencyBreakdown breakdown =
+      decompose_node_latency(make_timestamps(0, 1, 0, 0, 11));
+  EXPECT_TRUE(!breakdown.is_compute_measured);
+  EXPECT_NEAR(breakdown.completion_latency_microseconds, 0, EXACT_MICROSECONDS);
 }
 
 } // namespace
@@ -154,5 +239,12 @@ int main() {
       TEST_CASE(should_clamp_ready_instant_after_completion_without_negative_compute),
       TEST_CASE(should_report_zero_wall_when_completion_precedes_issue),
       TEST_CASE(should_name_every_node_class),
+      TEST_CASE(should_measure_compute_from_gpu_window_and_split_out_result_latency),
+      TEST_CASE(should_exclude_result_latency_from_classification),
+      TEST_CASE(should_separate_stream_queueing_from_scheduler_delay),
+      TEST_CASE(should_charge_remote_wait_inside_gpu_window_to_dependency),
+      TEST_CASE(should_credit_gpu_start_before_issue_returned_to_compute),
+      TEST_CASE(should_clamp_gpu_window_outside_host_window),
+      TEST_CASE(should_report_host_residual_compute_as_unmeasured),
   });
 }

@@ -39,12 +39,13 @@ latency breakdown, and writes `build/hello_world.html`:
 |---|---|
 | 0. warm-up | discarded — absorbs Metal kernel compilation |
 | 1. pipeline | **job wall**: one eval, streams overlap, uninstrumented |
-| 2. timeline | per-node issue/completion instants with overlap preserved → `compute` / `wait_on_cpu` / `wait_on_gpu` / `wait_on_dependency`, and the cross-stream stall (Spark `fetchWaitTime` analog) |
+| 2. timeline | per-node issue and host-observed completion with overlap preserved, plus each node's **GPU execution window** read from its Metal command buffer (`GPUStartTime`/`GPUEndTime`) → `wait_on_cpu` / `wait_on_gpu` / `wait_on_dependency` / `scheduler_delay` / `compute` / result latency, and the cross-stream stall (Spark `fetchWaitTime` analog) |
 | 3. attributed | **sum-of-stages**: each node synchronized alone |
 
-Every number is printed next to what it is and is not; in particular,
-per-node `compute` is a host-observed residual, not kernel nanoseconds
-(kernel-accurate GPU time is a later phase).
+Every number is printed next to what it is and is not. Per-node `compute` is
+GPU-measured at command-buffer granularity (one buffer per node in the
+timeline pass); a `~` marks the rare fallback to a host-observed residual
+(CPU-stream nodes).
 
 ## Test
 

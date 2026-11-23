@@ -1,5 +1,6 @@
 #include "gpu_timeline.h"
 
+#include "metal_command_buffer_probe.h"
 #include "progress_reporter.h"
 
 #include "mlx/transforms.h"
@@ -124,8 +125,10 @@ struct IssueInstants {
 // early completions from being stamped late while the host is still issuing.
 CompletionTracker dispatch_and_observe(
     const CapturedGraph& captured_graph,
+    const std::unordered_map<int, mlx::core::Stream>& stream_index_to_stream,
     Clock::time_point pass_started_at,
-    IssueInstants& issue_instants) {
+    IssueInstants& issue_instants,
+    MetalCommandBufferProbe& command_buffer_probe) {
   const int node_count = static_cast<int>(captured_graph.topological.size());
   CompletionTracker tracker;
   tracker.position_to_completed_microseconds.assign(node_count, 0.0);
@@ -135,9 +138,14 @@ CompletionTracker dispatch_and_observe(
 
   ProgressReporter progress("gpu timeline nodes complete", node_count);
   for (int position = 0; position < node_count; ++position) {
+    const GraphNode& graph_node = node_at(captured_graph, position);
+    // Taken before issue_started so the probe's own cost (a pointer read
+    // and a retain) is not charged to the node as host issue time.
+    command_buffer_probe.hold_buffer_for(
+        position, stream_index_to_stream.at(graph_node.stream_index));
     issue_instants.position_to_issue_started_microseconds[position] =
         microseconds_since(pass_started_at);
-    mlx::core::async_eval({node_at(captured_graph, position).handle});
+    mlx::core::async_eval({graph_node.handle});
     issue_instants.position_to_issue_finished_microseconds[position] =
         microseconds_since(pass_started_at);
     tracker.pending_positions.push_back(position);
@@ -167,12 +175,34 @@ double latest_completion(
   return latest_microseconds;
 }
 
+// When a producer's data was really ready: its GPU end when the probe
+// measured one (exact), else the host-observed completion (trails reality).
+std::vector<double> build_position_to_ready_microseconds(
+    const std::vector<double>& position_to_completed_microseconds,
+    const std::vector<GpuExecutionWindow>& position_to_gpu_window) {
+  std::vector<double> position_to_ready_microseconds =
+      position_to_completed_microseconds;
+  for (std::size_t position = 0; position < position_to_gpu_window.size();
+       ++position) {
+    if (position_to_gpu_window[position].is_measured) {
+      position_to_ready_microseconds[position] =
+          position_to_gpu_window[position].finished_microseconds;
+    }
+  }
+  return position_to_ready_microseconds;
+}
+
 NodeTimestamps assemble_timestamps(
     int position,
     const NodeDependencies& dependencies,
     const IssueInstants& issue_instants,
-    const std::vector<double>& position_to_completed_microseconds) {
+    const std::vector<double>& position_to_completed_microseconds,
+    const std::vector<double>& position_to_ready_microseconds,
+    const GpuExecutionWindow& gpu_window) {
   NodeTimestamps timestamps;
+  timestamps.has_gpu_window = gpu_window.is_measured;
+  timestamps.gpu_started_microseconds = gpu_window.started_microseconds;
+  timestamps.gpu_finished_microseconds = gpu_window.finished_microseconds;
   timestamps.issue_started_microseconds =
       issue_instants.position_to_issue_started_microseconds[position];
   timestamps.issue_finished_microseconds =
@@ -181,16 +211,16 @@ NodeTimestamps assemble_timestamps(
       position_to_completed_microseconds[position];
   timestamps.stream_ready_microseconds = latest_completion(
       dependencies.same_stream_input_positions,
-      position_to_completed_microseconds);
+      position_to_ready_microseconds);
   if (dependencies.previous_on_stream_position != NO_POSITION) {
     timestamps.stream_ready_microseconds = std::max(
         timestamps.stream_ready_microseconds,
-        position_to_completed_microseconds
+        position_to_ready_microseconds
             [dependencies.previous_on_stream_position]);
   }
   timestamps.cross_stream_inputs_ready_microseconds = latest_completion(
       dependencies.cross_stream_input_positions,
-      position_to_completed_microseconds);
+      position_to_ready_microseconds);
   return timestamps;
 }
 
@@ -258,12 +288,19 @@ GpuTimeline capture_gpu_timeline(
   const std::vector<NodeDependencies> position_to_dependencies =
       snapshot_dependencies(captured_graph);
   IssueInstants issue_instants;
+  const int node_count = static_cast<int>(captured_graph.topological.size());
   const Clock::time_point pass_started_at = Clock::now();
-  const CompletionTracker tracker =
-      dispatch_and_observe(captured_graph, pass_started_at, issue_instants);
+  MetalCommandBufferProbe command_buffer_probe(node_count, pass_started_at);
+  const CompletionTracker tracker = dispatch_and_observe(
+      captured_graph, stream_index_to_stream, pass_started_at, issue_instants,
+      command_buffer_probe);
+  const std::vector<GpuExecutionWindow> position_to_gpu_window =
+      command_buffer_probe.read_windows();
+  const std::vector<double> position_to_ready_microseconds =
+      build_position_to_ready_microseconds(
+          tracker.position_to_completed_microseconds, position_to_gpu_window);
 
   GpuTimeline gpu_timeline;
-  const int node_count = static_cast<int>(captured_graph.topological.size());
   for (int position = 0; position < node_count; ++position) {
     NodeTimeline node_timeline;
     node_timeline.node = &node_at(captured_graph, position);
@@ -271,12 +308,19 @@ GpuTimeline capture_gpu_timeline(
         position,
         position_to_dependencies[position],
         issue_instants,
-        tracker.position_to_completed_microseconds);
+        tracker.position_to_completed_microseconds,
+        position_to_ready_microseconds,
+        position_to_gpu_window[position]);
     node_timeline.breakdown = decompose_node_latency(node_timeline.timestamps);
     node_timeline.has_cross_stream_input =
         !position_to_dependencies[position].cross_stream_input_positions.empty();
     gpu_timeline.cross_stream_stall_microseconds +=
         node_timeline.breakdown.wait_on_dependency_microseconds;
+    if (node_timeline.breakdown.is_compute_measured) {
+      ++gpu_timeline.gpu_measured_node_count;
+      gpu_timeline.measured_gpu_compute_microseconds +=
+          node_timeline.breakdown.compute_microseconds;
+    }
     gpu_timeline.timeline_wall_microseconds = std::max(
         gpu_timeline.timeline_wall_microseconds,
         node_timeline.timestamps.completed_microseconds);
