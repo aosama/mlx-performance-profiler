@@ -13,23 +13,23 @@ Big-data-engineer north star: answer *"what did the engine actually do, and what
 was it waiting for?"* — the same question Spark's `StagePage` answers for a
 shuffle-bound stage.
 
-## 1. Anchoring decisions (recorded now)
+## 1. Anchoring decisions (as decided, and as they turned out)
 
-- **Language: all C++ in this repo.** Native C++ sidecar linking the prebuilt
-  MLX 0.32.4 static library. No rush on the `mlx-c-rust` bridge; an optional
-  `Event` binding in `mlx-bridge/src/metal/` is a Phase 6 concern.
-- **Keep `graph_model`.** It mirrors MLX's own depth-first traversal with an
-  explicit visited set and sibling handling; rewriting it only reintroduces the
-  traversal drift this code deliberately guards against.
-- **Rewrite `telemetry`.** Keep the serial pass (Spark "sum-of-stages"); add a
-  concurrent, `Event`-based pass (Spark "job duration" + stall detection).
-- **Rewrite `report_writer`.** Replace the raw DOT/SVG with a Spark-style report
-  (summary cards, stacked latency bars, task table, per-stream Gantt).
-- **Measurement source of truth.** Host-side concurrent timing + Metal
-  `Event` polling for the coarse CPU/GPU/stall story (Phase 1); Metal
-  `.gputrace` parsing for kernel-accurate GPU time (Phase 2).
-- **Test each module**, per engineering convention (see §7). Keep it lightweight
-  through Phase 0–2.
+- **Language: C++ for the tool.** A native C++ sidecar linking the prebuilt
+  MLX 0.32.4 static library. *Outcome:* Rust reaches it through a C API
+  (Phase 6), and no `Event` binding in `mlx-bridge` was needed.
+- **Keep `graph_model`.** It mirrors MLX's own depth-first traversal. *Outcome:*
+  kept, now with direct tests and `collect_streams`.
+- **Rewrite `telemetry` / `report_writer`.** *Outcome:* the serial pass stays
+  in `telemetry`; the overlap-preserving pass is `gpu_timeline`; the report
+  is split into one module per section.
+- **Measurement source of truth.** *Planned:* `Event` polling plus
+  `.gputrace` parsing. *Outcome:* per-node `async_eval` with
+  `is_available()` polling for host instants (Phase 1), plus Metal
+  command-buffer `GPUStartTime/GPUEndTime` for GPU execution (Phase 2).
+  `.gputrace` was never needed.
+- **Test each module** with the `should_` convention (positive, edge and
+  negative cases), using a header-only runner and CTest (see §6).
 
 ## 2. The Spark decomposition we copy verbatim
 
@@ -332,27 +332,52 @@ helpers):
 | `http_server` / `live_view_*` / `server_options` / `report_memory_section` | Live server | P5 ✓ |
 | `hello_world` / `mlx_plan_server` | Orchestration only | ✓ |
 
-## 6. Testing strategy (per engineering convention)
+## 6. Testing strategy (as built)
 
-- **Unit:** `graph_model` traversal correctness; `gpu_timeline` node
-  classification; `capture_ingestion` kernel→node join.
-- **Integration:** end-to-end `hello_world` produces a valid report with the
-  expected totals.
-- **Golden:** DOT/HTML golden files for the toy model (regression guard).
-- **Perf / sanity:** assert `sum_of_stages ≥ job_duration` (decomposition
-  invariant) and no regression in run time.
-- **Acceptance:** a big-data engineer can answer *"what was stalled"* from the
-  report alone.
-- Keep it lightweight: an assert-based runner or GoogleTest via FetchContent;
-  no heavy deps in Phase 0–2.
+`ctest --test-dir build`: 19 suites, one per production module, run against
+`tests/test_harness.h` (no fetched dependencies).
 
-## 7. Open decisions / risks
+- **Unit (no GPU):** `latency_breakdown`, `latency_slices`, `text_format`,
+  `progress_reporter`, `report_components`, `live_view_store`,
+  `server_options`, `report_memory_section`, `graph_model` (graphs are
+  built, never evaluated).
+- **Component (no GPU):** `report_writer` and `report_comparison_page`
+  render whole documents from a synthetic fixture. `live_view_routes` and
+  `http_server` run over real loopback sockets.
+- **Integration (Metal GPU):** `gpu_timeline`, `metal_command_buffer_probe`,
+  `telemetry`, `demo_model` (eager and compiled outputs are numerically
+  equal), `measurement_session`, and `mlx_plan_c_api` (driven only through
+  MLX-C). There are also Rust unit tests in the example crate.
+- **Performance test (asserts a threshold):** sum of stages ≥ job duration,
+  the decomposition invariant, in `measurement_session_test`.
+- **Dropped: golden DOT/HTML files.** Timings differ on every run, so
+  goldens would either be flaky or need masking that hides real
+  regressions. The structural component tests assert what goldens would
+  have protected.
+- **Acceptance:** run `hello_world` and read the comparison page. The
+  stalled join, the queueing-dominated streams and the fused kernels can be
+  read from the report alone.
 
-- **`Event` value → time conversion** (Phase 1 risk): monotonic counter, not wall
-  time; MLX does not expose the Metal device clock.
-- **`.gputrace` parsing feasibility** (Phase 2 spike): binary Xcode bundle.
-- **License:** propose Apache-2.0; user's call.
-- **`MLX_PREFIX` default vs hard error** (Phase 0).
-- **Always show both totals honestly** (sum-of-stages vs job duration) — the
-  serial measurement changes semantics, exactly as Spark separates stage
-  durations from job duration. Never present one as the whole truth.
+## 7. Decisions resolved, and the risks that remain
+
+Resolved:
+- **`Event` value → time:** sidestepped. Host instants come from polling,
+  and GPU time from command-buffer timestamps on the host clock.
+- **`.gputrace` feasibility:** not needed (Phase 2).
+- **License:** Apache-2.0. **`MLX_PREFIX`:** a hard error when unset, and
+  validated to contain `include/mlx/mlx.h`.
+- **Both totals shown honestly:** job duration (median of 7, with range),
+  instrumented duration, and sum of stages are always side by side.
+
+Remaining limits, documented where they apply:
+- GPU time has command-buffer granularity. A primitive that overflows MLX's
+  per-buffer op budget spans several buffers, and only the first is seen.
+- The timeline pass's one-command-buffer-per-node adds submission cost on
+  large graphs; the report states when the difference is outside the
+  job-duration range.
+- Memory added per node is approximate (the capture keeps intermediates
+  alive; Metal reuses buffers).
+- The C API relies on one MLX-C private layout fact (`mlx_array.ctx` is an
+  `mlx::core::array*`), pinned by a test.
+- The demo is a toy. Larger graphs (e.g. a transformer block) are the
+  natural next validation.

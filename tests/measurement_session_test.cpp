@@ -62,6 +62,17 @@ void should_measure_all_passes_with_an_ordered_job_wall_range() {
               primitive_count);
 }
 
+// Performance test (asserts a threshold): timing each node alone, synchronized,
+// can never beat running the whole job overlapped. If it does, a pass is
+// mismeasuring — this is the decomposition invariant from PHASED_PLAN §6.
+void should_never_make_sum_of_stages_smaller_than_job_duration() {
+  const Stream job_stream = mlx::core::new_stream(mlx::core::Device::gpu);
+  const VariantMeasurement variant_measurement = measure_variant(
+      "invariant", SmallJobFactory(job_stream), map_single_stream(job_stream));
+  EXPECT_TRUE(variant_measurement.job_totals.sum_of_stages_microseconds >=
+              variant_measurement.job_totals.job_wall_min_microseconds);
+}
+
 // --- edge / boundary ---
 
 void should_keep_node_pointers_valid_after_the_result_is_moved() {
@@ -96,6 +107,7 @@ void should_return_empty_measurement_for_an_already_materialized_job() {
 int main() {
   return test_harness::run_all({
       TEST_CASE(should_measure_all_passes_with_an_ordered_job_wall_range),
+      TEST_CASE(should_never_make_sum_of_stages_smaller_than_job_duration),
       TEST_CASE(should_keep_node_pointers_valid_after_the_result_is_moved),
       TEST_CASE(should_return_empty_measurement_for_an_already_materialized_job),
   });
