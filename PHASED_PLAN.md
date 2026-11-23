@@ -134,6 +134,39 @@ New module `gpu_timeline.{h,cpp}`:
   feasible before committing.
 - **Acceptance:** the node table gains a real **GPU time** column; the Gantt GPU
   track shows actual kernels with idle gaps labeled "stalled".
+- **Status (2026-11-23): implemented with a different, better-fitting
+  mechanism — `.gputrace` parsing was dropped.** Decision and evidence:
+  - MLX 0.32.4 exposes `metal::get_command_encoder(stream).get_command_buffer()`
+    in its installed headers, and every `async_eval` ends in `gpu::finalize`,
+    which commits that buffer and starts a new one. In the timeline pass each
+    node is therefore exactly one `MTLCommandBuffer`, whose
+    `GPUStartTime`/`GPUEndTime` are GPU-stamped host-timebase seconds.
+    `metal_command_buffer_probe` retains the buffer before dispatch and reads
+    the window after completion, anchored to the pass clock.
+  - Why not `.gputrace`: a binary Xcode bundle with no documented schema,
+    needs `MTL_CAPTURE_ENABLED=1` and a capture scope, and capture itself
+    perturbs timing. Command-buffer timestamps give per-node GPU time with
+    no file format, no environment variable and no MLX change.
+  - Why not Metal counter sampling (`MTLCounterSampleBuffer`): per-dispatch
+    precision would require inserting sample points inside MLX's own compute
+    encoders, i.e. modifying MLX. Deferred; per-node is the granularity the
+    report needs.
+  - Consequences now in the model: `compute` is GPU-measured (marked `~` when
+    it falls back to the host residual, e.g. CPU streams); producer readiness
+    uses producers' GPU end; two new slices — `scheduler_delay` (committed →
+    GPU start, StagePage's Scheduler Delay, now a fifth class) and
+    `completion_latency` (GPU end → host noticed, StagePage's Getting Result
+    Time, excluded from classification).
+  - Found while building it: a node's Event can be host-visible before Metal
+    marks its buffer Completed, so the probe `waitUntilCompleted()`s before
+    reading (no accuracy cost — timestamps are GPU-stamped).
+  - Finding on the toy model: ~0.35 ms of measured GPU execution inside a
+    ~3 ms instrumented pass; nodes are dominated by stream queueing and
+    per-buffer submission delay, with real dependency waits at the joins.
+  - Limits: a primitive that overflows MLX's per-buffer op budget spans
+    several buffers and only the first is seen (underestimate); the
+    instrumentation (one buffer per node) adds submission delay a plain eval
+    would batch away — the job-wall row keeps that visible.
 
 ### Phase 3 — The Spark-style static report (the UX)
 Rewrite `report_writer` (keep `dot_writer`/`svg_renderer` as thin layout

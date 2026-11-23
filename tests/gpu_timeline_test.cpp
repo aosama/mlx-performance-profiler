@@ -60,8 +60,17 @@ void should_observe_every_node_complete_with_slices_summing_to_wall() {
     EXPECT_NEAR(
         breakdown.wait_on_cpu_microseconds + breakdown.wait_on_gpu_microseconds +
             breakdown.wait_on_dependency_microseconds +
-            breakdown.compute_microseconds,
+            breakdown.scheduler_delay_microseconds +
+            breakdown.compute_microseconds +
+            breakdown.completion_latency_microseconds,
         breakdown.wall_microseconds, SLICE_SUM_TOLERANCE_MICROSECONDS);
+    // Every node here runs on a GPU stream, so each must carry a measured
+    // GPU window that sits inside its host window.
+    EXPECT_TRUE(node_timeline.timestamps.has_gpu_window);
+    EXPECT_TRUE(breakdown.is_compute_measured);
+    EXPECT_TRUE(
+        node_timeline.timestamps.gpu_finished_microseconds >=
+        node_timeline.timestamps.gpu_started_microseconds);
   }
 }
 
@@ -126,9 +135,12 @@ void should_resolve_sibling_outputs_to_their_shared_primitive() {
   const NodeTimeline& join_timeline = gpu_timeline.nodes.back();
   EXPECT_TRUE(join_timeline.has_cross_stream_input);
   if (divmod_timeline != nullptr) {
+    // Readiness is the producer's GPU end (exact), not when the host
+    // happened to notice it.
+    EXPECT_TRUE(divmod_timeline->timestamps.has_gpu_window);
     EXPECT_TRUE(
         join_timeline.timestamps.cross_stream_inputs_ready_microseconds ==
-        divmod_timeline->timestamps.completed_microseconds);
+        divmod_timeline->timestamps.gpu_finished_microseconds);
   }
 }
 
@@ -145,6 +157,9 @@ void should_report_cpu_stream_as_cpu_device() {
   EXPECT_TRUE(gpu_timeline.streams.size() == 1);
   if (!gpu_timeline.streams.empty()) {
     EXPECT_TRUE(!gpu_timeline.streams.front().is_gpu);
+  }
+  for (const NodeTimeline& node_timeline : gpu_timeline.nodes) {
+    EXPECT_TRUE(!node_timeline.timestamps.has_gpu_window);
   }
   EXPECT_TRUE(cpu_output.is_available());
 }

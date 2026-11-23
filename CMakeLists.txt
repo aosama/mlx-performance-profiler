@@ -34,6 +34,7 @@ add_library(mlx_plan STATIC
     src/telemetry.cpp
     src/latency_breakdown.cpp
     src/progress_reporter.cpp
+    src/metal_command_buffer_probe.cpp
     src/gpu_timeline.cpp
     src/timeline_console.cpp
     src/dot_writer.cpp
@@ -92,6 +93,12 @@ add_test(NAME progress_reporter_test COMMAND progress_reporter_test)
 add_executable(telemetry_test tests/telemetry_test.cpp)
 target_link_libraries(telemetry_test PRIVATE mlx_plan)
 add_test(NAME telemetry_test COMMAND telemetry_test)
+
+add_executable(metal_command_buffer_probe_test
+    tests/metal_command_buffer_probe_test.cpp)
+target_link_libraries(metal_command_buffer_probe_test PRIVATE mlx_plan)
+add_test(NAME metal_command_buffer_probe_test
+    COMMAND metal_command_buffer_probe_test)
 
 add_executable(gpu_timeline_test tests/gpu_timeline_test.cpp)
 target_link_libraries(gpu_timeline_test PRIVATE mlx_plan)

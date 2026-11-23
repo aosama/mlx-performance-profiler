@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstdio>
+#include <string>
 
 namespace mlx_plan {
 namespace {
@@ -12,12 +13,24 @@ double to_milliseconds(double microseconds) {
   return microseconds / MICROSECONDS_PER_MILLISECOND;
 }
 
+std::string format_gpu_start(const NodeTimestamps& timestamps) {
+  if (!timestamps.has_gpu_window) {
+    return "-";
+  }
+  char formatted_start[32];
+  std::snprintf(
+      formatted_start, sizeof(formatted_start), "%.1f",
+      timestamps.gpu_started_microseconds);
+  return formatted_start;
+}
+
 void print_class_counts(const GpuTimeline& gpu_timeline) {
-  const std::array<NodeClass, 4> all_classes = {
+  const std::array<NodeClass, 5> all_classes = {
       NodeClass::compute,
       NodeClass::wait_on_cpu,
       NodeClass::wait_on_gpu,
-      NodeClass::wait_on_dependency};
+      NodeClass::wait_on_dependency,
+      NodeClass::scheduler_delay};
   std::printf("  node classes            :");
   for (const NodeClass node_class : all_classes) {
     int class_count = 0;
@@ -57,6 +70,12 @@ void print_job_summary(
       "  cross-stream stall      : %8.3f ms  summed wait_on_dependency, Spark"
       " fetchWaitTime analog (stream-time; can exceed wall)\n",
       to_milliseconds(gpu_timeline.cross_stream_stall_microseconds));
+  std::printf(
+      "  GPU execution (measured): %8.3f ms  summed command-buffer GPU time"
+      " over %d/%zu nodes (Metal GPUStart/EndTime)\n",
+      to_milliseconds(gpu_timeline.measured_gpu_compute_microseconds),
+      gpu_timeline.gpu_measured_node_count,
+      gpu_timeline.nodes.size());
   print_class_counts(gpu_timeline);
 }
 
@@ -84,38 +103,47 @@ void print_stream_table(const GpuTimeline& gpu_timeline) {
 }
 
 void print_node_table(const GpuTimeline& gpu_timeline) {
-  std::printf("\n== nodes (timeline pass; µs, host-observed) ==\n");
+  std::printf("\n== nodes (timeline pass; µs since pass start) ==\n");
   std::printf(
-      "  %4s %-6s %-22s %3s %4s %9s %8s %8s %8s %8s %8s  %s\n",
-      "#", "node", "op", "str", "join", "issued@", "cpu", "gpu-q", "dep",
-      "compute", "wall", "class");
+      "  %4s %-6s %-20s %3s %4s %8s %8s %7s %7s %7s %7s %8s %7s %8s  %s\n",
+      "#", "node", "op", "str", "join", "issued@", "gpu@", "cpu", "gpu-q",
+      "dep", "sched", "compute", "result", "wall", "class");
   int dispatch_position = 0;
   for (const NodeTimeline& node_timeline : gpu_timeline.nodes) {
     const LatencyBreakdown& breakdown = node_timeline.breakdown;
+    const NodeTimestamps& timestamps = node_timeline.timestamps;
     const std::string_view class_name =
         node_class_name(breakdown.classification);
+    // "~" marks a residual (unmeasured) compute so it is never mistaken for
+    // GPU-measured time.
     std::printf(
-        "  %4d %-6s %-22.22s %3d %4s %9.1f %8.1f %8.1f %8.1f %8.1f %8.1f  %.*s\n",
+        "  %4d %-6s %-20.20s %3d %4s %8.1f %8s %7.1f %7.1f %7.1f %7.1f %7.1f%1s"
+        " %7.1f %8.1f  %.*s\n",
         ++dispatch_position,
         node_timeline.node->label.c_str(),
         node_timeline.node->op_name.c_str(),
         node_timeline.node->stream_index,
         node_timeline.has_cross_stream_input ? "yes" : "",
-        node_timeline.timestamps.issue_started_microseconds,
+        timestamps.issue_started_microseconds,
+        format_gpu_start(timestamps).c_str(),
         breakdown.wait_on_cpu_microseconds,
         breakdown.wait_on_gpu_microseconds,
         breakdown.wait_on_dependency_microseconds,
+        breakdown.scheduler_delay_microseconds,
         breakdown.compute_microseconds,
+        breakdown.is_compute_measured ? "" : "~",
+        breakdown.completion_latency_microseconds,
         breakdown.wall_microseconds,
         static_cast<int>(class_name.size()),
         class_name.data());
   }
   std::printf(
-      "  limits: completion is host-observed (trails kernel end by event"
-      " signal + poll gap); compute is the window residual, so for small\n"
-      "  kernels it is mostly the per-node command-buffer round trip, not"
-      " kernel ns — kernel-accurate GPU time arrives with Metal capture"
-      " (Phase 2).\n");
+      "  compute = GPU command-buffer execution (GPUEndTime − GPUStartTime)"
+      " minus in-buffer waits; \"~\" = host residual (no GPU window).\n"
+      "  gpu-q = queued behind earlier work on the stream; sched = committed"
+      " and unblocked, GPU not started yet (Spark scheduler delay).\n"
+      "  result = GPU end → host noticed (Spark \"getting result\"), excluded"
+      " from class. Granularity is one command buffer per node.\n");
 }
 
 } // namespace mlx_plan

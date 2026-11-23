@@ -19,9 +19,11 @@
 //  - Per-node async_eval commits one Metal command buffer per node, which a
 //    plain eval batches. The timeline wall therefore exceeds the
 //    uninstrumented job wall; report both, never one as the whole truth.
-//  - Absolute GPU kernel nanoseconds are not measured here: Event::value()
-//    is a monotonic counter, not a clock. Kernel-accurate time is Phase 2
-//    (Metal capture). "compute" below is window residual, i.e. approximate.
+//  - GPU execution IS measured (Phase 2): metal_command_buffer_probe reads
+//    each node's command-buffer GPUStartTime/GPUEndTime on the host clock,
+//    and producer readiness uses those GPU end times. Granularity is one
+//    command buffer = one node here; CPU-stream nodes fall back to the host
+//    residual and are marked unmeasured.
 //  - Streams are modeled as in-order queues (MLX encodes one queue per
 //    stream), so a node cannot start before its stream's previous node ends.
 
@@ -65,6 +67,9 @@ struct GpuTimeline {
   // stream's data, Spark's summed fetchWaitTime. Concurrent stalls on
   // different streams add, so this can exceed the wall.
   double cross_stream_stall_microseconds = 0.0;
+  // Sum of GPU-measured compute, and how many nodes had a GPU window.
+  double measured_gpu_compute_microseconds = 0.0;
+  int gpu_measured_node_count = 0;
 };
 
 // The returned NodeTimeline::node pointers point into `captured_graph`, so it

@@ -38,11 +38,16 @@ std::string_view node_class_name(NodeClass node_class) {
       return "wait_on_gpu";
     case NodeClass::wait_on_dependency:
       return "wait_on_dependency";
+    case NodeClass::scheduler_delay:
+      return "scheduler_delay";
   }
   return "unknown";
 }
 
-LatencyBreakdown decompose_node_latency(const NodeTimestamps& timestamps) {
+namespace {
+
+// Host-only model (CPU streams, or no probe): compute is the residual.
+LatencyBreakdown decompose_from_host_window(const NodeTimestamps& timestamps) {
   const double window_start = timestamps.issue_started_microseconds;
   const double window_end =
       std::max(window_start, timestamps.completed_microseconds);
@@ -66,6 +71,48 @@ LatencyBreakdown decompose_node_latency(const NodeTimestamps& timestamps) {
   // The residual, exactly as StagePage derives Executor Computing Time.
   breakdown.compute_microseconds = window_end - cursor;
   breakdown.wall_microseconds = window_end - window_start;
+  return breakdown;
+}
+
+// GPU-window model. Waits are bounded by the GPU window: stream and remote
+// readiness that fall INSIDE [gpu_start, gpu_end] are an event wait encoded
+// at the head of the buffer, so they are charged as waiting, not compute.
+LatencyBreakdown decompose_with_gpu_window(const NodeTimestamps& timestamps) {
+  const double window_start = timestamps.issue_started_microseconds;
+  const double window_end =
+      std::max(window_start, timestamps.completed_microseconds);
+  const double gpu_started = clamp_into_window(
+      timestamps.gpu_started_microseconds, window_start, window_end);
+  const double gpu_finished = clamp_into_window(
+      timestamps.gpu_finished_microseconds, gpu_started, window_end);
+
+  LatencyBreakdown breakdown;
+  breakdown.is_compute_measured = true;
+  double cursor = window_start;
+  // The buffer commits at the end of issue, so the GPU may start a hair
+  // before the host stamps issue_finished; that overlap belongs to compute.
+  breakdown.wait_on_cpu_microseconds = advance_cursor(
+      cursor, std::min(timestamps.issue_finished_microseconds, gpu_started));
+  breakdown.wait_on_gpu_microseconds = advance_cursor(
+      cursor, std::min(timestamps.stream_ready_microseconds, gpu_finished));
+  breakdown.wait_on_dependency_microseconds = advance_cursor(
+      cursor,
+      std::min(timestamps.cross_stream_inputs_ready_microseconds, gpu_finished));
+  // Committed and unblocked, but the GPU had not begun the buffer yet:
+  // driver/GPU submission, StagePage's Scheduler Delay.
+  breakdown.scheduler_delay_microseconds = advance_cursor(cursor, gpu_started);
+  breakdown.compute_microseconds = advance_cursor(cursor, gpu_finished);
+  breakdown.completion_latency_microseconds = window_end - cursor;
+  breakdown.wall_microseconds = window_end - window_start;
+  return breakdown;
+}
+
+} // namespace
+
+LatencyBreakdown decompose_node_latency(const NodeTimestamps& timestamps) {
+  LatencyBreakdown breakdown = timestamps.has_gpu_window
+      ? decompose_with_gpu_window(timestamps)
+      : decompose_from_host_window(timestamps);
   breakdown.classification = classify_breakdown(breakdown);
   return breakdown;
 }
@@ -75,15 +122,19 @@ NodeClass classify_breakdown(const LatencyBreakdown& breakdown) {
   // documented tie rule: equal waiting and working classifies as compute.
   NodeClass dominant_class = NodeClass::compute;
   double dominant_microseconds = breakdown.compute_microseconds;
-  const NodeClass waiting_classes[] = {
+  constexpr int WAITING_CLASS_COUNT = 4;
+  const NodeClass waiting_classes[WAITING_CLASS_COUNT] = {
       NodeClass::wait_on_cpu,
       NodeClass::wait_on_gpu,
-      NodeClass::wait_on_dependency};
-  const double waiting_microseconds[] = {
+      NodeClass::wait_on_dependency,
+      NodeClass::scheduler_delay};
+  const double waiting_microseconds[WAITING_CLASS_COUNT] = {
       breakdown.wait_on_cpu_microseconds,
       breakdown.wait_on_gpu_microseconds,
-      breakdown.wait_on_dependency_microseconds};
-  for (int slice_position = 0; slice_position < 3; ++slice_position) {
+      breakdown.wait_on_dependency_microseconds,
+      breakdown.scheduler_delay_microseconds};
+  for (int slice_position = 0; slice_position < WAITING_CLASS_COUNT;
+       ++slice_position) {
     if (waiting_microseconds[slice_position] > dominant_microseconds) {
       dominant_class = waiting_classes[slice_position];
       dominant_microseconds = waiting_microseconds[slice_position];
