@@ -315,6 +315,30 @@ helpers):
     `write_report` silently ignored write failures; `ReportPaths` now has
     `is_written`.
 
+### Phase 7 — A real model: Qwen3.5 decode step
+- **Status (2026-11-23): implemented.** `qwen35_profile` rebuilds dense
+  Qwen3.5 in C++ (`src/qwen35/`), matching mlx-lm's `qwen3_5.py`. It uses
+  only MLX production kernels, including the built-in
+  `fast::gated_delta_update`, so nothing is a reference ops path. It refuses
+  to profile until greedy decoding proves the forward pass correct
+  (" Paris, and the capital of the United States is Washington,").
+- **Found by the profiler, in our own port:** a C++ `array(float)` scalar is
+  strongly typed float32, unlike Python's weak float, so it silently
+  promoted q/k and everything downstream to float32. The primitive mix
+  showed 514 `AsType` nodes costing 2.5 ms per token. With the fix, the
+  eager step went from 5.6 ms to 3.1 ms and became dominated by
+  `QuantizedMatmul` (~1.8 ms, weight bandwidth), as an LLM decode step
+  should be.
+- Findings (Qwen3.5-0.8B-4bit, 1,024-token context): eager ~3.1 ms/token,
+  compiled ~3.0 ms. Once dtypes are right, compile gains little here; the
+  step is bandwidth-bound in its quantized matmuls.
+- **Limit exposed:** at ~1,000 nodes the per-node timeline pass costs ~8×
+  the step, so per-node waiting slices mostly measure the instrumentation.
+  Next: a **stage granularity**, with one dispatch per decoder layer (Spark's
+  stage = a layer), to keep the waiting breakdown meaningful on real
+  models. MoE checkpoints (Ornith 35B-A3B) are the natural next workload,
+  and the config loader rejects them explicitly until then.
+
 ## 5. Module map at the end state
 
 | Module | Job | When |

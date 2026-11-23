@@ -75,6 +75,27 @@ compiled) and serves Spark-UI-like tabs:
 Server-Sent Events, so there's no page refresh. The server listens on
 127.0.0.1 only; Ctrl-C stops it.
 
+## Profiling a real model (Qwen3.5)
+
+```sh
+./build/qwen35_profile /path/to/Qwen3.5-0.8B-MLX-4bit            # or: --context 4096
+```
+
+This loads a dense Qwen3.5 MLX checkpoint (4- or 8-bit; the bit width is
+derived per layer). It rebuilds the whole model in C++ from MLX's production
+kernels: quantized matmul, RMSNorm, RoPE, fused attention, and the fused
+Gated DeltaNet update.
+
+It **first proves the math**: greedy decoding of "The capital of France is"
+must continue with " Paris", or the tool refuses to profile. Then it measures
+one decode step at the given context length, eager vs compiled, and writes
+`build/qwen35_decode.html` plus a report per variant.
+
+At about 1,000 nodes per step, the per-node timeline pass costs several
+times the real step. For a model this size, trust the job duration, the sum
+of stages and the per-primitive GPU time; the per-node waiting slices mostly
+reflect the instrumentation itself.
+
 ## From Rust (mlx-c-rust)
 
 The same measurement and report are available through a C API
