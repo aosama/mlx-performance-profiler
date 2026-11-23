@@ -1,9 +1,10 @@
 #pragma once
 
 // Telemetry: the "what actually ran" layer Spark's stage table is made of.
-// Two passes, because per-node attribution and true pipeline wall-clock are
-// different questions — Spark reports both the same way (stage durations vs
-// job duration).
+// Owns the two serial-or-whole passes — per-node attribution (sum-of-stages)
+// and the uninstrumented pipeline wall-clock — because they are different
+// questions, as Spark separates stage durations from job duration. The
+// overlap-preserving per-node pass lives in gpu_timeline.
 
 #include "graph_model.h"
 
@@ -41,5 +42,12 @@ struct RunTelemetry {
 RunTelemetry run_attributed_pass(
     const CapturedGraph& captured_graph,
     const std::unordered_map<int, mlx::core::Stream>& stream_index_to_stream);
+
+// The honest end-to-end number: evaluates `output_nodes` once with a single
+// eval (MLX batches the whole graph, streams overlap) and returns the
+// wall-clock in microseconds. Run it on a freshly built graph, and only after
+// a warm-up run: the first eval in a process pays one-time Metal library load
+// and kernel compilation, which is not the job's cost.
+double run_pipeline_pass(std::vector<mlx::core::array> output_nodes);
 
 } // namespace mlx_plan

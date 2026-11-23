@@ -97,6 +97,29 @@ New module `gpu_timeline.{h,cpp}`:
   capture. Flag: spike whether a device-clock query is reachable.
 - **Acceptance:** the report now shows, per node, a 4-way breakdown and a
   job-level *"sum-of-stages vs job duration"* card.
+- **Status (2026-11-23): implemented, console output.** What was learned
+  from the MLX 0.32.4 source and is now load-bearing:
+  - `array::eval()` **blocks** (`eval_impl(...).wait()`); the non-blocking
+    entry point is `async_eval`. Each `async_eval` attaches one Event per
+    stream to every array it schedules and signals it when that stream's
+    share is done; cross-stream inputs from an earlier call become GPU-side
+    event waits. So the timeline pass issues **one `async_eval` per node** in
+    topological order (host never blocks, streams overlap) and polls
+    `is_available()` for per-node, host-observed completion instants.
+  - MLX `detach()`es evaluated arrays (drops inputs + primitive), so the
+    dependency snapshot is taken before the first dispatch.
+  - Per node, `[issue_started, completed]` is walked causally into
+    `wait_on_cpu` (issue) → `wait_on_gpu` (stream busy) →
+    `wait_on_dependency` (remote input not ready) → `compute` (residual),
+    exactly StagePage's `compute = wall − waits` (`latency_breakdown`).
+  - Measured cost of the instrumentation (one command buffer per node) is
+    printed as *timeline wall − job wall*; on the toy model ≈ 1–2 ms on a
+    ~1–2 ms job, which is why compute here is mostly command-buffer round
+    trip and Phase 2 remains necessary for kernel ns.
+  - A warm-up pass now precedes the job-wall pass: the first eval in a process
+    paid Metal kernel compilation (job wall dropped from ~7 ms to ~1.2 ms).
+  - Remaining for this phase's acceptance: surface the breakdown in the HTML
+    report (folded into the Phase 3 `report_writer` rewrite).
 
 ### Phase 2 — Metal capture ingestion (kernel-accurate GPU time)
 - Drive `mlx_metal_start_capture`/`stop_capture` (already wrapped in

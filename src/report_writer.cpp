@@ -88,9 +88,7 @@ std::string build_summary_cards(
   return cards_html.str();
 }
 
-std::string build_stage_table(
-    const CapturedGraph& captured_graph,
-    const RunTelemetry& run_telemetry) {
+std::string build_stage_table(const RunTelemetry& run_telemetry) {
   std::ostringstream table_html;
   table_html << "<table>\n";
   table_html << "  <tr><th>#</th><th>Op</th><th>Node</th><th>Stream</th>"
@@ -188,7 +186,7 @@ std::string build_report_document(
   }
   report_html << "</div></section>\n"
               << "<section><h2>Stage table (per primitive node)</h2>"
-              << build_stage_table(captured_graph, run_telemetry)
+              << build_stage_table(run_telemetry)
               << "</section>\n"
               << "<section><h2>Raw plan (Graphviz DOT)</h2><details>"
               << "<summary>Show DOT source</summary><pre>"

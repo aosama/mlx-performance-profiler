@@ -24,7 +24,7 @@ std::string shape_to_string(const array& node) {
 }
 
 GraphNode build_node(const array& node, NodeNamer& plan_namer) {
-  GraphNode captured_node{node};
+  GraphNode captured_node{.handle = node};
   captured_node.array_id = node.id();
   captured_node.label = plan_namer.get_name(node);
   captured_node.has_primitive = node.has_primitive();
@@ -71,7 +71,7 @@ void visit_inputs(
 GraphNode build_sibling_leaf_node(
     const array& sibling,
     const std::string& sibling_label) {
-  GraphNode sibling_node{sibling};
+  GraphNode sibling_node{.handle = sibling};
   sibling_node.array_id = sibling.id();
   sibling_node.label = sibling_label;
   sibling_node.op_name = "(shared primitive output)";
