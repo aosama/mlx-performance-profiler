@@ -105,14 +105,15 @@ mlx_plan::CapturedGraph capture_fresh_graph(const DemoStreams& demo_streams) {
 }
 
 void write_html_report(
-    const mlx_plan::CapturedGraph& attributed_graph,
-    const mlx_plan::RunTelemetry& run_telemetry) {
-  const mlx_plan::ReportPaths report_paths = mlx_plan::write_report(
-      attributed_graph,
-      run_telemetry,
-      "build",
-      "hello_world",
-      "Hello World — two-stream toy model");
+    const mlx_plan::CapturedGraph& timeline_graph,
+    const mlx_plan::GpuTimeline& gpu_timeline,
+    const mlx_plan::RunTelemetry& serial_telemetry,
+    const mlx_plan::JobTotals& job_totals) {
+  const mlx_plan::ReportInputs report_inputs{
+      "Hello World — two-stream toy model", timeline_graph, gpu_timeline,
+      serial_telemetry, job_totals};
+  const mlx_plan::ReportPaths report_paths =
+      mlx_plan::write_report(report_inputs, "build", "hello_world");
   std::printf(
       "\nreport: %s%s\n",
       report_paths.html_path.c_str(),
@@ -142,15 +143,14 @@ int main() {
 
   std::printf("pass 3/3: attributed pass (serial, sum-of-stages)...\n");
   const CapturedGraph attributed_graph = capture_fresh_graph(demo_streams);
-  RunTelemetry run_telemetry = run_attributed_pass(
+  const RunTelemetry run_telemetry = run_attributed_pass(
       attributed_graph, demo_streams.stream_index_to_stream);
-  run_telemetry.pipeline_total_microseconds = job_totals.job_wall_microseconds;
   job_totals.sum_of_stages_microseconds =
       run_telemetry.attributed_total_microseconds;
 
   print_job_summary(job_totals, gpu_timeline);
   print_stream_table(gpu_timeline);
   print_node_table(gpu_timeline);
-  write_html_report(attributed_graph, run_telemetry);
+  write_html_report(timeline_graph, gpu_timeline, run_telemetry, job_totals);
   return 0;
 }

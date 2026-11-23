@@ -183,6 +183,30 @@ helpers):
   stalled red, etc.).
 - **Acceptance:** `./build/hello_world` writes an HTML report that reads like a
   Spark stage page for the two-stream toy model.
+- **Status (2026-11-23): implemented.** The report is now built from the
+  **timeline pass** (measured GPU data), with the serial pass contributing a
+  per-node "Serial" column and peak memory; the DAG is labeled with measured
+  compute and class. Decisions and changes from the plan:
+  - Sections are separate modules (`report_summary_section`,
+    `report_gantt_section`, `report_task_table_section`), `report_writer`
+    only assembles and saves, and `latency_slices` is the single source of
+    slice names, order and colors, so bars, Gantt and legend cannot drift.
+  - **No JS library.** Sorting is ~30 lines of inline vanilla JS, and the
+    Gantt is server-side SVG generated in C++. A DataTables or vis-timeline
+    dependency did not earn its place for a self-contained offline file.
+  - The Gantt draws what each stream was *doing* (stalled / scheduling /
+    compute), not per-node queued windows: those overlap one another and
+    would hide the signal. Queueing stays visible in the bars and the table.
+  - "write / copy / serialize" slices from the original list were dropped:
+    unified memory has no host↔device copy to measure in this model, so the
+    report shows the six slices that are actually measured.
+  - Tests: GPU-free component tests render the full document from a
+    synthetic fixture (views present, one bar per row, stall arrow, empty
+    run with no NaN, hostile labels escaped), plus unit tests for
+    `text_format`, `latency_slices` and `report_components`.
+  - Finding on the toy model: stream utilization is 2–6%, and about 70% of
+    node time is queueing behind per-buffer submission. The GPU waits on
+    submission order, not on math.
 
 ### Phase 4 — Compiled vs uncompiled view
 - `compile()` the same closure; render the **fused tape** next to the eager plan
@@ -209,9 +233,11 @@ helpers):
 |---|---|---|
 | `graph_model` | Walk the graph into nodes/edges/topo order (the captured plan) | keep |
 | `telemetry` | Serial pass — sum-of-stages total | keep + extend |
-| `gpu_timeline` | Concurrent `Event` pass + stall classification | new (P1) |
-| `capture_ingestion` | Metal trace parsing → kernel-accurate GPU time | new (P2) |
-| `report_writer` | Spark-style HTML (summary, bars, table, Gantt) | rewrite (P3) |
+| `gpu_timeline` | Overlap-preserving per-node pass (one `async_eval` per node) | P1 ✓ |
+| `latency_breakdown` / `latency_slices` | StagePage decomposition; slice vocabulary | P1–P3 ✓ |
+| `metal_command_buffer_probe` | Per-node GPU window from command-buffer timestamps (replaced `capture_ingestion`) | P2 ✓ |
+| `report_*` sections + `report_writer` | Spark-style HTML (summary, Gantt, task table, DAG) | P3 ✓ |
+| `text_format` | Shared units and escaping | P3 ✓ |
 | `dot_writer` / `svg_renderer` | Graphviz layout helpers | keep, thin |
 | `hello_world` / `server` | Orchestration only | keep / extend |
 
