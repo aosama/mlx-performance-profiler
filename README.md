@@ -75,6 +75,23 @@ compiled) and serves Spark-UI-like tabs:
 Server-Sent Events, so there's no page refresh. The server listens on
 127.0.0.1 only; Ctrl-C stops it.
 
+### Previewing inside the Claude desktop app
+
+[`.claude/launch.json`](.claude/launch.json) tells the Claude desktop app
+(Code tab) how to start two local servers in its built-in browser pane, so
+Claude can open and click through the views with you:
+
+| Name | Port | What it serves |
+|---|---|---|
+| `mlx-plan-live` | 8765 | the live view above (`./build/mlx_plan_server`) |
+| `mlx-plan-reports` | 8766 | the static HTML reports in `build/` (e.g. `/hello_world.html`, `/qwen35_decode.html`), via `python3 -m http.server` |
+
+The reports server exists because the browser pane does not open local
+`file://` pages. Both bind to 127.0.0.1 only. Build first (see **Build**):
+the live server needs `build/mlx_plan_server`, and the reports server needs
+reports already written to `build/`. Outside the app, run the same commands
+in a terminal; the file is ignored by everything else.
+
 ## Profiling a real model (Qwen3.5)
 
 ```sh
