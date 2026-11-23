@@ -155,6 +155,10 @@ target_link_libraries(progress_reporter_test PRIVATE mlx_plan)
 add_test(NAME progress_reporter_test COMMAND progress_reporter_test)
 
 # Integration: drives real MLX streams on the Metal GPU.
+add_executable(graph_model_test tests/graph_model_test.cpp)
+target_link_libraries(graph_model_test PRIVATE mlx_plan)
+add_test(NAME graph_model_test COMMAND graph_model_test)
+
 add_executable(telemetry_test tests/telemetry_test.cpp)
 target_link_libraries(telemetry_test PRIVATE mlx_plan)
 add_test(NAME telemetry_test COMMAND telemetry_test)
