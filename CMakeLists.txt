@@ -49,7 +49,14 @@ add_library(mlx_plan STATIC
     src/report_comparison_page.cpp
     src/report_writer.cpp
     src/demo_model.cpp
-    src/measurement_session.cpp)
+    src/measurement_session.cpp
+    src/report_memory_section.cpp
+    src/http_server.cpp
+    src/live_view_store.cpp
+    src/live_view_renderer.cpp
+    src/live_view_page.cpp
+    src/live_view_routes.cpp
+    src/server_options.cpp)
 
 target_include_directories(mlx_plan PUBLIC src)
 
@@ -85,6 +92,11 @@ target_compile_options(mlx_plan PUBLIC -Wall -Wextra)
 add_executable(hello_world src/hello_world.cpp)
 target_link_libraries(hello_world PRIVATE mlx_plan)
 
+# The live view: ./build/mlx_plan_server [--port N], then open
+# http://127.0.0.1:N/ (loopback only).
+add_executable(mlx_plan_server src/mlx_plan_server.cpp)
+target_link_libraries(mlx_plan_server PRIVATE mlx_plan)
+
 # Tests: a header-only assert runner (tests/test_harness.h) instead of a
 # framework, per the plan's "no heavy deps through Phase 2". Run with
 #   ctest --test-dir build --output-on-failure
@@ -114,6 +126,26 @@ add_test(NAME report_writer_test COMMAND report_writer_test)
 add_executable(report_comparison_page_test tests/report_comparison_page_test.cpp)
 target_link_libraries(report_comparison_page_test PRIVATE mlx_plan)
 add_test(NAME report_comparison_page_test COMMAND report_comparison_page_test)
+
+add_executable(server_options_test tests/server_options_test.cpp)
+target_link_libraries(server_options_test PRIVATE mlx_plan)
+add_test(NAME server_options_test COMMAND server_options_test)
+
+add_executable(live_view_store_test tests/live_view_store_test.cpp)
+target_link_libraries(live_view_store_test PRIVATE mlx_plan)
+add_test(NAME live_view_store_test COMMAND live_view_store_test)
+
+add_executable(report_memory_section_test tests/report_memory_section_test.cpp)
+target_link_libraries(report_memory_section_test PRIVATE mlx_plan)
+add_test(NAME report_memory_section_test COMMAND report_memory_section_test)
+
+add_executable(http_server_test tests/http_server_test.cpp)
+target_link_libraries(http_server_test PRIVATE mlx_plan)
+add_test(NAME http_server_test COMMAND http_server_test)
+
+add_executable(live_view_routes_test tests/live_view_routes_test.cpp)
+target_link_libraries(live_view_routes_test PRIVATE mlx_plan)
+add_test(NAME live_view_routes_test COMMAND live_view_routes_test)
 
 add_executable(progress_reporter_test tests/progress_reporter_test.cpp)
 target_link_libraries(progress_reporter_test PRIVATE mlx_plan)

@@ -56,6 +56,25 @@ GPU-measured at command-buffer granularity (one buffer per node in the
 timeline pass); a `~` marks the rare fallback to a host-observed residual
 (CPU-stream nodes).
 
+## Live view
+
+```sh
+./build/mlx_plan_server            # or: --port 9000
+```
+
+Open <http://127.0.0.1:8765/>. The server measures the job (eager and
+compiled) and serves Spark-UI-like tabs:
+
+- **Job:** the comparison table plus each variant's summary cards.
+- **Stages:** per-stream Gantt and stream table.
+- **Tasks:** the sortable per-node table.
+- **Memory:** a live process-memory chart sampled at 1 Hz, plus the nodes
+  that added the most memory.
+
+**Re-run** measures again. The status line and tabs update over
+Server-Sent Events, so there's no page refresh. The server listens on
+127.0.0.1 only; Ctrl-C stops it.
+
 ## Reading the report
 
 Open `build/hello_world.html` for the comparison, or a variant report, in any

@@ -1,5 +1,7 @@
 #include "report_assets.h"
 
+#include <string>
+
 namespace mlx_plan {
 
 std::string_view report_stylesheet() {
@@ -66,6 +68,9 @@ td.number { text-align: right; font-variant-numeric: tabular-nums; }
 .gantt .grid { stroke: var(--rule); stroke-width: 1; }
 .gantt .dependency-arrow { stroke: var(--slice-stalled); stroke-width: 1; fill: none; opacity: .55; }
 .dag svg { max-width: 100%; height: auto; }
+.line-compute { stroke: var(--slice-compute); }
+.line-scheduling { stroke: var(--slice-scheduling); stroke-dasharray: 4 3; }
+.line-result { stroke: var(--slice-result); }
 .variant-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 16px; }
 .variant h3, section h3 { font-size: 13px; margin: 12px 0 6px; }
 .variant small { font-weight: 400; color: var(--muted); }
@@ -75,9 +80,10 @@ pre { background: var(--panel); border: 1px solid var(--rule); padding: 10px; ov
 )CSS";
 }
 
-std::string_view report_sort_script() {
+std::string_view report_sort_function() {
   return R"JS(
-document.querySelectorAll("table.sortable").forEach(function (table) {
+function enableSortableTables(root) {
+root.querySelectorAll("table.sortable").forEach(function (table) {
   table.querySelectorAll("th").forEach(function (header, columnIndex) {
     header.addEventListener("click", function () {
       var ascending = header.getAttribute("data-sort-direction") !== "ascending";
@@ -103,7 +109,15 @@ document.querySelectorAll("table.sortable").forEach(function (table) {
     });
   });
 });
+}
 )JS";
+}
+
+std::string_view report_sort_script() {
+  // Static reports: define the function and apply it to the whole page.
+  static const std::string sort_script =
+      std::string(report_sort_function()) + "enableSortableTables(document);\n";
+  return sort_script;
 }
 
 } // namespace mlx_plan

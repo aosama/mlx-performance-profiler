@@ -249,6 +249,32 @@ helpers):
   Stages / Tasks / Memory), streaming results.
 - **Acceptance:** `mlx_plan_server` serves the report at `localhost:PORT` with
   the same views as Phase 3, live.
+- **Status (2026-11-23): implemented.** `mlx_plan_server [--port N]`
+  serves Job / Stages / Tasks / Memory tabs, a Re-run button and a live
+  status line. Decisions:
+  - **Threading.** All MLX work (measuring, rendering, memory sampling)
+    stays on the main thread, because MLX's default streams and Metal
+    encoders are per-thread. HTTP threads only read `LiveViewStore`, which
+    holds plain data: rendered HTML strings, memory samples, a status line
+    and run requests.
+  - **No web framework.** A ~200-line POSIX-socket HTTP/1.1 server
+    (`http_server`), one thread per connection, **bound to 127.0.0.1 only**,
+    with an 8 KiB request-head limit (431 when exceeded). Live updates use
+    Server-Sent Events; tabs reload only when the rendered views change, so
+    a reader's sort order survives status ticks.
+  - **Views reuse the static report sections** (`live_view_renderer`).
+    Memory is the one new view: per-node memory added (serial pass) and a
+    1 Hz chart of active, peak and cache memory.
+  - Configuration is a `--port` flag, never an environment variable.
+    SIGINT/SIGTERM close event streams and stop cleanly.
+  - Tests (no GPU): `http_server` over real sockets (malformed → 400,
+    oversized → 431, stop is idempotent), `live_view_store` (versions,
+    sample cap, run hand-off between threads), `live_view_routes` (every
+    route, JSON escaping, SSE initial update, 404/405), `server_options`,
+    and `report_memory_section`.
+  - Verified by hand: curl over every route, SSE updates during a
+    triggered re-run, a browser render, and a clean SIGINT stop with an
+    open stream.
 
 ### Phase 6 — Rust bridge integration (optional `Event` binding)
 - Re-express capture via `mlx-c-rust` where the C API allows; optionally add an
@@ -268,7 +294,10 @@ helpers):
 | `report_*` sections + `report_writer` | Spark-style HTML (summary, Gantt, task table, DAG) | P3 ✓ |
 | `text_format` | Shared units and escaping | P3 ✓ |
 | `dot_writer` / `svg_renderer` | Graphviz layout helpers | keep, thin |
-| `hello_world` / `server` | Orchestration only | keep / extend |
+| `demo_model` / `graph_factory` / `measurement_session` | The job, and the four passes per variant | P4 ✓ |
+| `report_comparison_page` | Eager vs compiled side by side | P4 ✓ |
+| `http_server` / `live_view_*` / `server_options` / `report_memory_section` | Live server | P5 ✓ |
+| `hello_world` / `mlx_plan_server` | Orchestration only | ✓ |
 
 ## 6. Testing strategy (per engineering convention)
 

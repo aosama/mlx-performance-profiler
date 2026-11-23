@@ -58,7 +58,9 @@ std::vector<MetricRow> collect_metric_rows(
   };
 }
 
-std::string render_metric_table(
+} // namespace
+
+std::string render_comparison_metrics(
     const VariantMeasurement& baseline, const VariantMeasurement& candidate) {
   std::ostringstream table_html;
   table_html << "<div class=\"table-wrap\"><table><thead><tr><th>Metric</th><th>"
@@ -81,6 +83,8 @@ std::string render_metric_table(
              << " same four passes on the same materialized inputs.</p>";
   return table_html.str();
 }
+
+namespace {
 
 std::string render_variant_column(const ComparedVariant& compared_variant) {
   const VariantMeasurement& variant = compared_variant.variant_measurement;
@@ -221,7 +225,7 @@ std::string build_comparison_document(
             << escape_html_text(baseline.variant_name) << " vs "
             << escape_html_text(candidate.variant_name) << "</p></header>"
             << "<section id=\"compare\"><h2>Job metrics</h2>"
-            << render_metric_table(baseline, candidate) << "</section>"
+            << render_comparison_metrics(baseline, candidate) << "</section>"
             << "<section id=\"plans\"><h2>Plans side by side</h2><div class=\"variant-grid\">"
             << render_variant_column(baseline_variant)
             << render_variant_column(candidate_variant) << "</div></section>"
