@@ -12,6 +12,7 @@
 
 #include <cstddef>
 #include <unordered_map>
+#include <string>
 #include <vector>
 
 namespace mlx_plan {
@@ -49,5 +50,13 @@ RunTelemetry run_attributed_pass(
 // a warm-up run: the first eval in a process pays one-time Metal library load
 // and kernel compilation, which is not the job's cost.
 double run_pipeline_pass(std::vector<mlx::core::array> output_nodes);
+
+// The serial pass ran an identical graph, so topological position joins it
+// to the timeline pass; the op name guards the join, and a mismatch returns
+// nullptr — never a number borrowed from a different node.
+const NodeTelemetry* find_attributed_node(
+    const RunTelemetry& serial_telemetry,
+    std::size_t position,
+    const std::string& expected_op_name);
 
 } // namespace mlx_plan

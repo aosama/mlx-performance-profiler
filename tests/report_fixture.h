@@ -89,4 +89,30 @@ void populate_two_stream_run(MeasuredRun& synthetic_run) {
   synthetic_run.serial_telemetry = {};
 }
 
+// The same two nodes timed PER STAGE: "layer 0" (A, stream 1) feeds
+// "layer 1" (B, stream 0) across streams, so the second task is a stalled
+// join. Per-node timestamps stay zero, as a real per-stage pass leaves them.
+template <typename MeasuredRun>
+void populate_two_stage_run(MeasuredRun& synthetic_run) {
+  populate_two_stream_run(synthetic_run);
+  mlx_plan::GpuTimeline& gpu_timeline = synthetic_run.gpu_timeline;
+  gpu_timeline.granularity = mlx_plan::TimelineGranularity::per_stage;
+  const char* stage_names[] = {"layer 0", "layer 1"};
+  for (int position = 0; position < 2; ++position) {
+    mlx_plan::StageTimeline stage_task;
+    stage_task.stage_index = position;
+    stage_task.stage_name = stage_names[position];
+    stage_task.stream_index = gpu_timeline.nodes[position].node->stream_index;
+    stage_task.node_positions = {position};
+    stage_task.timestamps = gpu_timeline.nodes[position].timestamps;
+    stage_task.breakdown = gpu_timeline.nodes[position].breakdown;
+    gpu_timeline.stages.push_back(stage_task);
+    gpu_timeline.nodes[position].timestamps = {};
+    gpu_timeline.nodes[position].breakdown = {};
+    gpu_timeline.nodes[position].stage_position = position;
+  }
+  gpu_timeline.stages[1].has_cross_stream_input = true;
+  gpu_timeline.stages[1].cross_stream_producer_stage_positions = {0};
+}
+
 } // namespace report_fixture

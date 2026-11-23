@@ -2,89 +2,19 @@
 
 #include "metal_command_buffer_probe.h"
 #include "progress_reporter.h"
+#include "timed_units.h"
+#include "timeline_dependencies.h"
 
 #include "mlx/transforms.h"
 
 #include <algorithm>
 #include <chrono>
-#include <cstdio>
-#include <map>
-#include <stdexcept>
-#include <string>
 #include <thread>
 
 namespace mlx_plan {
 namespace {
 
-using Clock = std::chrono::steady_clock;
-constexpr int NO_POSITION = -1;
-
-// Inputs of one node, as topological positions of their producers. Inputs
-// with no producer in the plan (already-materialized leaves) are ready at
-// pass start and appear in neither list.
-struct NodeDependencies {
-  std::vector<int> same_stream_input_positions;
-  std::vector<int> cross_stream_input_positions;
-  int previous_on_stream_position = NO_POSITION;
-};
-
-double microseconds_since(Clock::time_point pass_started_at) {
-  return std::chrono::duration<double, std::micro>(
-             Clock::now() - pass_started_at)
-      .count();
-}
-
-const GraphNode& node_at(const CapturedGraph& captured_graph, int position) {
-  return captured_graph.nodes[captured_graph.topological[position]];
-}
-
-// Sibling outputs of a multi-output primitive complete with that primitive,
-// so every sibling id resolves to the primitive's own position.
-std::unordered_map<std::uintptr_t, int> build_array_id_to_position(
-    const CapturedGraph& captured_graph) {
-  std::unordered_map<std::uintptr_t, int> array_id_to_position;
-  const int node_count = static_cast<int>(captured_graph.topological.size());
-  for (int position = 0; position < node_count; ++position) {
-    const GraphNode& graph_node = node_at(captured_graph, position);
-    array_id_to_position.emplace(graph_node.array_id, position);
-    for (const auto& sibling : graph_node.handle.siblings()) {
-      array_id_to_position.emplace(sibling.id(), position);
-    }
-  }
-  return array_id_to_position;
-}
-
-// Must run before the first dispatch: evaluation detaches inputs.
-std::vector<NodeDependencies> snapshot_dependencies(
-    const CapturedGraph& captured_graph) {
-  const auto array_id_to_position = build_array_id_to_position(captured_graph);
-  const int node_count = static_cast<int>(captured_graph.topological.size());
-  std::vector<NodeDependencies> position_to_dependencies(node_count);
-  std::unordered_map<int, int> stream_index_to_last_position;
-  for (int position = 0; position < node_count; ++position) {
-    const GraphNode& graph_node = node_at(captured_graph, position);
-    NodeDependencies& dependencies = position_to_dependencies[position];
-    for (const auto& input : graph_node.handle.inputs()) {
-      const auto producer = array_id_to_position.find(input.id());
-      if (producer == array_id_to_position.end()) {
-        continue;
-      }
-      const bool is_same_stream =
-          node_at(captured_graph, producer->second).stream_index ==
-          graph_node.stream_index;
-      (is_same_stream ? dependencies.same_stream_input_positions
-                      : dependencies.cross_stream_input_positions)
-          .push_back(producer->second);
-    }
-    const auto last_on_stream =
-        stream_index_to_last_position.find(graph_node.stream_index);
-    if (last_on_stream != stream_index_to_last_position.end()) {
-      dependencies.previous_on_stream_position = last_on_stream->second;
-    }
-    stream_index_to_last_position[graph_node.stream_index] = position;
-  }
-  return position_to_dependencies;
-}
+using Clock = TimelineClock;
 
 // Tracks nodes issued but not yet observed complete, in topological order.
 // Checking in that order and stamping each check individually guarantees a
@@ -163,35 +93,6 @@ CompletionTracker dispatch_and_observe(
   return tracker;
 }
 
-double latest_completion(
-    const std::vector<int>& producer_positions,
-    const std::vector<double>& position_to_completed_microseconds) {
-  double latest_microseconds = 0.0;
-  for (const int producer_position : producer_positions) {
-    latest_microseconds = std::max(
-        latest_microseconds,
-        position_to_completed_microseconds[producer_position]);
-  }
-  return latest_microseconds;
-}
-
-// When a producer's data was really ready: its GPU end when the probe
-// measured one (exact), else the host-observed completion (trails reality).
-std::vector<double> build_position_to_ready_microseconds(
-    const std::vector<double>& position_to_completed_microseconds,
-    const std::vector<GpuExecutionWindow>& position_to_gpu_window) {
-  std::vector<double> position_to_ready_microseconds =
-      position_to_completed_microseconds;
-  for (std::size_t position = 0; position < position_to_gpu_window.size();
-       ++position) {
-    if (position_to_gpu_window[position].is_measured) {
-      position_to_ready_microseconds[position] =
-          position_to_gpu_window[position].finished_microseconds;
-    }
-  }
-  return position_to_ready_microseconds;
-}
-
 NodeTimestamps assemble_timestamps(
     int position,
     const NodeDependencies& dependencies,
@@ -209,7 +110,7 @@ NodeTimestamps assemble_timestamps(
       issue_instants.position_to_issue_finished_microseconds[position];
   timestamps.completed_microseconds =
       position_to_completed_microseconds[position];
-  timestamps.stream_ready_microseconds = latest_completion(
+  timestamps.stream_ready_microseconds = latest_ready(
       dependencies.same_stream_input_positions,
       position_to_ready_microseconds);
   if (dependencies.previous_on_stream_position != NO_POSITION) {
@@ -218,65 +119,10 @@ NodeTimestamps assemble_timestamps(
         position_to_ready_microseconds
             [dependencies.previous_on_stream_position]);
   }
-  timestamps.cross_stream_inputs_ready_microseconds = latest_completion(
+  timestamps.cross_stream_inputs_ready_microseconds = latest_ready(
       dependencies.cross_stream_input_positions,
       position_to_ready_microseconds);
   return timestamps;
-}
-
-void accumulate_into_stream(
-    const NodeTimeline& node_timeline, StreamTimeline& stream_timeline) {
-  if (stream_timeline.node_count == 0) {
-    stream_timeline.first_issue_microseconds =
-        node_timeline.timestamps.issue_started_microseconds;
-  }
-  ++stream_timeline.node_count;
-  stream_timeline.last_completion_microseconds = std::max(
-      stream_timeline.last_completion_microseconds,
-      node_timeline.timestamps.completed_microseconds);
-  stream_timeline.busy_microseconds +=
-      node_timeline.breakdown.compute_microseconds;
-  stream_timeline.dependency_wait_microseconds +=
-      node_timeline.breakdown.wait_on_dependency_microseconds;
-}
-
-// std::map keeps the streams ordered by index for stable reporting.
-std::vector<StreamTimeline> build_stream_timelines(
-    const std::vector<NodeTimeline>& node_timelines,
-    const std::unordered_map<int, mlx::core::Stream>& stream_index_to_stream) {
-  std::map<int, StreamTimeline> stream_index_to_timeline;
-  for (const NodeTimeline& node_timeline : node_timelines) {
-    const int stream_index = node_timeline.node->stream_index;
-    StreamTimeline& stream_timeline = stream_index_to_timeline[stream_index];
-    stream_timeline.stream_index = stream_index;
-    stream_timeline.is_gpu = stream_index_to_stream.at(stream_index).device ==
-        mlx::core::Device::gpu;
-    accumulate_into_stream(node_timeline, stream_timeline);
-  }
-  std::vector<StreamTimeline> stream_timelines;
-  for (auto& [stream_index, stream_timeline] : stream_index_to_timeline) {
-    stream_timeline.wall_microseconds =
-        stream_timeline.last_completion_microseconds -
-        stream_timeline.first_issue_microseconds;
-    stream_timelines.push_back(stream_timeline);
-  }
-  return stream_timelines;
-}
-
-// Checked before dispatch, so a caller error fails fast and leaves the graph
-// unevaluated instead of throwing after it has been consumed.
-void require_every_stream_known(
-    const CapturedGraph& captured_graph,
-    const std::unordered_map<int, mlx::core::Stream>& stream_index_to_stream) {
-  for (const std::size_t node_index : captured_graph.topological) {
-    const int stream_index = captured_graph.nodes[node_index].stream_index;
-    if (stream_index_to_stream.find(stream_index) ==
-        stream_index_to_stream.end()) {
-      throw std::out_of_range(
-          "capture_gpu_timeline: no Stream supplied for stream index " +
-          std::to_string(stream_index));
-    }
-  }
 }
 
 } // namespace
@@ -297,7 +143,7 @@ GpuTimeline capture_gpu_timeline(
   const std::vector<GpuExecutionWindow> position_to_gpu_window =
       command_buffer_probe.read_windows();
   const std::vector<double> position_to_ready_microseconds =
-      build_position_to_ready_microseconds(
+      build_ready_microseconds(
           tracker.position_to_completed_microseconds, position_to_gpu_window);
 
   GpuTimeline gpu_timeline;
@@ -328,8 +174,8 @@ GpuTimeline capture_gpu_timeline(
         node_timeline.timestamps.completed_microseconds);
     gpu_timeline.nodes.push_back(node_timeline);
   }
-  gpu_timeline.streams =
-      build_stream_timelines(gpu_timeline.nodes, stream_index_to_stream);
+  gpu_timeline.streams = summarize_streams(
+      collect_timed_units(gpu_timeline), stream_index_to_stream);
   return gpu_timeline;
 }
 

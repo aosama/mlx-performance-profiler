@@ -3,6 +3,7 @@
 #include "latency_slices.h"
 #include "report_components.h"
 #include "text_format.h"
+#include "timed_units.h"
 
 #include <algorithm>
 #include <array>
@@ -28,14 +29,13 @@ constexpr int HOST_LANE_INDEX = 0;
 // instant[k+1] where it ends (µs since pass start).
 using SliceInstants = std::array<double, CAUSAL_SLICE_ORDER.size() + 1>;
 
-SliceInstants compute_slice_instants(const NodeTimeline& node_timeline) {
+SliceInstants compute_slice_instants(const TimedUnit& timed_unit) {
   SliceInstants slice_instants{};
-  slice_instants[0] = node_timeline.timestamps.issue_started_microseconds;
+  slice_instants[0] = timed_unit.timestamps->issue_started_microseconds;
   for (std::size_t slice_position = 0; slice_position < CAUSAL_SLICE_ORDER.size();
        ++slice_position) {
     slice_instants[slice_position + 1] = slice_instants[slice_position] +
-        slice_microseconds(node_timeline.breakdown,
-                           CAUSAL_SLICE_ORDER[slice_position]);
+        slice_microseconds(*timed_unit.breakdown, CAUSAL_SLICE_ORDER[slice_position]);
   }
   return slice_instants;
 }
@@ -97,7 +97,7 @@ void append_segment(
     double started_microseconds,
     double finished_microseconds,
     LatencySlice latency_slice,
-    const std::string& node_caption) {
+    const std::string& unit_caption) {
   const double duration_microseconds =
       finished_microseconds - started_microseconds;
   if (duration_microseconds <= 0.0) {
@@ -111,15 +111,10 @@ void append_segment(
                << scale.x_for(started_microseconds) << "\" y=\""
                << GanttScale::lane_top(lane_index) + 2 << "\" width=\""
                << segment_width << "\" height=\"" << LANE_HEIGHT_PIXELS - 4
-               << "\"><title>" << escape_html_text(node_caption) << " — "
+               << "\"><title>" << escape_html_text(unit_caption) << " — "
                << style.short_label << " "
                << escape_html_text(format_microseconds(duration_microseconds))
                << "</title></rect>";
-}
-
-std::string node_caption(const NodeTimeline& node_timeline) {
-  return node_timeline.node->label + " " + node_timeline.node->op_name +
-      " (stream " + std::to_string(node_timeline.node->stream_index) + ")";
 }
 
 // Lane 0 is the host thread that issues every node; streams follow in index
@@ -159,16 +154,15 @@ std::string render_lane_backgrounds(
 // Queued time is not drawn on the stream lane: queued windows of successive
 // nodes overlap each other, and the lane shows what the stream was DOING.
 // Blank lane = the stream had nothing runnable (idle).
-std::string render_node_segments(
-    const GpuTimeline& gpu_timeline,
+std::string render_unit_segments(
+    const std::vector<TimedUnit>& timed_units,
     const GanttScale& scale,
     const std::map<int, int>& stream_index_to_lane) {
   std::ostringstream segments_svg;
-  for (const NodeTimeline& node_timeline : gpu_timeline.nodes) {
-    const SliceInstants slice_instants = compute_slice_instants(node_timeline);
-    const std::string caption = node_caption(node_timeline);
-    const int stream_lane =
-        stream_index_to_lane.at(node_timeline.node->stream_index);
+  for (const TimedUnit& timed_unit : timed_units) {
+    const SliceInstants slice_instants = compute_slice_instants(timed_unit);
+    const std::string& caption = timed_unit.caption;
+    const int stream_lane = stream_index_to_lane.at(timed_unit.stream_index);
     for (std::size_t slice_position = 0;
          slice_position < CAUSAL_SLICE_ORDER.size(); ++slice_position) {
       const LatencySlice latency_slice = CAUSAL_SLICE_ORDER[slice_position];
@@ -190,22 +184,22 @@ std::string render_node_segments(
 // Arrow from where a producer's GPU work ended to where its consumer's data
 // wait ended — the cross-stream edge, drawn where the time was lost.
 std::string render_dependency_arrows(
-    const GpuTimeline& gpu_timeline,
+    const std::vector<TimedUnit>& timed_units,
     const GanttScale& scale,
     const std::map<int, int>& stream_index_to_lane) {
   const std::size_t stalled_end_index =
       slice_end_index(LatencySlice::wait_on_dependency);
   const std::size_t compute_end_index = slice_end_index(LatencySlice::compute);
   std::ostringstream arrows_svg;
-  for (const NodeTimeline& consumer : gpu_timeline.nodes) {
+  for (const TimedUnit& consumer : timed_units) {
     const SliceInstants consumer_instants = compute_slice_instants(consumer);
     const double consumer_y =
-        GanttScale::lane_top(stream_index_to_lane.at(consumer.node->stream_index)) +
+        GanttScale::lane_top(stream_index_to_lane.at(consumer.stream_index)) +
         LANE_HEIGHT_PIXELS / 2;
-    for (const int producer_position : consumer.cross_stream_producer_positions) {
-      const NodeTimeline& producer = gpu_timeline.nodes[producer_position];
+    for (const int producer_unit : consumer.cross_stream_producer_units) {
+      const TimedUnit& producer = timed_units[producer_unit];
       const double producer_y =
-          GanttScale::lane_top(stream_index_to_lane.at(producer.node->stream_index)) +
+          GanttScale::lane_top(stream_index_to_lane.at(producer.stream_index)) +
           LANE_HEIGHT_PIXELS / 2;
       arrows_svg << "<line class=\"dependency-arrow\" x1=\""
                  << scale.x_for(compute_slice_instants(producer)[compute_end_index])
@@ -213,8 +207,7 @@ std::string render_dependency_arrows(
                  << scale.x_for(consumer_instants[stalled_end_index])
                  << "\" y2=\"" << consumer_y
                  << "\" marker-end=\"url(#dependency-arrowhead)\"><title>"
-                 << escape_html_text(node_caption(producer) + " → " +
-                                     node_caption(consumer))
+                 << escape_html_text(producer.caption + " → " + consumer.caption)
                  << "</title></line>";
     }
   }
@@ -262,6 +255,7 @@ std::string render_gantt_svg(
     const GpuTimeline& gpu_timeline, double scale_total_microseconds) {
   const std::map<int, int> stream_index_to_lane =
       build_stream_index_to_lane(gpu_timeline);
+  const std::vector<TimedUnit> timed_units = collect_timed_units(gpu_timeline);
   GanttScale scale;
   scale.total_microseconds = std::max(
       {1.0, scale_total_microseconds, gpu_timeline.timeline_wall_microseconds});
@@ -277,18 +271,19 @@ std::string render_gantt_svg(
             << " class=\"slice-stalled\"/></marker></defs>"
             << render_lane_backgrounds(gpu_timeline, stream_index_to_lane)
             << render_axis(scale, chart_height)
-            << render_node_segments(gpu_timeline, scale, stream_index_to_lane)
-            << render_dependency_arrows(gpu_timeline, scale, stream_index_to_lane)
+            << render_unit_segments(timed_units, scale, stream_index_to_lane)
+            << render_dependency_arrows(timed_units, scale, stream_index_to_lane)
             << "</svg>";
   return gantt_svg.str();
 }
 
 std::string render_gantt_section(const ReportInputs& report_inputs) {
+  const char* unit_noun = timed_unit_noun(report_inputs.gpu_timeline);
   std::ostringstream section_html;
-  section_html << "<section id=\"timeline\"><h2>Timeline (per stream)</h2>"
-               << render_slice_legend()
+  section_html << "<section id=\"timeline\"><h2>Timeline (per stream, one bar per "
+               << unit_noun << ")</h2>" << render_slice_legend()
                << "<p class=\"note\">Wall-clock of the timeline pass. The host"
-               << " lane shows each node being issued; each stream lane shows"
+               << " lane shows each " << unit_noun << " being issued; each stream lane shows"
                << " what that stream was doing: red = stalled on another"
                << " stream's data, amber = GPU scheduling, green = measured GPU"
                << " execution. Blank = nothing runnable on that stream. Arrows"

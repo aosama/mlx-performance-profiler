@@ -1,6 +1,7 @@
 #include "measurement_session.h"
 
 #include "progress_reporter.h"
+#include "stage_timeline.h"
 
 #include <algorithm>
 #include <cstdio>
@@ -49,13 +50,47 @@ void announce_pass(MeasurementObserver* measurement_observer,
   }
 }
 
+// The timeline pass on its own fresh graph. Stage cuts are resolved to
+// positions right after capture and the boundary handles dropped, so the
+// pass holds no array the plain job would not.
+void run_timeline_pass(
+    const GraphFactory& graph_factory,
+    const std::unordered_map<int, mlx::core::Stream>& stream_index_to_stream,
+    const TimelineOptions& timeline_options,
+    VariantMeasurement& variant_measurement) {
+  StagedGraph staged_graph = graph_factory.build_fresh_staged_graph();
+  variant_measurement.timeline_graph = capture_graph(staged_graph.output_arrays);
+  const CapturedGraph& timeline_graph = variant_measurement.timeline_graph;
+  const TimelineGranularity granularity = choose_granularity(
+      timeline_options.granularity_choice,
+      static_cast<int>(staged_graph.stage_boundaries.size()),
+      static_cast<int>(timeline_graph.topological.size()));
+  const std::vector<StageCut> stage_cuts =
+      resolve_stage_cuts(timeline_graph, staged_graph.stage_boundaries);
+  const std::string final_stage_name = stage_cuts.empty()
+      ? std::string("whole job")
+      : staged_graph.final_stage_name;
+  staged_graph = {};
+  std::printf("    captured %zu nodes (%zu primitives), %d streams; timing %s"
+              " (%zu job-supplied stage cuts)\n",
+              timeline_graph.nodes.size(), timeline_graph.topological.size(),
+              timeline_graph.stream_count, granularity_name(granularity).data(),
+              stage_cuts.size());
+  variant_measurement.gpu_timeline =
+      granularity == TimelineGranularity::per_stage
+      ? capture_stage_timeline(timeline_graph, stream_index_to_stream, stage_cuts,
+                               final_stage_name)
+      : capture_gpu_timeline(timeline_graph, stream_index_to_stream);
+}
+
 } // namespace
 
 VariantMeasurement measure_variant(
     const std::string& variant_name,
     const GraphFactory& graph_factory,
     const std::unordered_map<int, mlx::core::Stream>& stream_index_to_stream,
-    MeasurementObserver* measurement_observer) {
+    MeasurementObserver* measurement_observer,
+    const TimelineOptions& timeline_options) {
   VariantMeasurement variant_measurement;
   variant_measurement.variant_name = variant_name;
 
@@ -71,10 +106,9 @@ VariantMeasurement measure_variant(
   sample_job_wall(graph_factory, variant_measurement.job_totals);
 
   announce_pass(measurement_observer, variant_name,
-                "pass 2/3: timeline pass (per-node, overlap kept)");
-  variant_measurement.timeline_graph = capture_fresh_graph(graph_factory);
-  variant_measurement.gpu_timeline = capture_gpu_timeline(
-      variant_measurement.timeline_graph, stream_index_to_stream);
+                "pass 2/3: timeline pass (overlap kept)");
+  run_timeline_pass(graph_factory, stream_index_to_stream, timeline_options,
+                    variant_measurement);
 
   announce_pass(measurement_observer, variant_name,
                 "pass 3/3: serial pass (sum of stages)");

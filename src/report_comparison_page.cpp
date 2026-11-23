@@ -39,6 +39,12 @@ std::string format_change(double baseline_value, double candidate_value) {
   return change_text;
 }
 
+std::size_t count_timed_units(const GpuTimeline& gpu_timeline) {
+  return gpu_timeline.granularity == TimelineGranularity::per_stage
+      ? gpu_timeline.stages.size()
+      : gpu_timeline.nodes.size();
+}
+
 std::vector<MetricRow> collect_metric_rows(
     const VariantMeasurement& baseline, const VariantMeasurement& candidate) {
   return {
@@ -55,6 +61,9 @@ std::vector<MetricRow> collect_metric_rows(
        candidate.job_totals.sum_of_stages_microseconds, true},
       {"Executed nodes", static_cast<double>(baseline.gpu_timeline.nodes.size()),
        static_cast<double>(candidate.gpu_timeline.nodes.size()), false},
+      {"Timed units (nodes, or stage tasks)",
+       static_cast<double>(count_timed_units(baseline.gpu_timeline)),
+       static_cast<double>(count_timed_units(candidate.gpu_timeline)), false},
   };
 }
 
@@ -80,7 +89,16 @@ std::string render_comparison_metrics(
   }
   table_html << "</tbody></table></div><p class=\"note\">Lower is better for every"
              << " row; a negative change is an improvement. Each variant ran the"
-             << " same four passes on the same materialized inputs.</p>";
+             << " same four passes on the same materialized inputs. Timeline pass: "
+             << escape_html_text(baseline.variant_name) << " timed "
+             << granularity_name(baseline.gpu_timeline.granularity) << ", "
+             << escape_html_text(candidate.variant_name) << " timed "
+             << granularity_name(candidate.gpu_timeline.granularity)
+             << (baseline.gpu_timeline.granularity == candidate.gpu_timeline.granularity
+                     ? "."
+                     : " — different granularities, so the GPU execution and"
+                       " instrumented rows are not like for like.")
+             << "</p>";
   return table_html.str();
 }
 
@@ -109,14 +127,31 @@ struct PrimitiveTally {
   double compute_microseconds = 0.0;
 };
 
-std::map<std::string, PrimitiveTally> tally_primitives(const GpuTimeline& gpu_timeline) {
+// A stage-timed variant has no per-node GPU time, so its per-primitive time
+// comes from the serial pass (each node alone) — labeled as such, never
+// shown as zero compute.
+std::map<std::string, PrimitiveTally> tally_primitives(const VariantMeasurement& variant) {
+  const GpuTimeline& gpu_timeline = variant.gpu_timeline;
+  const bool is_stage_timed = gpu_timeline.granularity == TimelineGranularity::per_stage;
   std::map<std::string, PrimitiveTally> op_name_to_tally;
-  for (const NodeTimeline& node_timeline : gpu_timeline.nodes) {
+  for (std::size_t position = 0; position < gpu_timeline.nodes.size(); ++position) {
+    const NodeTimeline& node_timeline = gpu_timeline.nodes[position];
     PrimitiveTally& tally = op_name_to_tally[node_timeline.node->op_name];
     ++tally.node_count;
-    tally.compute_microseconds += node_timeline.breakdown.compute_microseconds;
+    if (!is_stage_timed) {
+      tally.compute_microseconds += node_timeline.breakdown.compute_microseconds;
+    } else if (const NodeTelemetry* serial_node = find_attributed_node(
+                   variant.serial_telemetry, position, node_timeline.node->op_name)) {
+      tally.compute_microseconds += serial_node->duration_microseconds;
+    }
   }
   return op_name_to_tally;
+}
+
+const char* primitive_time_label(const VariantMeasurement& variant) {
+  return variant.gpu_timeline.granularity == TimelineGranularity::per_stage
+      ? " serial Σ (stage-timed)"
+      : " compute";
 }
 
 void append_tally_cells(
@@ -143,8 +178,8 @@ void append_tally_cells(
 // the compiled side; the primitives they absorbed shrink or vanish.
 std::string render_primitive_mix(
     const VariantMeasurement& baseline, const VariantMeasurement& candidate) {
-  const auto baseline_tallies = tally_primitives(baseline.gpu_timeline);
-  const auto candidate_tallies = tally_primitives(candidate.gpu_timeline);
+  const auto baseline_tallies = tally_primitives(baseline);
+  const auto candidate_tallies = tally_primitives(candidate);
   std::map<std::string, bool> all_op_names;
   for (const auto& [op_name, tally] : baseline_tallies) {
     all_op_names[op_name] = true;
@@ -156,9 +191,10 @@ std::string render_primitive_mix(
   table_html << "<div class=\"table-wrap\"><table class=\"sortable\"><thead><tr>"
              << "<th>Primitive</th><th>Fuses</th><th>" << escape_html_text(baseline.variant_name)
              << " nodes</th><th>" << escape_html_text(baseline.variant_name)
-             << " compute</th><th>" << escape_html_text(candidate.variant_name)
-             << " nodes</th><th>" << escape_html_text(candidate.variant_name)
-             << " compute</th></tr></thead><tbody>";
+             << primitive_time_label(baseline) << "</th><th>"
+             << escape_html_text(candidate.variant_name) << " nodes</th><th>"
+             << escape_html_text(candidate.variant_name) << primitive_time_label(candidate)
+             << "</th></tr></thead><tbody>";
   for (const auto& [op_name, is_present] : all_op_names) {
     table_html << "<tr><td>" << escape_html_text(op_name) << "</td><td>"
                << escape_html_text(describe_fused_primitives(op_name)) << "</td>";

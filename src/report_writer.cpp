@@ -3,6 +3,7 @@
 #include "dot_writer.h"
 #include "report_assets.h"
 #include "report_gantt_section.h"
+#include "report_stage_table_section.h"
 #include "report_summary_section.h"
 #include "report_task_table_section.h"
 #include "svg_renderer.h"
@@ -41,7 +42,18 @@ std::string render_dag_section(const std::string& plan_svg, const std::string& p
   return section_html.str();
 }
 
-std::string render_method_section() {
+std::string render_method_section(TimelineGranularity granularity) {
+  const std::string stage_note = granularity == TimelineGranularity::per_stage
+      ? " <b>This report was timed per stage:</b> the job named its stages (for a"
+        " decoder, one per layer), and the timeline pass issued one"
+        " <code>async_eval</code> per stage instead of per node, because at this"
+        " graph size per-node command buffers would cost several times the job and"
+        " every node would read as queued behind the instrumentation. A stage's GPU"
+        " window runs from its first command buffer's GPU start to the end of its"
+        " last buffer, bounded by an empty marker buffer queued behind it (MLX"
+        " commits mid-stage when a buffer exceeds its op budget, and those middle"
+        " buffers are not observable) and by host-observed completion."
+      : std::string();
   return "<section id=\"method\"><h2>How these numbers were measured</h2>"
          "<p class=\"note\">Four passes run on identical, freshly built graphs."
          " <b>Warm-up</b> absorbs Metal kernel compilation and is discarded."
@@ -53,10 +65,17 @@ std::string render_method_section() {
          " end. Its per-node command buffers add submission cost a plain eval"
          " batches away — hence the gap between instrumented and job duration."
          " <b>Sum of stages</b> times each node alone. Never read one of these"
-         " as the whole truth; that is why all are shown.</p></section>";
+         " as the whole truth; that is why all are shown." + stage_note +
+      "</p></section>";
 }
 
 } // namespace
+
+std::string render_tasks_section(const ReportInputs& report_inputs) {
+  return report_inputs.gpu_timeline.granularity == TimelineGranularity::per_stage
+      ? render_stage_table_section(report_inputs)
+      : render_task_table_section(report_inputs);
+}
 
 bool write_text_file(const std::string& file_path, const std::string& file_text) {
   std::ofstream output_stream(file_path, std::ios::binary);
@@ -78,8 +97,8 @@ std::string build_report_document(
               << render_page_header(report_inputs.report_title)
               << render_summary_section(report_inputs)
               << render_gantt_section(report_inputs)
-              << render_task_table_section(report_inputs)
-              << render_dag_section(plan_svg, plan_dot) << render_method_section()
+              << render_tasks_section(report_inputs)
+              << render_dag_section(plan_svg, plan_dot) << render_method_section(report_inputs.gpu_timeline.granularity)
               << "<script>" << report_sort_script() << "</script></body></html>\n";
   return report_html.str();
 }

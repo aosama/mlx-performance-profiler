@@ -139,4 +139,15 @@ double run_pipeline_pass(std::vector<mlx::core::array> output_nodes) {
   return job_wall_microseconds;
 }
 
+const NodeTelemetry* find_attributed_node(
+    const RunTelemetry& serial_telemetry,
+    std::size_t position,
+    const std::string& expected_op_name) {
+  if (position >= serial_telemetry.attributed_nodes.size()) {
+    return nullptr;
+  }
+  const NodeTelemetry& serial_node = serial_telemetry.attributed_nodes[position];
+  return serial_node.node->op_name == expected_op_name ? &serial_node : nullptr;
+}
+
 } // namespace mlx_plan

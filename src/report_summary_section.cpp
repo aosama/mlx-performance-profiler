@@ -3,6 +3,7 @@
 #include "latency_slices.h"
 #include "report_components.h"
 #include "text_format.h"
+#include "timed_units.h"
 
 #include <sstream>
 
@@ -36,18 +37,27 @@ std::string render_cards(const ReportInputs& report_inputs) {
       "GPU execution (measured)",
       std::to_string(gpu_timeline.gpu_measured_node_count) + "/" +
           std::to_string(gpu_timeline.nodes.size()) +
-          " nodes measured from Metal command-buffer timestamps.");
+          " nodes measured from Metal command-buffer timestamps" +
+          (gpu_timeline.granularity == TimelineGranularity::per_stage
+               ? std::string(", per stage (includes GPU gaps while the host"
+                             " encoded the stage).")
+               : std::string(".")));
   append_card(cards_html,
       format_microseconds(gpu_timeline.cross_stream_stall_microseconds),
       "Cross-stream stall",
       "Summed 'stalled' slices: Spark fetchWaitTime. Stream-time, can exceed wall.");
   const double timeline_wall = gpu_timeline.timeline_wall_microseconds;
+  const std::string pass_description = gpu_timeline.granularity ==
+          TimelineGranularity::per_stage
+      ? "Timeline pass (one async_eval per stage, " +
+            std::to_string(gpu_timeline.stages.size()) + " stage tasks)"
+      : std::string("Timeline pass (one command buffer per node)");
   append_card(cards_html, format_microseconds(timeline_wall),
       "Instrumented duration",
       is_within_job_wall_range(job_totals, timeline_wall)
-          ? std::string("Timeline pass (one command buffer per node); inside the"
-                        " job-duration range: no measurable instrumentation cost.")
-          : "Timeline pass (one command buffer per node); " +
+          ? pass_description + "; inside the job-duration range: no measurable"
+                               " instrumentation cost."
+          : pass_description + "; " +
                 format_microseconds(timeline_wall - job_totals.job_wall_microseconds) +
                 " vs the job is instrumentation cost.");
   append_card(cards_html,
@@ -64,30 +74,12 @@ std::string render_cards(const ReportInputs& report_inputs) {
   return cards_html.str();
 }
 
-// Sums every node's slices into one breakdown: the job-level answer to
-// "what were the nodes doing", with the same bar the task table uses.
-LatencyBreakdown aggregate_breakdown(const GpuTimeline& gpu_timeline) {
-  LatencyBreakdown aggregate;
-  for (const NodeTimeline& node_timeline : gpu_timeline.nodes) {
-    const LatencyBreakdown& breakdown = node_timeline.breakdown;
-    aggregate.wait_on_cpu_microseconds += breakdown.wait_on_cpu_microseconds;
-    aggregate.wait_on_gpu_microseconds += breakdown.wait_on_gpu_microseconds;
-    aggregate.wait_on_dependency_microseconds +=
-        breakdown.wait_on_dependency_microseconds;
-    aggregate.scheduler_delay_microseconds +=
-        breakdown.scheduler_delay_microseconds;
-    aggregate.compute_microseconds += breakdown.compute_microseconds;
-    aggregate.completion_latency_microseconds +=
-        breakdown.completion_latency_microseconds;
-    aggregate.wall_microseconds += breakdown.wall_microseconds;
-  }
-  return aggregate;
-}
-
 std::string render_time_distribution(const GpuTimeline& gpu_timeline) {
-  const LatencyBreakdown aggregate = aggregate_breakdown(gpu_timeline);
+  const LatencyBreakdown aggregate = aggregate_breakdown(collect_timed_units(gpu_timeline));
+  const std::string unit_noun = timed_unit_noun(gpu_timeline);
   std::ostringstream distribution_html;
-  distribution_html << "<h2>Where node time went</h2>" << render_slice_legend()
+  distribution_html << "<h2>Where " << unit_noun << " time went</h2>"
+                    << render_slice_legend()
                     << render_stacked_bar(aggregate) << "<p class=\"note\">";
   for (const LatencySlice latency_slice : CAUSAL_SLICE_ORDER) {
     const double slice_total = slice_microseconds(aggregate, latency_slice);
@@ -100,9 +92,9 @@ std::string render_time_distribution(const GpuTimeline& gpu_timeline) {
                       << "</b> " << format_microseconds(slice_total) << " ("
                       << share_text << ") &nbsp; ";
   }
-  distribution_html << "<br>Summed over all nodes of the timeline pass. Node"
-                    << " windows overlap across streams, so the total is"
-                    << " node-time, not wall-clock.</p>";
+  distribution_html << "<br>Summed over every " << unit_noun << " of the timeline"
+                    << " pass. Windows overlap across streams, so the total is "
+                    << unit_noun << "-time, not wall-clock.</p>";
   return distribution_html.str();
 }
 

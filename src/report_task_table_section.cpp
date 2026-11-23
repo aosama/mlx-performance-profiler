@@ -11,38 +11,18 @@ namespace {
 
 void append_number_cell(
     std::ostringstream& row_html, double sort_value, const std::string& shown) {
-  row_html << "<td class=\"number\" data-sort-value=\"" << sort_value << "\">"
-           << escape_html_text(shown) << "</td>";
+  row_html << render_number_cell(sort_value, shown);
 }
 
 void append_duration_cell(std::ostringstream& row_html, double microseconds) {
-  append_number_cell(row_html, microseconds, format_microseconds(microseconds));
-}
-
-// The serial pass ran an identical graph, so topological position joins the
-// two; the op name guards the join, and a mismatch shows "—", never a
-// number borrowed from a different node.
-const NodeTelemetry* find_serial_node(
-    const RunTelemetry& serial_telemetry,
-    std::size_t position,
-    const GraphNode& timeline_node) {
-  if (position >= serial_telemetry.attributed_nodes.size()) {
-    return nullptr;
-  }
-  const NodeTelemetry& serial_node = serial_telemetry.attributed_nodes[position];
-  return serial_node.node->op_name == timeline_node.op_name ? &serial_node
-                                                            : nullptr;
+  row_html << render_duration_cell(microseconds);
 }
 
 std::string render_header_row() {
   std::ostringstream header_html;
   header_html << "<thead><tr><th>#</th><th>Node</th><th>Op</th><th>Stream</th>"
               << "<th>Join</th><th>Shape</th><th>Dtype</th><th>Output</th>";
-  for (const LatencySlice latency_slice : CAUSAL_SLICE_ORDER) {
-    const SliceStyle& style = slice_style(latency_slice);
-    header_html << "<th title=\"" << escape_html_text(style.meaning) << "\">"
-                << style.short_label << "</th>";
-  }
+  header_html << render_slice_header_cells();
   header_html << "<th>Wall</th><th title=\"Same node timed alone in the serial"
               << " pass\">Serial</th><th title=\"Active memory added by this"
               << " node in the serial pass (approximate: buffers are reused)\">"
@@ -69,16 +49,10 @@ std::string render_node_row(
            << "</td><td>" << escape_html_text(graph_node.dtype_string) << "</td>";
   append_number_cell(row_html, static_cast<double>(graph_node.output_bytes),
                      format_bytes(graph_node.output_bytes));
-  for (const LatencySlice latency_slice : CAUSAL_SLICE_ORDER) {
-    const double slice_duration = slice_microseconds(breakdown, latency_slice);
-    const bool is_residual_compute =
-        latency_slice == LatencySlice::compute && !breakdown.is_compute_measured;
-    append_number_cell(row_html, slice_duration,
-        (is_residual_compute ? "~" : "") + format_microseconds(slice_duration));
-  }
+  row_html << render_slice_cells(breakdown);
   append_duration_cell(row_html, breakdown.wall_microseconds);
   const NodeTelemetry* serial_node =
-      find_serial_node(serial_telemetry, position, graph_node);
+      find_attributed_node(serial_telemetry, position, graph_node.op_name);
   if (serial_node != nullptr) {
     append_duration_cell(row_html, serial_node->duration_microseconds);
     append_number_cell(row_html,

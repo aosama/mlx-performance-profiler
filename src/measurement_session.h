@@ -1,13 +1,14 @@
 #pragma once
 
 // Measurement session: one concern only — run the four passes (warm-up,
-// job wall, timeline, serial) for one job variant and keep everything the
+// job wall, timeline at the chosen granularity, serial) for one job variant and keep everything the
 // reports need alive together.
 
 #include "gpu_timeline.h"
 #include "graph_factory.h"
 #include "graph_model.h"
 #include "job_totals.h"
+#include "stage_plan.h"
 #include "telemetry.h"
 
 #include "mlx/stream.h"
@@ -44,10 +45,18 @@ class MeasurementObserver {
                                const std::string& pass_description) = 0;
 };
 
+// How the timeline pass groups work into timed units. `automatic` times
+// stages only when the job names stage cuts and the graph is large enough
+// for per-node instrumentation to dominate (see stage_plan.h).
+struct TimelineOptions {
+  GranularityChoice granularity_choice = GranularityChoice::automatic;
+};
+
 VariantMeasurement measure_variant(
     const std::string& variant_name,
     const GraphFactory& graph_factory,
     const std::unordered_map<int, mlx::core::Stream>& stream_index_to_stream,
-    MeasurementObserver* measurement_observer = nullptr);
+    MeasurementObserver* measurement_observer = nullptr,
+    const TimelineOptions& timeline_options = {});
 
 } // namespace mlx_plan
