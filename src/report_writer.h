@@ -1,11 +1,10 @@
 #pragma once
 
-// Report writing: one concern only — assemble and persist the self-contained
-// HTML report (summary cards, the stage-colored DAG, the per-node stage
-// table) from captured plan + telemetry.
+// Report writing: one concern only — assemble the self-contained Spark-style
+// HTML report from its sections and persist it (plus the DOT artifact).
+// Each section renders itself; this module only orders and saves them.
 
-#include "graph_model.h"
-#include "telemetry.h"
+#include "report_inputs.h"
 
 #include <string>
 
@@ -19,10 +18,14 @@ struct ReportPaths {
 };
 
 ReportPaths write_report(
-    const CapturedGraph& captured_graph,
-    const RunTelemetry& run_telemetry,
+    const ReportInputs& report_inputs,
     const std::string& output_directory,
-    const std::string& plan_file_base,
-    const std::string& report_title);
+    const std::string& plan_file_base);
+
+// The full HTML document, without touching the filesystem (testable).
+std::string build_report_document(
+    const ReportInputs& report_inputs,
+    const std::string& plan_svg,
+    const std::string& plan_dot);
 
 } // namespace mlx_plan

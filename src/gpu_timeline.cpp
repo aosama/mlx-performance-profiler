@@ -312,8 +312,10 @@ GpuTimeline capture_gpu_timeline(
         position_to_ready_microseconds,
         position_to_gpu_window[position]);
     node_timeline.breakdown = decompose_node_latency(node_timeline.timestamps);
+    node_timeline.cross_stream_producer_positions =
+        position_to_dependencies[position].cross_stream_input_positions;
     node_timeline.has_cross_stream_input =
-        !position_to_dependencies[position].cross_stream_input_positions.empty();
+        !node_timeline.cross_stream_producer_positions.empty();
     gpu_timeline.cross_stream_stall_microseconds +=
         node_timeline.breakdown.wait_on_dependency_microseconds;
     if (node_timeline.breakdown.is_compute_measured) {

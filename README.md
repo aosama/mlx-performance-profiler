@@ -47,6 +47,38 @@ GPU-measured at command-buffer granularity (one buffer per node in the
 timeline pass); a `~` marks the rare fallback to a host-observed residual
 (CPU-stream nodes).
 
+## Reading the report
+
+Open `build/hello_world.html` in any browser (self-contained, works offline,
+follows the system light/dark theme). It reads top to bottom like a Spark
+StagePage:
+
+1. **Job summary.** Cards for job duration (the honest end-to-end number),
+   measured GPU execution, cross-stream stall, instrumented duration, sum of
+   stages and peak memory. Under them, **where node time went** is one stacked
+   bar over all nodes.
+2. **Timeline (per stream).** A Gantt with one lane for the host thread that
+   issues nodes and one lane per MLX stream. On a stream lane, **red = stalled**
+   on another stream's data, **amber = GPU scheduling**, **green = measured GPU
+   execution**, and blank means nothing was runnable. Arrows run from a
+   producer's GPU end to where its cross-stream consumer stopped waiting.
+   Below it is a per-stream table with busy, stalled and utilization.
+3. **Tasks.** One sortable row per executed node: each slice, wall, the same
+   node timed alone ("Serial"), its class, and a stacked latency bar.
+4. **DAG.** The plan graph: fill = stream, red outline = node stalled on
+   another stream, edges labeled with bytes.
+
+The six slices, in causal order, always sum to a node's wall:
+
+| Slice | Meaning | Spark analog |
+|---|---|---|
+| host issue | host time inside `async_eval` | Scheduler Delay (host) |
+| queued | earlier work on the same stream still running | — |
+| stalled | input from another stream not ready yet | Shuffle Read `fetchWaitTime` |
+| GPU scheduling | committed, GPU not started yet | Scheduler Delay |
+| compute | GPU execution of the node's command buffer | Executor Computing Time |
+| result | GPU done → host noticed (never decides the class) | Getting Result Time |
+
 ## Test
 
 ```sh

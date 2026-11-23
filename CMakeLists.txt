@@ -37,8 +37,15 @@ add_library(mlx_plan STATIC
     src/metal_command_buffer_probe.cpp
     src/gpu_timeline.cpp
     src/timeline_console.cpp
+    src/text_format.cpp
+    src/latency_slices.cpp
     src/dot_writer.cpp
     src/svg_renderer.cpp
+    src/report_assets.cpp
+    src/report_components.cpp
+    src/report_summary_section.cpp
+    src/report_task_table_section.cpp
+    src/report_gantt_section.cpp
     src/report_writer.cpp)
 
 target_include_directories(mlx_plan PUBLIC src)
@@ -84,6 +91,22 @@ enable_testing()
 add_executable(latency_breakdown_test tests/latency_breakdown_test.cpp)
 target_link_libraries(latency_breakdown_test PRIVATE mlx_plan)
 add_test(NAME latency_breakdown_test COMMAND latency_breakdown_test)
+
+add_executable(text_format_test tests/text_format_test.cpp)
+target_link_libraries(text_format_test PRIVATE mlx_plan)
+add_test(NAME text_format_test COMMAND text_format_test)
+
+add_executable(latency_slices_test tests/latency_slices_test.cpp)
+target_link_libraries(latency_slices_test PRIVATE mlx_plan)
+add_test(NAME latency_slices_test COMMAND latency_slices_test)
+
+add_executable(report_components_test tests/report_components_test.cpp)
+target_link_libraries(report_components_test PRIVATE mlx_plan)
+add_test(NAME report_components_test COMMAND report_components_test)
+
+add_executable(report_writer_test tests/report_writer_test.cpp)
+target_link_libraries(report_writer_test PRIVATE mlx_plan)
+add_test(NAME report_writer_test COMMAND report_writer_test)
 
 add_executable(progress_reporter_test tests/progress_reporter_test.cpp)
 target_link_libraries(progress_reporter_test PRIVATE mlx_plan)

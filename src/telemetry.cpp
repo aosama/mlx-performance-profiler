@@ -65,8 +65,12 @@ NodeTelemetry measure_node(
   mlx::core::synchronize(execution_stream);
   node_telemetry.duration_microseconds = elapsed_microseconds(started_at);
 
-  node_telemetry.memory_added_bytes =
-      mlx::core::get_active_memory() - active_bytes_before;
+  // size_t subtraction would wrap to ~16 EiB when a node's eval frees more
+  // than it allocates (buffer donation, cache release); "added" is then 0.
+  const size_t active_bytes_after = mlx::core::get_active_memory();
+  node_telemetry.memory_added_bytes = active_bytes_after > active_bytes_before
+      ? active_bytes_after - active_bytes_before
+      : 0;
   return node_telemetry;
 }
 

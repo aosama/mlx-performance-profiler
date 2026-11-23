@@ -28,11 +28,10 @@ struct NodeTelemetry {
 struct RunTelemetry {
   // One entry per primitive node, in topological (execution) order.
   std::vector<NodeTelemetry> attributed_nodes;
-  // Sum of per-node durations from the serialized measurement pass.
+  // Sum of per-node durations from the serialized measurement pass. The
+  // uninstrumented job wall lives in JobTotals, not here: it is a different
+  // pass and has exactly one home.
   double attributed_total_microseconds = 0.0;
-  // Wall-clock of a separate, uninstrumented single-eval pass on a rebuilt
-  // graph — the honest end-to-end number.
-  double pipeline_total_microseconds = 0.0;
   size_t run_peak_memory_bytes = 0;
   int node_count = 0;
 };

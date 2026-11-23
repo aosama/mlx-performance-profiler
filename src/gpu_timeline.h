@@ -42,6 +42,9 @@ struct NodeTimeline {
   NodeTimestamps timestamps;   // µs since the pass started
   LatencyBreakdown breakdown;  // Spark slices of [issue_started, completed]
   bool has_cross_stream_input = false;  // a join in the Spark-shuffle sense
+  // Positions (in GpuTimeline::nodes) of producers on other streams — the
+  // cross-stream edges a Gantt draws as dependency arrows.
+  std::vector<int> cross_stream_producer_positions;
 };
 
 struct StreamTimeline {
