@@ -23,6 +23,10 @@ sidecar: it observes, it never changes MLX semantics.
 - The prebuilt MLX the spike links against lives at
   `~/.cache/mlx-bridge/native/<identity>/prefix` and is passed as the CMake
   cache variable `MLX_PREFIX` — never as an environment variable.
+- Tests live in `tests/`, one file per production module
+  (`<module>_test.cpp`), cases named `should_...`, each module covering
+  positive, edge/boundary and negative cases. Run after building:
+  `ctest --test-dir build --output-on-failure`.
 - MLX source of truth for API questions: `../mlx-explore/mlx` (same version
   0.32.4 as the prebuilt library; headers in the prefix and the source tree
   are in sync).

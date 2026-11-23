@@ -1,6 +1,7 @@
 #include "telemetry.h"
 
 #include "mlx/memory.h"
+#include "mlx/transforms.h"
 
 #include <algorithm>
 #include <chrono>
@@ -101,6 +102,14 @@ RunTelemetry run_attributed_pass(
         node_telemetry.duration_microseconds / 1e6);
   }
   return run_telemetry;
+}
+
+double run_pipeline_pass(std::vector<mlx::core::array> output_nodes) {
+  const Clock::time_point started_at = Clock::now();
+  // eval() blocks until every output is available, which transitively waits
+  // on every stream the outputs depend on — no per-stream synchronize needed.
+  mlx::core::eval(std::move(output_nodes));
+  return elapsed_microseconds(started_at);
 }
 
 } // namespace mlx_plan
