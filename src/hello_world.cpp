@@ -34,8 +34,12 @@ ReportPaths write_variant_report(
       variant_measurement.serial_telemetry, variant_measurement.job_totals};
   const ReportPaths report_paths =
       write_report(report_inputs, OUTPUT_DIRECTORY, file_base);
-  std::printf("report: %s%s\n", report_paths.html_path.c_str(),
-              report_paths.graphviz_available ? " (with SVG)" : " (no Graphviz)");
+  if (!report_paths.is_written) {
+    std::fprintf(stderr, "error: could not write %s\n", report_paths.html_path.c_str());
+  } else {
+    std::printf("report: %s%s\n", report_paths.html_path.c_str(),
+                report_paths.graphviz_available ? " (with SVG)" : " (no Graphviz)");
+  }
   return report_paths;
 }
 
@@ -49,9 +53,12 @@ void write_comparison_report(
   const ComparedVariant compiled_variant{
       compiled_measurement, compiled_paths.plan_svg, "hello_world_compiled.html"};
   const std::string comparison_path = OUTPUT_DIRECTORY + "/hello_world.html";
-  write_text_file(comparison_path,
-                  build_comparison_document(JOB_TITLE + ": eager vs compiled",
-                                            eager_variant, compiled_variant));
+  if (!write_text_file(comparison_path,
+                       build_comparison_document(JOB_TITLE + ": eager vs compiled",
+                                                 eager_variant, compiled_variant))) {
+    std::fprintf(stderr, "error: could not write %s\n", comparison_path.c_str());
+    return;
+  }
   std::printf("report: %s (eager vs compiled)\n", comparison_path.c_str());
 }
 

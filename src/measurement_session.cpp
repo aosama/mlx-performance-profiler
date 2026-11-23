@@ -42,6 +42,8 @@ void announce_pass(MeasurementObserver* measurement_observer,
                    const std::string& variant_name,
                    const std::string& pass_description) {
   std::printf("[%s] %s...\n", variant_name.c_str(), pass_description.c_str());
+  std::fflush(stdout);  // stay live when stdout is a pipe
+
   if (measurement_observer != nullptr) {
     measurement_observer->on_pass_started(variant_name, pass_description);
   }

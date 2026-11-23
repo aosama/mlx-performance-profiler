@@ -15,6 +15,9 @@ struct ReportPaths {
   std::string dot_path;
   std::string svg_path; // empty when Graphviz was unavailable
   bool graphviz_available = false;
+  // False when the HTML or DOT file could not be written (missing directory,
+  // permissions, full disk); callers must not claim a report exists then.
+  bool is_written = false;
   // The rendered DAG markup (empty without Graphviz), kept so a comparison
   // page can embed it without re-running the layout.
   std::string plan_svg;

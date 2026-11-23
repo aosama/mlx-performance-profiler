@@ -1,0 +1,16 @@
+[package]
+name = "mlx-plan-rust-example"
+version = "0.1.0"
+edition = "2024"
+publish = false
+license = "Apache-2.0"
+description = "Profiles an MLX job built with mlx-c-rust through mlx-visual-plan's C API."
+
+[dependencies]
+# The sibling bridge checkout, read-only. It links the same shared prebuilt
+# MLX prefix this repo's CMake build uses, so the final binary holds exactly
+# one MLX.
+mlx-c-rust = { path = "../../../mlx-bridge" }
+
+# A standalone crate, not a member of any parent workspace.
+[workspace]

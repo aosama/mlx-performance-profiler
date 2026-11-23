@@ -75,6 +75,23 @@ compiled) and serves Spark-UI-like tabs:
 Server-Sent Events, so there's no page refresh. The server listens on
 127.0.0.1 only; Ctrl-C stops it.
 
+## From Rust (mlx-c-rust)
+
+The same measurement and report are available through a C API
+(`src/mlx_plan_c_api.h`). [`rust/mlx_plan_rust_example`](rust/mlx_plan_rust_example)
+builds a three-stream job with `mlx-c-rust` and profiles it:
+
+```sh
+cmake --build build                      # builds libmlx_plan.a
+cd rust/mlx_plan_rust_example
+cargo profile-job                        # writes build/rust_example.html
+```
+
+It expects the `mlx-bridge` checkout as a sibling directory and uses that
+crate's pinned nightly toolchain. The final binary links exactly one MLX: the
+static `libmlx_plan.a` contains only this repository's code, and it resolves
+MLX from the same prebuilt prefix the bridge links.
+
 ## Reading the report
 
 Open `build/hello_world.html` for the comparison, or a variant report, in any

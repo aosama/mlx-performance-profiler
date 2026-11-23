@@ -27,6 +27,9 @@ sidecar: it observes, it never changes MLX semantics.
   (`<module>_test.cpp`), cases named `should_...`, each module covering
   positive, edge/boundary and negative cases. Run after building:
   `ctest --test-dir build --output-on-failure`.
+- `rust/mlx_plan_rust_example` is the Rust (mlx-c-rust) entry point through
+  the C API in `src/mlx_plan_c_api.h`; see its `.cargo/config.toml` for how
+  to run it. Build the CMake library first.
 - MLX source of truth for API questions: `../mlx-explore/mlx` (same version
   0.32.4 as the prebuilt library; headers in the prefix and the source tree
   are in sync).

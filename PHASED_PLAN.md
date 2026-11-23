@@ -281,6 +281,39 @@ helpers):
   `Event` binding in `mlx-bridge/src/metal/` (alongside `capture.rs`) so the view
   is reachable from the bridge ecosystem.
 - **Acceptance:** an `mlx-c-rust` example emits the same telemetry.
+- **Status (2026-11-23): implemented without modifying `mlx-bridge`.**
+  Evidence and decisions:
+  - MLX-C exposes `mlx_async_eval`, `_mlx_array_is_available`, memory
+    stats and Metal capture, but **not** graph traversal (inputs, primitive
+    name, stream) or Metal command buffers, which the telemetry depends on.
+    Re-implementing the telemetry in Rust would mean a large new C shim in
+    the bridge plus duplicated logic that drifts. Instead, this repo exposes
+    its existing C++ measurement through a small **C ABI**
+    (`mlx_plan_c_api.h`): the caller passes a callback that appends a fresh
+    graph's outputs to an `mlx_vector_array`, and the library runs the same
+    four passes and writes the same report.
+  - Ownership never crosses the boundary (the library creates and frees the
+    vector; MLX-C copies handles on append), and exceptions never cross it
+    either (status code + `mlx_plan_last_error()`). The one private-layout
+    assumption (an MLX-C `mlx_array`'s `ctx` is an `mlx::core::array*`)
+    lives in `mlx_c_interop` and is pinned by a test.
+  - **One MLX in the binary.** The bridge links the same shared prebuilt
+    prefix, and `libmlx_plan.a` holds only this repo's objects, so every MLX
+    symbol resolves to the bridge's single `libmlx.a`.
+  - `rust/mlx_plan_rust_example` (pinned to the bridge's nightly) builds a
+    three-stream job with the safe API (`MlxBindingsContext::on_stream`)
+    and profiles it: 19/19 nodes GPU-measured, three streams, a measured
+    cross-stream stall, and `build/rust_example.html`. Verified against the
+    local bridge checkout at `d54c0d9`.
+  - The optional `Event` binding in `mlx-bridge` is **not needed** and was
+    not added; no bridge PR was required. Upstreaming graph traversal to
+    MLX-C would let a pure-Rust implementation exist later; it is not a
+    prerequisite for using this tool from Rust.
+  - Found while building it: C++ progress lines were fully buffered when
+    stdout is a pipe (Rust parent, `tee`, CI), so "live" progress arrived
+    at exit. Progress and pass announcements now flush. Also,
+    `write_report` silently ignored write failures; `ReportPaths` now has
+    `is_written`.
 
 ## 5. Module map at the end state
 

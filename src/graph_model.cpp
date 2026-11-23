@@ -146,4 +146,18 @@ CapturedGraph capture_graph(const std::vector<array>& output_nodes) {
   return captured_graph;
 }
 
+std::unordered_map<int, mlx::core::Stream> collect_streams(
+    const CapturedGraph& captured_graph) {
+  std::unordered_map<int, mlx::core::Stream> stream_index_to_stream;
+  for (const std::size_t node_index : captured_graph.topological) {
+    const GraphNode& graph_node = captured_graph.nodes[node_index];
+    if (graph_node.handle.has_primitive()) {
+      // emplace: Stream has no default constructor.
+      stream_index_to_stream.emplace(graph_node.stream_index,
+                                     graph_node.handle.primitive().stream());
+    }
+  }
+  return stream_index_to_stream;
+}
+
 } // namespace mlx_plan

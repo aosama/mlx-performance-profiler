@@ -56,7 +56,9 @@ add_library(mlx_plan STATIC
     src/live_view_renderer.cpp
     src/live_view_page.cpp
     src/live_view_routes.cpp
-    src/server_options.cpp)
+    src/server_options.cpp
+    src/mlx_c_interop.cpp
+    src/mlx_plan_c_api.cpp)
 
 target_include_directories(mlx_plan PUBLIC src)
 
@@ -79,6 +81,7 @@ target_compile_definitions(mlx_plan PUBLIC
 # first (mlx), then the libraries it references, then frameworks. libc++ is
 # left to the C++ link driver; listing it again only draws a duplicate warning.
 target_link_libraries(mlx_plan PUBLIC
+    "${MLX_PREFIX}/lib/libmlxc.a"
     "${MLX_PREFIX}/lib/libmlx.a"
     "${MLX_PREFIX}/lib/libgguflib.a"
     "${MLX_PREFIX}/lib/libjaccl.a"
@@ -169,6 +172,12 @@ add_test(NAME demo_model_test COMMAND demo_model_test)
 add_executable(measurement_session_test tests/measurement_session_test.cpp)
 target_link_libraries(measurement_session_test PRIVATE mlx_plan)
 add_test(NAME measurement_session_test COMMAND measurement_session_test)
+
+add_executable(mlx_plan_c_api_test tests/mlx_plan_c_api_test.cpp)
+target_link_libraries(mlx_plan_c_api_test PRIVATE mlx_plan)
+# Run from the source root so the test's relative build/ report path resolves.
+add_test(NAME mlx_plan_c_api_test COMMAND mlx_plan_c_api_test
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
 add_executable(gpu_timeline_test tests/gpu_timeline_test.cpp)
 target_link_libraries(gpu_timeline_test PRIVATE mlx_plan)
