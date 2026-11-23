@@ -27,6 +27,9 @@ sidecar: it observes, it never changes MLX semantics.
   (`<module>_test.cpp`), cases named `should_...`, each module covering
   positive, edge/boundary and negative cases. Run after building:
   `ctest --test-dir build --output-on-failure`.
+- Model-specific code lives under `src/qwen35/` (config, weights, decode
+  step, generation, token text). The generic profiler in `src/` never
+  depends on it; `qwen35_profile.cpp` only orchestrates.
 - `rust/mlx_plan_rust_example` is the Rust (mlx-c-rust) entry point through
   the C API in `src/mlx_plan_c_api.h`; see its `.cargo/config.toml` for how
   to run it. Build the CMake library first.

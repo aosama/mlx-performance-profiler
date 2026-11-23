@@ -58,7 +58,15 @@ add_library(mlx_plan STATIC
     src/live_view_routes.cpp
     src/server_options.cpp
     src/mlx_c_interop.cpp
-    src/mlx_plan_c_api.cpp)
+    src/mlx_plan_c_api.cpp
+    src/json_value.cpp
+    src/qwen35/qwen35_config.cpp
+    src/qwen35/qwen35_weights.cpp
+    src/qwen35/qwen35_decode_step.cpp
+    src/qwen35/qwen35_generation.cpp
+    src/qwen35/token_text.cpp
+    src/qwen35/qwen35_decode_job.cpp
+    src/report_bundle.cpp)
 
 target_include_directories(mlx_plan PUBLIC src)
 
@@ -94,6 +102,10 @@ target_compile_options(mlx_plan PUBLIC -Wall -Wextra)
 
 add_executable(hello_world src/hello_world.cpp)
 target_link_libraries(hello_world PRIVATE mlx_plan)
+
+# A real model: ./build/qwen35_profile <dense Qwen3.5 MLX model directory>
+add_executable(qwen35_profile src/qwen35_profile.cpp)
+target_link_libraries(qwen35_profile PRIVATE mlx_plan)
 
 # The live view: ./build/mlx_plan_server [--port N], then open
 # http://127.0.0.1:N/ (loopback only).
@@ -150,6 +162,18 @@ add_executable(live_view_routes_test tests/live_view_routes_test.cpp)
 target_link_libraries(live_view_routes_test PRIVATE mlx_plan)
 add_test(NAME live_view_routes_test COMMAND live_view_routes_test)
 
+add_executable(json_value_test tests/json_value_test.cpp)
+target_link_libraries(json_value_test PRIVATE mlx_plan)
+add_test(NAME json_value_test COMMAND json_value_test)
+
+add_executable(qwen35_config_test tests/qwen35_config_test.cpp)
+target_link_libraries(qwen35_config_test PRIVATE mlx_plan)
+add_test(NAME qwen35_config_test COMMAND qwen35_config_test)
+
+add_executable(token_text_test tests/token_text_test.cpp)
+target_link_libraries(token_text_test PRIVATE mlx_plan)
+add_test(NAME token_text_test COMMAND token_text_test)
+
 add_executable(progress_reporter_test tests/progress_reporter_test.cpp)
 target_link_libraries(progress_reporter_test PRIVATE mlx_plan)
 add_test(NAME progress_reporter_test COMMAND progress_reporter_test)
@@ -182,6 +206,10 @@ target_link_libraries(mlx_plan_c_api_test PRIVATE mlx_plan)
 # Run from the source root so the test's relative build/ report path resolves.
 add_test(NAME mlx_plan_c_api_test COMMAND mlx_plan_c_api_test
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+add_executable(qwen35_decode_step_test tests/qwen35_decode_step_test.cpp)
+target_link_libraries(qwen35_decode_step_test PRIVATE mlx_plan)
+add_test(NAME qwen35_decode_step_test COMMAND qwen35_decode_step_test)
 
 add_executable(gpu_timeline_test tests/gpu_timeline_test.cpp)
 target_link_libraries(gpu_timeline_test PRIVATE mlx_plan)
