@@ -45,7 +45,7 @@ std::string render_method_section() {
   return "<section id=\"method\"><h2>How these numbers were measured</h2>"
          "<p class=\"note\">Four passes run on identical, freshly built graphs."
          " <b>Warm-up</b> absorbs Metal kernel compilation and is discarded."
-         " <b>Job duration</b> is one uninstrumented eval. The <b>timeline</b>"
+         " <b>Job duration</b> is the median of several uninstrumented evals. The <b>timeline</b>"
          " pass issues one <code>async_eval</code> per node (streams keep"
          " overlapping) and reads each node's Metal command-buffer"
          " <code>GPUStartTime/GPUEndTime</code>: compute is GPU-measured at"
@@ -56,6 +56,8 @@ std::string render_method_section() {
          " as the whole truth; that is why all are shown.</p></section>";
 }
 
+} // namespace
+
 bool write_text_file(const std::string& file_path, const std::string& file_text) {
   std::ofstream output_stream(file_path, std::ios::binary);
   return output_stream.good() &&
@@ -63,8 +65,6 @@ bool write_text_file(const std::string& file_path, const std::string& file_text)
           .write(file_text.data(), static_cast<std::streamsize>(file_text.size()))
           .good();
 }
-
-} // namespace
 
 std::string build_report_document(
     const ReportInputs& report_inputs,
@@ -97,6 +97,7 @@ ReportPaths write_report(
   const std::string plan_svg =
       render_plan_svg(plan_dot, output_directory, plan_file_base);
   report_paths.graphviz_available = !plan_svg.empty();
+  report_paths.plan_svg = plan_svg;
   if (report_paths.graphviz_available) {
     report_paths.svg_path = output_directory + "/" + plan_file_base + ".svg";
   }

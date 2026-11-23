@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
+#include <thread>
 
 namespace mlx_plan {
 namespace {
@@ -108,12 +109,34 @@ RunTelemetry run_attributed_pass(
   return run_telemetry;
 }
 
+bool are_all_available(const std::vector<mlx::core::array>& output_nodes) {
+  for (const mlx::core::array& output_node : output_nodes) {
+    if (!output_node.is_available()) {
+      return false;
+    }
+  }
+  return true;
+}
+
 double run_pipeline_pass(std::vector<mlx::core::array> output_nodes) {
   const Clock::time_point started_at = Clock::now();
-  // eval() blocks until every output is available, which transitively waits
-  // on every stream the outputs depend on — no per-stream synchronize needed.
-  mlx::core::eval(std::move(output_nodes));
-  return elapsed_microseconds(started_at);
+  // One async_eval keeps the job uninstrumented (MLX batches the whole graph,
+  // streams overlap), and completion is then observed by spinning on
+  // is_available() — the SAME observer the timeline pass uses. A blocking
+  // eval() sleeps on the event and adds OS wake-up latency (measured: up to
+  // ~1 ms swings on a ~1 ms job), which would make the instrumented pass look
+  // faster than the uninstrumented one.
+  mlx::core::async_eval(output_nodes);
+  while (!are_all_available(output_nodes)) {
+    std::this_thread::yield();
+  }
+  const double job_wall_microseconds = elapsed_microseconds(started_at);
+  // Outputs whose eval was a no-op (already evaluated) are still waited on,
+  // so a caller can rely on every output being materialized on return.
+  for (mlx::core::array& output_node : output_nodes) {
+    output_node.wait();
+  }
+  return job_wall_microseconds;
 }
 
 } // namespace mlx_plan

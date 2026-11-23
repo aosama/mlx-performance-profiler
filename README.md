@@ -31,14 +31,23 @@ plan, without it the report shows the raw DOT source.
 ./build/hello_world
 ```
 
-Runs a two-stream toy model through four passes on freshly built, identical
-graphs, prints a job summary, a per-stream table and a per-node Spark-style
-latency breakdown, and writes `build/hello_world.html`:
+Measures one small three-stream job twice, **eager** and through
+`mlx::core::compile`. Each variant goes through four passes on freshly built,
+identical graphs. It prints a job summary, a per-stream table and a per-node
+latency breakdown per variant, and writes three reports:
+
+- `build/hello_world.html`: **eager vs compiled** side by side (metric
+  deltas, both DAGs, both timelines on one time scale, and which primitives
+  compile fused).
+- `build/hello_world_eager.html` and `build/hello_world_compiled.html`: the
+  full Spark-style report for each variant.
+
+The four passes per variant:
 
 | Pass | What it measures |
 |---|---|
 | 0. warm-up | discarded — absorbs Metal kernel compilation |
-| 1. pipeline | **job wall**: one eval, streams overlap, uninstrumented |
+| 1. pipeline | **job wall**: median of 7 uninstrumented runs (one `async_eval`, streams overlap), with the min–max range |
 | 2. timeline | per-node issue and host-observed completion with overlap preserved, plus each node's **GPU execution window** read from its Metal command buffer (`GPUStartTime`/`GPUEndTime`) → `wait_on_cpu` / `wait_on_gpu` / `wait_on_dependency` / `scheduler_delay` / `compute` / result latency, and the cross-stream stall (Spark `fetchWaitTime` analog) |
 | 3. attributed | **sum-of-stages**: each node synchronized alone |
 
@@ -49,9 +58,9 @@ timeline pass); a `~` marks the rare fallback to a host-observed residual
 
 ## Reading the report
 
-Open `build/hello_world.html` in any browser (self-contained, works offline,
-follows the system light/dark theme). It reads top to bottom like a Spark
-StagePage:
+Open `build/hello_world.html` for the comparison, or a variant report, in any
+browser. Each is self-contained, works offline and follows the system
+light/dark theme. A variant report reads top to bottom like a Spark StagePage:
 
 1. **Job summary.** Cards for job duration (the honest end-to-end number),
    measured GPU execution, cross-stream stall, instrumented duration, sum of

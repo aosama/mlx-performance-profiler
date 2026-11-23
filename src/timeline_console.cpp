@@ -54,14 +54,24 @@ void print_job_summary(
       gpu_timeline.timeline_wall_microseconds - job_totals.job_wall_microseconds;
   std::printf("\n== job summary ==\n");
   std::printf(
-      "  job wall                : %8.3f ms  single warm eval, streams overlap"
-      " (the honest end-to-end number)\n",
-      to_milliseconds(job_totals.job_wall_microseconds));
-  std::printf(
-      "  timeline wall           : %8.3f ms  per-node async_eval pass; %+.3f ms"
-      " vs job wall is instrumentation (one command buffer per node)\n",
-      to_milliseconds(gpu_timeline.timeline_wall_microseconds),
-      to_milliseconds(instrumentation_overhead_microseconds));
+      "  job wall                : %8.3f ms  median of %d warm evals (range"
+      " %.3f–%.3f ms), streams overlap: the honest end-to-end number\n",
+      to_milliseconds(job_totals.job_wall_microseconds),
+      job_totals.job_wall_sample_count,
+      to_milliseconds(job_totals.job_wall_min_microseconds),
+      to_milliseconds(job_totals.job_wall_max_microseconds));
+  if (is_within_job_wall_range(job_totals, gpu_timeline.timeline_wall_microseconds)) {
+    std::printf(
+        "  timeline wall           : %8.3f ms  per-node async_eval pass; inside the"
+        " job-wall range, so no measurable instrumentation cost\n",
+        to_milliseconds(gpu_timeline.timeline_wall_microseconds));
+  } else {
+    std::printf(
+        "  timeline wall           : %8.3f ms  per-node async_eval pass; %+.3f ms"
+        " vs job wall is instrumentation (one command buffer per node)\n",
+        to_milliseconds(gpu_timeline.timeline_wall_microseconds),
+        to_milliseconds(instrumentation_overhead_microseconds));
+  }
   std::printf(
       "  sum-of-stages           : %8.3f ms  serial pass, each node synchronized"
       " alone (no overlap; Spark's summed stage durations)\n",

@@ -26,7 +26,11 @@ std::string render_cards(const ReportInputs& report_inputs) {
   std::ostringstream cards_html;
   cards_html << "<div class=\"cards\">";
   append_card(cards_html, format_microseconds(job_totals.job_wall_microseconds),
-      "Job duration", "One warm eval, streams overlapping, uninstrumented.");
+      "Job duration",
+      "Median of " + std::to_string(job_totals.job_wall_sample_count) +
+          " warm, uninstrumented evals (range " +
+          format_microseconds(job_totals.job_wall_min_microseconds) + " – " +
+          format_microseconds(job_totals.job_wall_max_microseconds) + ").");
   append_card(cards_html,
       format_microseconds(gpu_timeline.measured_gpu_compute_microseconds),
       "GPU execution (measured)",
@@ -37,13 +41,15 @@ std::string render_cards(const ReportInputs& report_inputs) {
       format_microseconds(gpu_timeline.cross_stream_stall_microseconds),
       "Cross-stream stall",
       "Summed 'stalled' slices: Spark fetchWaitTime. Stream-time, can exceed wall.");
-  append_card(cards_html,
-      format_microseconds(gpu_timeline.timeline_wall_microseconds),
+  const double timeline_wall = gpu_timeline.timeline_wall_microseconds;
+  append_card(cards_html, format_microseconds(timeline_wall),
       "Instrumented duration",
-      "Timeline pass (one command buffer per node); " +
-          format_microseconds(gpu_timeline.timeline_wall_microseconds -
-                              job_totals.job_wall_microseconds) +
-          " over the job is instrumentation cost.");
+      is_within_job_wall_range(job_totals, timeline_wall)
+          ? std::string("Timeline pass (one command buffer per node); inside the"
+                        " job-duration range: no measurable instrumentation cost.")
+          : "Timeline pass (one command buffer per node); " +
+                format_microseconds(timeline_wall - job_totals.job_wall_microseconds) +
+                " vs the job is instrumentation cost.");
   append_card(cards_html,
       format_microseconds(job_totals.sum_of_stages_microseconds),
       "Sum of stages", "Serial pass: each node synchronized alone, no overlap.");

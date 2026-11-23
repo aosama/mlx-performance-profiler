@@ -66,6 +66,10 @@ td.number { text-align: right; font-variant-numeric: tabular-nums; }
 .gantt .grid { stroke: var(--rule); stroke-width: 1; }
 .gantt .dependency-arrow { stroke: var(--slice-stalled); stroke-width: 1; fill: none; opacity: .55; }
 .dag svg { max-width: 100%; height: auto; }
+.variant-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 16px; }
+.variant h3, section h3 { font-size: 13px; margin: 12px 0 6px; }
+.variant small { font-weight: 400; color: var(--muted); }
+a { color: var(--slice-queued); }
 details summary { cursor: pointer; color: var(--muted); }
 pre { background: var(--panel); border: 1px solid var(--rule); padding: 10px; overflow: auto; font-size: 11px; }
 )CSS";
