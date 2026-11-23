@@ -1,0 +1,28 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "mlx-plan-live",
+      "runtimeExecutable": "./build/mlx_plan_server",
+      "runtimeArgs": [
+        "--port",
+        "8765"
+      ],
+      "port": 8765
+    },
+    {
+      "name": "mlx-plan-reports",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8766",
+        "--bind",
+        "127.0.0.1",
+        "--directory",
+        "build"
+      ],
+      "port": 8766
+    }
+  ]
+}
