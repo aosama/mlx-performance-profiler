@@ -34,6 +34,18 @@ void should_view_each_node_as_a_unit_in_a_per_node_timeline() {
   EXPECT_TRUE(std::string(mlx_perf::timed_unit_noun(synthetic_run.gpu_timeline)) == "node");
 }
 
+void should_sum_host_submission_time_over_every_unit() {
+  SyntheticRun synthetic_run;
+  report_fixture::populate_two_stream_run(synthetic_run);
+  // Producer issued 0→10 µs, join 12→20 µs: 18 µs inside async_eval.
+  EXPECT_TRUE(mlx_perf::sum_host_submission_microseconds(
+                  mlx_perf::collect_timed_units(synthetic_run.gpu_timeline)) == 18);
+  SyntheticRun stage_run;
+  report_fixture::populate_two_stage_run(stage_run);
+  EXPECT_TRUE(mlx_perf::sum_host_submission_microseconds(
+                  mlx_perf::collect_timed_units(stage_run.gpu_timeline)) == 18);
+}
+
 // The per-stage view must read the STAGE timings, never the zeroed nodes.
 void should_view_each_stage_task_as_a_unit_in_a_per_stage_timeline() {
   SyntheticRun synthetic_run;
@@ -73,6 +85,10 @@ void should_return_no_units_and_no_streams_for_an_empty_timeline() {
 
 // --- negative ---
 
+void should_sum_no_host_submission_time_for_no_units() {
+  EXPECT_TRUE(mlx_perf::sum_host_submission_microseconds({}) == 0);
+}
+
 void should_throw_when_a_unit_stream_is_unknown() {
   SyntheticRun synthetic_run;
   report_fixture::populate_two_stream_run(synthetic_run);
@@ -92,6 +108,8 @@ int main() {
       TEST_CASE(should_view_each_node_as_a_unit_in_a_per_node_timeline),
       TEST_CASE(should_view_each_stage_task_as_a_unit_in_a_per_stage_timeline),
       TEST_CASE(should_summarize_streams_from_units),
+      TEST_CASE(should_sum_host_submission_time_over_every_unit),
+      TEST_CASE(should_sum_no_host_submission_time_for_no_units),
       TEST_CASE(should_return_no_units_and_no_streams_for_an_empty_timeline),
       TEST_CASE(should_throw_when_a_unit_stream_is_unknown),
   });

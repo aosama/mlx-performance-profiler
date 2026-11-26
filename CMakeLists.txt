@@ -63,7 +63,10 @@ add_library(mlx_perf STATIC
     src/report_comparison_page.cpp
     src/report_writer.cpp
     src/report_bundle.cpp
+    src/sample_statistics.cpp
+    src/output_agreement.cpp
     src/measurement_session.cpp
+    src/paired_measurement.cpp
     src/measurement_document.cpp
     src/measurement_file.cpp
     src/json_value.cpp
