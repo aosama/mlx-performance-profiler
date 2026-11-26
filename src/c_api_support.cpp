@@ -68,4 +68,17 @@ void fill_metric_comparison(const PairedComparison& paired_comparison,
   metric_comparison.round_count = paired_comparison.round_count;
 }
 
+void fill_memory_comparison(const PairedComparison& paired_comparison,
+                            mlx_perf_memory_comparison& memory_comparison) {
+  memory_comparison.baseline_median_bytes = paired_comparison.baseline.median;
+  memory_comparison.candidate_median_bytes = paired_comparison.candidate.median;
+  memory_comparison.median_difference_bytes = paired_comparison.median_difference;
+  memory_comparison.difference_interval_low_bytes = paired_comparison.difference_interval_low;
+  memory_comparison.difference_interval_high_bytes = paired_comparison.difference_interval_high;
+  memory_comparison.relative_difference = paired_comparison.relative_difference;
+  memory_comparison.verdict = to_c_verdict(paired_comparison.verdict);
+  memory_comparison.rounds_candidate_less = paired_comparison.rounds_candidate_faster;
+  memory_comparison.round_count = paired_comparison.round_count;
+}
+
 } // namespace mlx_perf

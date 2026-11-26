@@ -74,7 +74,8 @@ bool write_comparison_page(const ReportBundleRequest& bundle_request,
   const ComparisonPageText page_text{
       "", render_verdict_section(baseline.variant_name, candidate.variant_name,
                                  compare_pair(paired_measurement),
-                                 paired_measurement.output_agreement)};
+                                 paired_measurement.output_agreement, &paired_measurement.baseline_rounds,
+                                 &paired_measurement.candidate_rounds)};
   const std::string comparison_path =
       bundle_request.output_directory + "/" + bundle_request.file_base + ".html";
   const bool is_comparison_written = write_text_file(

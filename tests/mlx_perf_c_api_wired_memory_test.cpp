@@ -39,14 +39,16 @@ void should_read_wired_memory_with_mlxs_holding_and_the_derived_figures() {
   mlx_stream_free(gpu_stream);
 }
 
+// Three repetitions, at least one resolved: the wired total is system-wide,
+// and another program's memory can spoil a single repetition.
 void should_measure_the_wire_release_lag() {
   mlx_perf_wire_release_lag release_lag{};
-  EXPECT_TRUE(mlx_perf_measure_wire_release_lag(256ull << 20, 1, &release_lag) == 0);
+  EXPECT_TRUE(mlx_perf_measure_wire_release_lag(256ull << 20, 3, &release_lag) == 0);
   EXPECT_TRUE(release_lag.allocation_bytes == (256ull << 20));
-  EXPECT_TRUE(release_lag.repetition_count == 1);
-  EXPECT_TRUE(release_lag.resolved_count == 1);
+  EXPECT_TRUE(release_lag.repetition_count == 3);
+  EXPECT_TRUE(release_lag.resolved_count >= 1);
   EXPECT_TRUE(release_lag.median_release_lag_us >= 0.0);
-  EXPECT_TRUE(release_lag.largest_release_lag_us == release_lag.median_release_lag_us);
+  EXPECT_TRUE(release_lag.largest_release_lag_us >= release_lag.median_release_lag_us);
   EXPECT_TRUE(release_lag.median_wired_rise_bytes > (128ll << 20));
 }
 

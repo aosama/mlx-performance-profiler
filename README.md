@@ -399,6 +399,17 @@ sits idle. `mlx_perf_read_wired_memory` takes the same reading from your own
 code after any evaluation, and `mlx_perf_measure_wire_release_lag` measures
 the release lag on your Mac. Guide: [Wired memory](docs/wired-memory.md).
 
+## Memory, judged like time
+
+Many engine changes are memory decisions first. Both comparisons judge each
+run's peak MLX working set, what it left behind, and the system's wired
+total at its end, on the same interleaved rounds and with the same verdict
+as the times, read just before and just after each run so the timing pays
+nothing for them. When a round crossed the wire limit or made the system
+compress memory, the page says so beside the timing verdict: such a round is
+slow for a reason outside the code. Guide:
+[Comparing procedures](docs/comparing-procedures.md#memory-judged-on-the-same-rounds).
+
 ## Quiet output for library use
 
 The library prints progress and file lines to stdout and errors to stderr.

@@ -113,6 +113,11 @@ void should_compare_two_mlx_c_procedures_and_write_the_page_and_record() {
        {&summary.duration, &summary.gpu_busy, &summary.gpu_idle}) {
     EXPECT_TRUE(metric_comparison->round_count == 12);
   }
+  // Memory on the same rounds (#46): each run evaluates 256 x 256 floats.
+  EXPECT_TRUE(summary.peak_mlx_active_added.round_count == 12);
+  EXPECT_TRUE(summary.peak_mlx_active_added.baseline_median_bytes > 0);
+  EXPECT_TRUE(summary.system_wired_at_end.candidate_median_bytes > 0);
+  EXPECT_TRUE(summary.baseline_rounds_crossing_wire_limit >= 0 && summary.baseline_rounds_crossing_wire_limit <= 12);
   // One warm-up, one observed run, 12 rounds: prepare before every run.
   EXPECT_TRUE(fixture.chatty_payload.run_count == 14);
   EXPECT_TRUE(fixture.chatty_payload.prepare_count == 14);
@@ -145,7 +150,8 @@ void should_run_a_procedure_without_a_prepare_callback() {
 void should_keep_the_procedure_struct_sizes_stable() {
   EXPECT_TRUE(sizeof(mlx_perf_procedure) == 32);
   EXPECT_TRUE(sizeof(mlx_perf_procedure_summary) == 32);
-  EXPECT_TRUE(sizeof(mlx_perf_procedure_comparison_summary) == 496);
+  EXPECT_TRUE(sizeof(mlx_perf_memory_comparison) == 64);
+  EXPECT_TRUE(sizeof(mlx_perf_procedure_comparison_summary) == 704);
 }
 
 // --- negative ---

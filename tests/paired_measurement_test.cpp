@@ -126,6 +126,10 @@ void should_compare_the_pair_on_job_wall_gpu_span_and_host_submission() {
   EXPECT_TRUE(pair_comparisons.host_submission.baseline.median > 0);
   EXPECT_TRUE(pair_comparisons.job_wall.difference_interval_coverage >=
               MINIMUM_INTERVAL_COVERAGE);
+  // Memory is judged on the same uninstrumented rounds (#46).
+  EXPECT_TRUE(pair_comparisons.peak_mlx_active_added.round_count == PAIRED_ROUND_COUNT);
+  EXPECT_TRUE(pair_comparisons.peak_mlx_active_added.baseline.median > 0);
+  EXPECT_TRUE(pair_comparisons.system_wired_at_end.baseline.median > 0);
 }
 
 // Two stage cuts' worth of job (matmul, then the unary op) on one stream.

@@ -16,6 +16,7 @@
 
 #include "measurement_session.h"
 #include "output_agreement.h"
+#include "run_memory_meter.h"
 #include "sample_statistics.h"
 
 #include "mlx/stream.h"
@@ -46,6 +47,9 @@ struct VariantRounds {
   std::vector<double> host_submission_microseconds;
   // The whole job's GPU span (measure_gpu_span_once).
   std::vector<double> gpu_span_microseconds;
+  // Memory around each uninstrumented run, read just before and just after
+  // it, outside its timing (#46).
+  std::vector<RunMemoryFigures> memory_figures;
 };
 
 // Each variant's VariantMeasurement holds one per-node timeline for the
@@ -64,6 +68,11 @@ struct PairComparisons {
   PairedComparison job_wall;
   PairedComparison gpu_span;
   PairedComparison host_submission;
+  // Memory, judged on the uninstrumented rounds, in bytes; lower is better.
+  // Unmeasured (round_count 0) when the rounds carry no memory figures.
+  PairedComparison peak_mlx_active_added;
+  PairedComparison mlx_held_change;
+  PairedComparison system_wired_at_end;
 };
 
 // `stream_index_to_stream` must hold every stream either job uses. Throws

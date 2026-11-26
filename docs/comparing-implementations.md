@@ -132,6 +132,10 @@ For each, `verdict` is `MLX_PERF_VERDICT_CANDIDATE_FASTER` (-1), `MLX_PERF_VERDI
 
 **The verdict judges time, not correctness.** `max_absolute_output_difference` (in the summary and in the JSON's `output_agreement`) is reported but not judged. Check it against your own tolerance. It is `NaN` in C (`null` in the JSON) when any difference is not finite.
 
+## Memory, judged on the same rounds
+
+Under the time metrics, the verdict section judges three memory figures on the same 12 uninstrumented rounds: each run's peak MLX working set (peak active memory less the active memory as it began), what it left behind (MLX's active memory plus cache, end less start), and the system's wired total as it ended. Each is read just before and just after the run, never during it. The words are "less" and "more", and a note under the headline counts the rounds in which either variant crossed the wire limit or saw the system compress memory, since such rounds are slow for a reason outside the code. The comparison record carries them as `memory` ([format](measurement-file.md#the-comparison-record-kind-comparison)); `mlx_perf_comparison_summary` is unchanged. The same figures, explained at length: [Comparing procedures](comparing-procedures.md#memory-judged-on-the-same-rounds).
+
 ## Why the slower one is slower: kernel launches side by side
 
 Under the metrics, the comparison page lists each kernel either variant launched, matched by name (a custom kernel's name, otherwise the MLX operation). For each variant it shows the number of launches, the threadgroups they formed and how many GPU cores the smallest launch can give work to, with ⚠ when some cores have nothing to do. The two jobs below do the same work with one custom kernel, launched as 4 threadgroups in one variant and as 512 in the other:

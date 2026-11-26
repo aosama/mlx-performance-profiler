@@ -85,12 +85,16 @@ add_library(mlx_perf STATIC
     src/metal_submission_recorder.cpp
     src/gpu_busy_time.cpp
     src/procedure_measurement.cpp
+    src/system_memory_pressure.cpp
+    src/run_memory_meter.cpp
+    src/run_memory_record.cpp
     src/system_wired_memory.cpp
     src/wired_memory_sample.cpp
     src/wired_memory_analysis.cpp
     src/wired_memory_sampler.cpp
     src/wired_memory_record.cpp
     src/report_wired_memory_section.cpp
+    src/report_memory_verdict.cpp
     src/wire_release_probe.cpp
     src/report_procedure_page.cpp
     src/procedure_comparison_record.cpp

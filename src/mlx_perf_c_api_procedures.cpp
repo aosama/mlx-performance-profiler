@@ -80,6 +80,10 @@ void fill_procedure_summary(const ProcedureMeasurement& procedure_measurement, i
   }
 }
 
+void fill_comparison_summary(const PairedProcedureMeasurement& paired_measurement,
+                             const ProcedureComparisons& procedure_comparisons,
+                             mlx_perf_procedure_comparison_summary& comparison_summary);
+
 void compare_procedures_to_report(const mlx_perf_procedure* baseline, const mlx_perf_procedure* candidate,
                                   const char* report_title, const char* output_directory,
                                   const char* report_file_base, mlx_perf_procedure_comparison_summary* summary) {
@@ -94,13 +98,27 @@ void compare_procedures_to_report(const mlx_perf_procedure* baseline, const mlx_
                                     procedure_comparisons)) {
     throw std::runtime_error("cannot write the procedure comparison into " + std::string(output_directory));
   }
-  if (summary == nullptr) return;
+  if (summary != nullptr) {
+    fill_comparison_summary(paired_measurement, procedure_comparisons, *summary);
+  }
+}
+
+void fill_comparison_summary(const PairedProcedureMeasurement& paired_measurement,
+                             const ProcedureComparisons& procedure_comparisons,
+                             mlx_perf_procedure_comparison_summary& comparison_summary) {
   const int gpu_core_count = paired_measurement.gpu_device_facts.gpu_core_count;
-  fill_procedure_summary(paired_measurement.baseline, gpu_core_count, summary->baseline);
-  fill_procedure_summary(paired_measurement.candidate, gpu_core_count, summary->candidate);
-  fill_metric_comparison(procedure_comparisons.duration, summary->duration);
-  fill_metric_comparison(procedure_comparisons.gpu_busy, summary->gpu_busy);
-  fill_metric_comparison(procedure_comparisons.gpu_idle, summary->gpu_idle);
+  fill_procedure_summary(paired_measurement.baseline, gpu_core_count, comparison_summary.baseline);
+  fill_procedure_summary(paired_measurement.candidate, gpu_core_count, comparison_summary.candidate);
+  fill_metric_comparison(procedure_comparisons.duration, comparison_summary.duration);
+  fill_metric_comparison(procedure_comparisons.gpu_busy, comparison_summary.gpu_busy);
+  fill_metric_comparison(procedure_comparisons.gpu_idle, comparison_summary.gpu_idle);
+  fill_memory_comparison(procedure_comparisons.peak_mlx_active_added, comparison_summary.peak_mlx_active_added);
+  fill_memory_comparison(procedure_comparisons.mlx_held_change, comparison_summary.mlx_held_change);
+  fill_memory_comparison(procedure_comparisons.system_wired_at_end, comparison_summary.system_wired_at_end);
+  comparison_summary.baseline_rounds_crossing_wire_limit = count_rounds_crossing_wire_limit(paired_measurement.baseline);
+  comparison_summary.candidate_rounds_crossing_wire_limit = count_rounds_crossing_wire_limit(paired_measurement.candidate);
+  comparison_summary.baseline_rounds_with_compression = count_rounds_with_compression(paired_measurement.baseline);
+  comparison_summary.candidate_rounds_with_compression = count_rounds_with_compression(paired_measurement.candidate);
 }
 
 } // namespace

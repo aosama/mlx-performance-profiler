@@ -16,10 +16,13 @@ namespace mlx_perf {
 
 // One judged metric as JSON: each side's summary and samples, the per-round
 // differences, the interval, the sign test and the verdict. Shared by the
-// graph comparison record and the procedure comparison record.
+// graph comparison record and the procedure comparison record. The unit
+// suffix names the unit in the difference fields: "_us" for time
+// (median_difference_us), "_bytes" for memory (median_difference_bytes).
 JsonValue build_metric_record(const PairedComparison& paired_comparison,
                               const std::vector<double>& baseline_samples,
-                              const std::vector<double>& candidate_samples);
+                              const std::vector<double>& candidate_samples,
+                              const std::string& unit_suffix = "_us");
 
 JsonValue build_comparison_record(const PairedMeasurement& paired_measurement,
                                   const std::string& baseline_measurement_file,

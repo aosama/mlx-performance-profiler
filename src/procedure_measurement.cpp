@@ -53,8 +53,9 @@ struct ObservedRunRecords {
 };
 
 ProcedureRun summarize_run(const SubmissionRecord& submission_record, double started_seconds,
-                           double finished_seconds) {
+                           double finished_seconds, const RunMemoryFigures& memory_figures) {
   ProcedureRun procedure_run;
+  procedure_run.memory_figures = memory_figures;
   procedure_run.duration_microseconds = (finished_seconds - started_seconds) * 1e6;
   procedure_run.gpu_busy_microseconds = measure_gpu_busy_microseconds(
       submission_record.command_buffer_windows, started_seconds, finished_seconds);
@@ -80,6 +81,8 @@ ProcedureRun run_procedure_once(ProcedureJob& procedure_job, ObservedRunRecords*
       is_observed ? std::make_unique<DispatchRecordingScope>(RecordingReach::whole_process) : nullptr;
   std::unique_ptr<WiredMemorySampler> wired_memory_sampler =
       is_observed ? std::make_unique<WiredMemorySampler>() : nullptr;
+  RunMemoryMeter run_memory_meter;
+  run_memory_meter.start();
   SubmissionRecordingScope submission_scope(RecordingReach::whole_process);
   if (is_observed) {
     submission_scope.set_evaluation_boundary_listener(wired_memory_sampler.get());
@@ -91,12 +94,14 @@ ProcedureRun run_procedure_once(ProcedureJob& procedure_job, ObservedRunRecords*
   const SubmissionRecord submission_record = submission_scope.finish_and_take_record();
   const double finished_seconds =
       find_run_finished_seconds(run_returned_seconds, submission_record.command_buffer_windows);
+  // Before the wired sampler's after-run wait, so the figures are the run's.
+  const RunMemoryFigures memory_figures = run_memory_meter.finish();
   if (is_observed) {
     submission_scope.set_evaluation_boundary_listener(nullptr);
     observed_run_records->kernel_launches = dispatch_scope->take_recorded_dispatches();
     observed_run_records->wired_memory_samples = wired_memory_sampler->finish();
   }
-  return summarize_run(submission_record, started_seconds, finished_seconds);
+  return summarize_run(submission_record, started_seconds, finished_seconds, memory_figures);
 }
 
 struct PairProgress {
@@ -178,6 +183,46 @@ std::vector<double> collect_round_counts(const ProcedureMeasurement& procedure_m
   return round_counts;
 }
 
+namespace {
+
+std::vector<RunMemoryFigures> collect_memory_figures(const ProcedureMeasurement& procedure_measurement) {
+  std::vector<RunMemoryFigures> round_memory_figures;
+  for (const ProcedureRun& procedure_run : procedure_measurement.rounds) {
+    round_memory_figures.push_back(procedure_run.memory_figures);
+  }
+  return round_memory_figures;
+}
+
+} // namespace
+
+std::vector<double> collect_round_bytes(const ProcedureMeasurement& procedure_measurement,
+                                        std::uint64_t RunMemoryFigures::*byte_field) {
+  return collect_run_bytes(collect_memory_figures(procedure_measurement), byte_field);
+}
+
+std::vector<double> collect_round_bytes(const ProcedureMeasurement& procedure_measurement,
+                                        std::int64_t RunMemoryFigures::*byte_field) {
+  return collect_run_bytes(collect_memory_figures(procedure_measurement), byte_field);
+}
+
+int count_rounds_crossing_wire_limit(const ProcedureMeasurement& procedure_measurement) {
+  return count_runs_crossing_wire_limit(collect_memory_figures(procedure_measurement));
+}
+
+int count_rounds_with_compression(const ProcedureMeasurement& procedure_measurement) {
+  return count_runs_with_compression(collect_memory_figures(procedure_measurement));
+}
+
+namespace {
+
+template <typename ByteField>
+PairedComparison compare_round_bytes(const PairedProcedureMeasurement& paired_measurement, ByteField byte_field) {
+  return compare_paired_samples(collect_round_bytes(paired_measurement.baseline, byte_field),
+                                collect_round_bytes(paired_measurement.candidate, byte_field));
+}
+
+} // namespace
+
 ProcedureComparisons compare_procedure_pair(const PairedProcedureMeasurement& paired_measurement) {
   const ProcedureMeasurement& baseline = paired_measurement.baseline;
   const ProcedureMeasurement& candidate = paired_measurement.candidate;
@@ -187,7 +232,10 @@ ProcedureComparisons compare_procedure_pair(const PairedProcedureMeasurement& pa
       compare_paired_samples(collect_round_values(baseline, &ProcedureRun::gpu_busy_microseconds),
                              collect_round_values(candidate, &ProcedureRun::gpu_busy_microseconds)),
       compare_paired_samples(collect_round_values(baseline, &ProcedureRun::gpu_idle_microseconds),
-                             collect_round_values(candidate, &ProcedureRun::gpu_idle_microseconds))};
+                             collect_round_values(candidate, &ProcedureRun::gpu_idle_microseconds)),
+      compare_round_bytes(paired_measurement, &RunMemoryFigures::peak_mlx_active_added_bytes),
+      compare_round_bytes(paired_measurement, &RunMemoryFigures::mlx_held_change_bytes),
+      compare_round_bytes(paired_measurement, &RunMemoryFigures::system_wired_at_end_bytes)};
 }
 
 } // namespace mlx_perf

@@ -185,6 +185,7 @@ each variant's own file, which the record names.
 | `baseline`, `candidate` | `variant_name`, and `measurement_file`: that variant's measurement file, relative to this one |
 | `metrics.job_wall_us`, `metrics.gpu_span_us`, `metrics.host_submission_us` | one record per metric, below |
 | `output_agreement` | `output_count`, and `max_absolute_difference` between the two variants' outputs (float32) |
+| `memory` | memory judged on the same uninstrumented rounds: `metrics.peak_mlx_active_added_bytes`, `metrics.mlx_held_change_bytes`, `metrics.system_wired_at_end_bytes` (metric records in bytes), and per variant `baseline` and `candidate`: `rounds_crossing_wire_limit`, `rounds_with_compression` and `rounds[]`, each [a run's `memory`](#a-runs-memory); `null` for a record written before 0.6 |
 
 Each metric record:
 
@@ -220,6 +221,7 @@ is no per-node file; the record holds every run.
 | `gpu` | `name` and `core_count` of the GPU, each `null` when unknown |
 | `baseline`, `candidate` | one procedure record each, below |
 | `metrics.duration_us`, `metrics.gpu_busy_us`, `metrics.gpu_idle_us` | one metric record each, exactly as in the comparison record above |
+| `metrics.peak_mlx_active_added_bytes`, `metrics.mlx_held_change_bytes`, `metrics.system_wired_at_end_bytes` | memory judged on the same rounds: one metric record each, with the difference fields named in bytes (`median_difference_bytes`, `difference_interval_bytes`, `round_difference_bytes`) |
 
 Each procedure record:
 
@@ -229,6 +231,7 @@ Each procedure record:
 | `rounds[]` | one run per round, in round order (12) |
 | `observed_run` | the extra run that recorded the kernel launches; not judged |
 | `kernel_launch_count` | launches in the observed run |
+| `rounds_crossing_wire_limit`, `rounds_with_compression` | of the 12 rounds, how many runs crossed the wire limit and how many saw the system compress memory (see each run's `memory`) |
 | `wired_memory` | the observed run's wired memory, the same record as [`job.wired_memory`](#jobwired_memory): sampled as it began, after every blocking wait on any thread, every millisecond, as its GPU work completed, and after it until macOS un-wired what it released (at most 3 s) |
 | `kernel_launches[]` | the observed run's launches grouped by Metal function: `metal_function_name` (`"(unnamed pipeline)"` for pipelines MLX compiled before the recorder started), `launch_count`, `fewest_threadgroups`, `most_threadgroups`, `lowest_gpu_core_coverage` and `has_launch_unable_to_fill_gpu` (both `null` when the core count is unknown) |
 
@@ -241,6 +244,29 @@ Each run (`rounds[]` and `observed_run`):
 | `gpu_idle_us` | `duration_us` − `gpu_busy_us` |
 | `command_buffer_count` | command buffers MLX committed during the run |
 | `blocking_wait_count`, `blocking_wait_us` | evaluations and synchronizes that blocked the host until the GPU finished, and the host time they took |
+| `memory` | the run's memory figures, below |
+
+### A run's `memory`
+
+Read just before and just after the run, never during it, so the timing
+pays nothing for it. The same record is used for each round of the graph
+comparison record's `memory`.
+
+| Field | Meaning |
+|---|---|
+| `peak_mlx_active_bytes` | MLX's peak active memory during the run (MLX's own peak counter, reset as the run starts) |
+| `peak_mlx_active_added_bytes` | that peak less MLX's active memory at the start: the run's own working set, the figure judged (MLX's counters are process-wide, so the raw peak includes memory the other side keeps alive) |
+| `mlx_held_at_end_bytes`, `mlx_held_change_bytes` | MLX's active memory plus cache at the end, and less at the start: what the run left behind (negative when it freed more than it kept) |
+| `system_wired_at_end_bytes`, `wire_limit_bytes` | the system's wired total as the run ended, and the limit (`null` when unknown) |
+| `wire_requests_over_limit_count` | wire requests the kernel refused during the run because they would go over the limit (`vm.add_wire_count_over_global_limit`) |
+| `compressed_bytes` | bytes the system compressed during the run (`vm.compressor_input_bytes`): any program's |
+| `swap_used_change_bytes` | the change in swap in use (`vm.swapusage`) |
+| `has_crossed_wire_limit` | the kernel refused a wire request over the limit, or the wired total ended over it |
+| `has_compressed_memory` | `compressed_bytes` is more than 0 |
+
+The three kernel figures and `has_compressed_memory` are `null` when the
+kernel refused the reads; `has_crossed_wire_limit` is `null` when there was
+neither those reads nor a known limit to compare against.
 
 ## Example: where did the time go?
 

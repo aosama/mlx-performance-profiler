@@ -3,6 +3,7 @@
 #include "kernel_launch_summary.h"
 #include "report_assets.h"
 #include "report_launch_comparison_section.h"
+#include "report_memory_verdict.h"
 #include "report_verdict_section.h"
 #include "report_wired_memory_section.h"
 #include "text_format.h"
@@ -18,6 +19,8 @@ const char* verdict_css_class(ComparisonVerdict verdict) {
   return "within-spread";
 }
 
+std::string render_memory_pressure_note(const PairedProcedureMeasurement& paired_measurement);
+
 std::string render_verdict(const PairedProcedureMeasurement& paired_measurement,
                            const ProcedureComparisons& procedure_comparisons) {
   const std::string& baseline_name = paired_measurement.baseline.procedure_name;
@@ -26,7 +29,7 @@ std::string render_verdict(const PairedProcedureMeasurement& paired_measurement,
   section_html << "<section id=\"verdict\"><h2>Verdict</h2><p class=\"verdict "
                << verdict_css_class(procedure_comparisons.duration.verdict) << "\">"
                << escape_html_text(describe_verdict(baseline_name, candidate_name, procedure_comparisons.duration))
-               << "</p>"
+               << "</p>" << render_memory_pressure_note(paired_measurement)
                << render_verdict_table(baseline_name, candidate_name,
                                        {{"Procedure duration", &procedure_comparisons.duration},
                                         {"GPU busy", &procedure_comparisons.gpu_busy},
@@ -78,6 +81,27 @@ std::string render_handoffs(const PairedProcedureMeasurement& paired_measurement
   return section_html.str();
 }
 
+std::string render_memory_pressure_note(const PairedProcedureMeasurement& paired_measurement) {
+  const ProcedureMeasurement& baseline = paired_measurement.baseline;
+  const ProcedureMeasurement& candidate = paired_measurement.candidate;
+  return render_memory_pressure_note(
+      MemoryPressureCounts{baseline.procedure_name, count_rounds_crossing_wire_limit(baseline),
+                           count_rounds_with_compression(baseline), static_cast<int>(baseline.rounds.size())},
+      MemoryPressureCounts{candidate.procedure_name, count_rounds_crossing_wire_limit(candidate),
+                           count_rounds_with_compression(candidate), static_cast<int>(candidate.rounds.size())});
+}
+
+std::string render_memory_section(const PairedProcedureMeasurement& paired_measurement,
+                                  const ProcedureComparisons& procedure_comparisons) {
+  return "<section id=\"memory\"><h2>Memory per run</h2>" +
+         render_memory_verdict_table(paired_measurement.baseline.procedure_name,
+                                     paired_measurement.candidate.procedure_name,
+                                     {&procedure_comparisons.peak_mlx_active_added,
+                                      &procedure_comparisons.mlx_held_change,
+                                      &procedure_comparisons.system_wired_at_end}) +
+         "</section>";
+}
+
 std::string render_procedure_wired_memory(const std::string& section_id,
                                           const ProcedureMeasurement& procedure_measurement) {
   return render_wired_memory_section(
@@ -102,6 +126,7 @@ std::string build_procedure_comparison_document(const std::string& page_title,
             << "Two procedures, each run whole: " << escape_html_text(paired_measurement.baseline.procedure_name)
             << " vs " << escape_html_text(paired_measurement.candidate.procedure_name) << "</p></header>"
             << render_verdict(paired_measurement, procedure_comparisons) << render_handoffs(paired_measurement)
+            << render_memory_section(paired_measurement, procedure_comparisons)
             << render_procedure_wired_memory("wired-memory-baseline", paired_measurement.baseline)
             << render_procedure_wired_memory("wired-memory-candidate", paired_measurement.candidate)
             << render_launch_comparison_section(

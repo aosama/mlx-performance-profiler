@@ -60,6 +60,18 @@ void should_judge_duration_busy_and_idle_separately() {
   EXPECT_TRUE(metrics.at("duration_us").at("baseline").at("samples").as_array().size() == 12);
 }
 
+void should_judge_memory_in_bytes_and_carry_each_rounds_figures() {
+  const JsonValue record = written_and_parsed(procedure_fixture::make_chatty_vs_batched());
+  const JsonValue& peak_working_set = record.at("metrics").at("peak_mlx_active_added_bytes");
+  EXPECT_TRUE(peak_working_set.at("verdict").as_string() == "candidate_slower");
+  EXPECT_TRUE(peak_working_set.at("median_difference_bytes").as_number() == 256.0 * 1048576.0);
+  EXPECT_TRUE(record.at("metrics").at("mlx_held_change_bytes").at("verdict").as_string() == "within_spread");
+  EXPECT_TRUE(record.at("baseline").at("rounds").as_array().at(0).at("memory").at("peak_mlx_active_added_bytes")
+                  .as_number() == 64.0 * 1048576.0);
+  EXPECT_TRUE(record.at("candidate").at("rounds_crossing_wire_limit").as_number() == 0);
+  EXPECT_TRUE(record.at("candidate").at("rounds_with_compression").as_number() == 0);
+}
+
 void should_group_launches_by_metal_function_and_flag_the_underfilling_ones() {
   const JsonValue record = written_and_parsed(procedure_fixture::make_chatty_vs_batched());
   EXPECT_TRUE(record.at("baseline").at("kernel_launch_count").as_number() == 8);
@@ -124,6 +136,7 @@ int main() {
       TEST_CASE(should_name_the_kind_the_gpu_and_both_procedures),
       TEST_CASE(should_carry_every_round_and_the_observed_run),
       TEST_CASE(should_judge_duration_busy_and_idle_separately),
+      TEST_CASE(should_judge_memory_in_bytes_and_carry_each_rounds_figures),
       TEST_CASE(should_group_launches_by_metal_function_and_flag_the_underfilling_ones),
       TEST_CASE(should_write_null_coverage_and_gpu_facts_when_the_gpu_is_unknown),
       TEST_CASE(should_name_launches_without_a_metal_function_as_unnamed),

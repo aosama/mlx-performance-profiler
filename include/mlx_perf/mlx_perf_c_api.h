@@ -173,12 +173,38 @@ typedef struct mlx_perf_procedure_summary {
   int launches_unable_to_fill_gpu;
 } mlx_perf_procedure_summary;
 
+/* One memory figure across the paired rounds, in bytes, judged like time:
+ * lower is better. `verdict` is an MLX_PERF_VERDICT_* value, where
+ * CANDIDATE_FASTER means the candidate used less. */
+typedef struct mlx_perf_memory_comparison {
+  double baseline_median_bytes;
+  double candidate_median_bytes;
+  double median_difference_bytes; /* median per-round candidate − baseline: negative is less */
+  double difference_interval_low_bytes;
+  double difference_interval_high_bytes;
+  double relative_difference;     /* median_difference_bytes / baseline median */
+  int verdict;
+  int rounds_candidate_less;
+  int round_count;
+} mlx_perf_memory_comparison;
+
 typedef struct mlx_perf_procedure_comparison_summary {
   mlx_perf_procedure_summary baseline;
   mlx_perf_procedure_summary candidate;
   mlx_perf_metric_comparison duration; /* run() until its GPU work completed */
   mlx_perf_metric_comparison gpu_busy; /* at least one of its buffers on the GPU */
   mlx_perf_metric_comparison gpu_idle; /* the rest: the GPU waiting on the host */
+  /* Memory on the same rounds, read just before and after each run (#46). */
+  mlx_perf_memory_comparison peak_mlx_active_added; /* MLX peak active less active at the start */
+  mlx_perf_memory_comparison mlx_held_change;          /* MLX active + cache, end less start */
+  mlx_perf_memory_comparison system_wired_at_end;
+  /* Rounds whose run crossed the wire limit (the kernel refused wire requests
+   * over it, or the wired total ended over it), and rounds in which the system
+   * compressed memory (any program's). */
+  int baseline_rounds_crossing_wire_limit;
+  int candidate_rounds_crossing_wire_limit;
+  int baseline_rounds_with_compression;
+  int candidate_rounds_with_compression;
 } mlx_perf_procedure_comparison_summary;
 
 /* Measures two procedures the way mlx_perf_compare_to_report measures two
