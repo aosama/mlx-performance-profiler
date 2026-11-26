@@ -230,13 +230,31 @@ builds a three-stream job with `mlx-bridge` and profiles it:
 ```sh
 cmake --build build                      # builds libmlx_perf.a
 cd rust/mlx_perf_rust_example
-cargo profile-job                        # writes build/rust_example.html
+cargo profile-job                        # writes build/rust_example.html and .json
 ```
 
 It expects the `mlx-bridge` checkout as a sibling directory and uses that
 crate's pinned nightly toolchain. The final binary links exactly one MLX: the
 static `libmlx_perf.a` contains only this repository's code, and it resolves
 MLX from the same prebuilt prefix the bridge links.
+
+## Per-node measurements as data
+
+Every profile also writes its measurements as JSON beside the report: one
+record per node in execution order, with each node's GPU execution window,
+the six slices, how long its stream's GPU sat idle before it, and its
+serial-pass time and memory. There is also a job record with every
+job-wall sample and the time spent inside the job's own graph-building
+code. `mlx_perf_profile_to_measurements` writes the file alone, without
+the report.
+
+```sh
+jq '.nodes[] | {op_name, gpu_us: (.gpu_finished_us - .gpu_started_us), gpu_idle_before_us}' \
+   build/hello_world_eager.json
+```
+
+Unmeasured values are `null`, never zero. Every field is described in
+[`docs/measurement-file.md`](docs/measurement-file.md).
 
 ## Reading the report
 
