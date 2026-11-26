@@ -17,7 +17,7 @@ Alternatively, build [MLX](https://github.com/ml-explore/mlx) and [MLX-C](https:
 ## Step 2: build the profiler
 
 ```sh
-git clone --branch v0.4.0 https://github.com/aosama/mlx-performance-profiler.git
+git clone --branch v0.5.0 https://github.com/aosama/mlx-performance-profiler.git
 cd mlx-performance-profiler
 cmake -S . -B build -DMLX_PREFIX=/path/to/mlx/prefix
 cmake --build build

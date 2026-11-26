@@ -146,7 +146,7 @@ An installed `libmlx_perf.a` is compiled against one exact MLX release. Point `M
 
 ### The package refuses the version you asked for
 
-`find_package(mlx_perf 0.3)` does not accept 0.4.x: before 1.0, each minor release may change the C API. Ask for the minor version you installed, for example `find_package(mlx_perf 0.4 REQUIRED)`.
+`find_package(mlx_perf 0.4)` does not accept 0.5.x: before 1.0, each minor release may change the C API. Ask for the minor version you installed, for example `find_package(mlx_perf 0.5 REQUIRED)`.
 
 ### Undefined C++ symbols when linking a C program
 

@@ -3,7 +3,14 @@
 Versions follow [`VERSIONING.md`](VERSIONING.md). Each release lists the
 MLX releases it was built and tested against.
 
-## Unreleased
+## 0.5.0 (2026-11-26)
+
+Tested MLX releases: 0.32.4, 0.32.5 (Metal, macOS).
+
+A minor release under `VERSIONING.md`: the C API gains functions and
+structs without changing existing ones, and the measurement file and
+procedure comparison record gain fields under the same `schema_version` 1.
+Consumers pinning `0.4` move to `find_package(mlx_perf 0.5)`.
 
 ### Added
 - **Wired memory beside MLX's own (#45).** On Apple silicon the GPU's memory
