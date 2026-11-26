@@ -1,5 +1,6 @@
 # Publishes a GitHub release when a version tag (vMAJOR.MINOR.PATCH) is
-# pushed, with a source archive and its SHA-256 attached. Consumers pin the
+# pushed: the body is release-notes/<tag>.md, and a source archive and its
+# SHA-256 are attached. Consumers pin the
 # attached archive: an uploaded asset is byte-stable, while GitHub's
 # automatic source archives are not guaranteed to be. See VERSIONING.md.
 #
@@ -36,6 +37,14 @@ jobs:
           test "v${project_version}" = "${GITHUB_REF_NAME}" || {
             echo "tag ${GITHUB_REF_NAME} does not match project version ${project_version}"; exit 1; }
 
+      # The release body is release-notes/<tag>.md, written with the
+      # release-notes skill (.claude/skills/release-notes) and reviewed in
+      # the release pull request. No notes, no release.
+      - name: Check the release notes exist
+        run: |
+          test -s "release-notes/${GITHUB_REF_NAME}.md" || {
+            echo "release-notes/${GITHUB_REF_NAME}.md is missing or empty"; exit 1; }
+
       - name: Create the source archive and its digest
         run: |
           archive_name="mlx-performance-profiler-${GITHUB_REF_NAME#v}.tar.gz"
@@ -48,7 +57,4 @@ jobs:
           files: |
             mlx-performance-profiler-*.tar.gz
             mlx-performance-profiler-*.tar.gz.sha256
-          body: |
-            Release notes and the MLX releases this version was tested
-            against: see CHANGELOG.md at this tag. Pin the attached archive
-            by the SHA-256 in the .sha256 file.
+          body_path: release-notes/${{ github.ref_name }}.md

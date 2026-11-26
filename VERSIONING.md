@@ -74,7 +74,7 @@ and an archive from different releases.
   `MLX_VERSION_NUMERIC`; dropping it follows the table above.
 - **Untested MLX releases.** Configure warns and continues, so a locally
   patched MLX or a release newer than our tested set can still be tried.
-  The README lists the four MLX behaviours the library relies on; a patched
+  The README lists the five MLX behaviours the library relies on; a patched
   MLX that keeps them works.
 - **Prebuilt archives.** An installed `libmlx_perf.a` was compiled against
   one MLX's C++ headers, so its package records that release and refuses a
@@ -89,8 +89,10 @@ and an archive from different releases.
 - Tags are `vMAJOR.MINOR.PATCH` on `main`, and the tag must equal the
   `project(... VERSION ...)` in `CMakeLists.txt` (the release workflow
   checks this).
-- Each release has notes in `CHANGELOG.md` listing its tested MLX
-  releases, and a source archive attached to the GitHub release with its
+- Each release has release notes in `release-notes/vX.Y.Z.md`, written with
+  the in-repo `release-notes` skill and published by the release workflow
+  as the release body (it refuses a tag without them), and an entry in
+  `CHANGELOG.md` listing its tested MLX releases, and a source archive attached to the GitHub release with its
   SHA-256, which consumers pin. An attached asset is byte-stable; GitHub's
   automatic source archives are not guaranteed to be.
 
