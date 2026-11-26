@@ -3,7 +3,13 @@
 Versions follow [`VERSIONING.md`](VERSIONING.md). Each release lists the
 MLX releases it was built and tested against.
 
-## Unreleased
+## 0.3.0 (2026-11-26)
+
+Tested MLX releases: 0.32.4, 0.32.5 (Metal, macOS).
+
+A minor release under `VERSIONING.md`: the C API and the measurement file
+are unchanged, and reports no longer need Graphviz or write an `.svg`.
+Consumers pinning `0.2` move to `find_package(mlx_perf 0.3)`.
 
 ### Added
 - **Interactive execution graph (#30).** The report's DAG is now an
@@ -15,6 +21,10 @@ MLX releases it was built and tested against.
   drill into each. Built on Cytoscape.js and dagre (MIT), vendored in
   `third_party/` and compiled into the library, so reports stay one offline
   HTML file. The view reads the measurement document (schema version 1).
+- **Release pages open with a picture the profiler drew.** The in-repo
+  `release-notes` skill captures it from the release's own build
+  (`capture_report_visual.py`); the README opens with a gallery of real
+  reports.
 
 ### Removed
 - **Graphviz.** Reports no longer run `dot` or write an `.svg`; the `.dot`

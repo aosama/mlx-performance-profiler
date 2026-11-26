@@ -2,9 +2,9 @@
 
 **X-ray vision for Apple MLX. See what the GPU actually did, and prove which version is faster.**
 
-![One Qwen3.5 decode step, profiled: 24 decoder layers in one view, coloured by cost. The LM head glows gold: the most expensive stage, costing as much as several decoder layers.](docs/images/graph-stages.png)
+![One Qwen3.5 decode step, profiled: 24 decoder layers in one view, coloured by cost. The LM head glows gold: the most expensive stage, at about 5× a median layer.](docs/images/graph-stages.png)
 
-*One decode step of Qwen3.5-0.8B (4-bit), profiled. Each tile is a decoder layer timed on the GPU, and the brighter the tile, the more it cost. The LM head at the end (gold) is the most expensive stage, costing as much as several decoder layers (about 5× a layer on a quiet machine; this capture ran beside other work, which stretched it to about 8×). Click any layer in the report to open its operations (up to 59 of them).*
+*One decode step of Qwen3.5-0.8B (4-bit), profiled. Each tile is a decoder layer timed on the GPU, and the brighter the tile, the more it cost. The LM head at the end (gold, 517.5 µs) is the most expensive stage, costing about 5× a median decoder layer (97.1 µs). Click any layer in the report to open its operations (up to 59 of them).*
 
 MLX is lazy: you describe a graph, and MLX decides what runs, on which stream, and when. This profiler shows you what it actually did, the way Apache Spark's Web UI shows a query. Every operation, every stream, and every microsecond is split into **computing** and **waiting**. The waiting is broken down further: on the host, behind earlier work on the same GPU stream, or on another stream's data.
 
@@ -88,7 +88,7 @@ cmake --install build --prefix /path/to/install
 
 ```cmake
 # In the consumer: cmake -DMLX_PREFIX=... -DCMAKE_PREFIX_PATH=/path/to/install
-find_package(mlx_perf 0.2 REQUIRED)
+find_package(mlx_perf 0.3 REQUIRED)
 target_link_libraries(my_test PRIVATE mlx_perf::mlx_perf)
 ```
 
@@ -103,7 +103,7 @@ report itself not found instead of stopping your configure.
 include(FetchContent)
 FetchContent_Declare(mlx_perf
   GIT_REPOSITORY https://github.com/aosama/mlx-performance-profiler.git
-  GIT_TAG v0.2.0)
+  GIT_TAG v0.3.0)
 FetchContent_MakeAvailable(mlx_perf)   # with -DMLX_PREFIX=... on your command line
 target_link_libraries(my_test PRIVATE mlx_perf::mlx_perf)
 ```
