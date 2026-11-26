@@ -245,20 +245,26 @@ void should_compare_two_mlx_c_jobs_and_write_the_verdict_page() {
         "c_api_compare_cos.html", "c_api_compare_sin.json", "c_api_compare_cos.json"}) {
     EXPECT_TRUE(std::ifstream(written_file).good());
   }
-  EXPECT_TRUE(summary.job_wall.round_count == 7);
-  EXPECT_TRUE(summary.gpu_execution.round_count == 5);
-  EXPECT_TRUE(summary.host_submission.round_count == 5);
-  EXPECT_TRUE(summary.job_wall.verdict >= MLX_PERF_VERDICT_CANDIDATE_FASTER &&
-              summary.job_wall.verdict <= MLX_PERF_VERDICT_CANDIDATE_SLOWER);
-  EXPECT_TRUE(summary.job_wall.baseline_min_us <= summary.job_wall.baseline_lower_quartile_us);
-  EXPECT_TRUE(summary.job_wall.baseline_lower_quartile_us <= summary.job_wall.baseline_median_us);
-  EXPECT_TRUE(summary.gpu_execution.candidate_upper_quartile_us <=
-              summary.gpu_execution.candidate_max_us);
+  for (const mlx_perf_metric_comparison* metric_comparison :
+       {&summary.job_wall, &summary.gpu_span, &summary.host_submission}) {
+    EXPECT_TRUE(metric_comparison->round_count == 12);
+    EXPECT_TRUE(metric_comparison->difference_interval_coverage > 0.95);
+    // The verdict is exactly what its own interval says.
+    const int verdict_from_interval =
+        metric_comparison->difference_interval_high_us < 0.0  ? MLX_PERF_VERDICT_CANDIDATE_FASTER
+        : metric_comparison->difference_interval_low_us > 0.0 ? MLX_PERF_VERDICT_CANDIDATE_SLOWER
+                                                              : MLX_PERF_VERDICT_WITHIN_SPREAD;
+    EXPECT_TRUE(metric_comparison->verdict == verdict_from_interval);
+    EXPECT_TRUE(metric_comparison->sign_test_p_value > 0.0 &&
+                metric_comparison->sign_test_p_value <= 1.0);
+  }
+  EXPECT_TRUE(summary.job_wall.baseline_min_us <= summary.job_wall.baseline_median_us);
   EXPECT_TRUE(summary.max_absolute_output_difference > 0.0);  // sin and cos differ
   EXPECT_TRUE(summary.baseline.stream_count == 2);
-  // stream discovery 1 + warm-up 1 + job wall 7 + timeline 5 + serial 1.
-  EXPECT_TRUE(fixture.sin_payload.streams.build_count == 15);
-  EXPECT_TRUE(fixture.cos_payload.streams.build_count == 15);
+  // Stream discovery 1, warm-up 1, 12 uninstrumented and 12 GPU-span rounds,
+  // one timeline and one serial pass.
+  EXPECT_TRUE(fixture.sin_payload.streams.build_count == 28);
+  EXPECT_TRUE(fixture.cos_payload.streams.build_count == 28);
   const mlx_perf::JsonValue record = mlx_perf::parse_json_file("c_api_compare.json");
   EXPECT_TRUE(record.at("candidate").at("variant_name").as_string() == "cos");
 }
@@ -349,7 +355,7 @@ void should_refuse_to_compare_jobs_with_different_outputs_writing_nothing() {
 
 void should_refuse_variants_whose_names_would_collide_or_escape() {
   CompareFixture fixture;
-  mlx_perf_variant same_name_variant{"sin", build_unary_variant_graph, &fixture.cos_payload};
+  mlx_perf_variant same_name_variant{"SIN", build_unary_variant_graph, &fixture.cos_payload};
   EXPECT_TRUE(mlx_perf_compare_to_report(&fixture.sin_variant, &same_name_variant, "t", ".",
                                          "x", nullptr) != 0);
   EXPECT_TRUE(std::string(mlx_perf_last_error()).find("both variants are named") !=
@@ -360,6 +366,32 @@ void should_refuse_variants_whose_names_would_collide_or_escape() {
   EXPECT_TRUE(mlx_perf_compare_to_report(nullptr, &fixture.cos_variant, "t", ".", "x",
                                          nullptr) != 0);
   EXPECT_TRUE(std::string(mlx_perf_last_error()).find("null variant") != std::string::npos);
+  mlx_perf_variant empty_name_variant{"", build_unary_variant_graph, &fixture.cos_payload};
+  EXPECT_TRUE(mlx_perf_compare_to_report(&fixture.sin_variant, &empty_name_variant, "t", ".",
+                                         "x", nullptr) != 0);
+  mlx_perf_variant null_name_variant{nullptr, build_unary_variant_graph, &fixture.cos_payload};
+  EXPECT_TRUE(mlx_perf_compare_to_report(&fixture.sin_variant, &null_name_variant, "t", ".",
+                                         "x", nullptr) != 0);
+}
+
+void should_refuse_a_comparison_with_a_null_callback_or_title() {
+  CompareFixture fixture;
+  mlx_perf_variant no_callback_variant{"cos", nullptr, &fixture.cos_payload};
+  EXPECT_TRUE(mlx_perf_compare_to_report(&fixture.sin_variant, &no_callback_variant, "t", ".",
+                                         "x", nullptr) != 0);
+  EXPECT_TRUE(mlx_perf_compare_to_report(&fixture.sin_variant, &fixture.cos_variant, nullptr,
+                                         ".", "x", nullptr) != 0);
+  EXPECT_TRUE(std::string(mlx_perf_last_error()).find("null argument") != std::string::npos);
+  // Nothing was measured: neither callback was ever called.
+  EXPECT_TRUE(fixture.sin_payload.streams.build_count == 0);
+}
+
+void should_report_an_unwritable_comparison_directory() {
+  CompareFixture fixture;
+  EXPECT_TRUE(mlx_perf_compare_to_report(&fixture.sin_variant, &fixture.cos_variant, "t",
+                                         "no/such/directory", "x", nullptr) != 0);
+  EXPECT_TRUE(std::string(mlx_perf_last_error()).find("cannot write the comparison") !=
+              std::string::npos);
 }
 
 void should_reject_a_null_mlx_c_vector() {
@@ -394,6 +426,8 @@ int main() {
       TEST_CASE(should_report_an_unwritable_measurements_directory),
       TEST_CASE(should_refuse_to_compare_jobs_with_different_outputs_writing_nothing),
       TEST_CASE(should_refuse_variants_whose_names_would_collide_or_escape),
+      TEST_CASE(should_refuse_a_comparison_with_a_null_callback_or_title),
+      TEST_CASE(should_report_an_unwritable_comparison_directory),
       TEST_CASE(should_reject_a_null_mlx_c_vector),
   });
 }

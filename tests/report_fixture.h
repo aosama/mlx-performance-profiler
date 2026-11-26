@@ -117,17 +117,23 @@ void populate_two_stage_run(MeasuredRun& synthetic_run) {
   gpu_timeline.stages[1].cross_stream_producer_stage_positions = {0};
 }
 
-// A paired measurement of two copies of the synthetic run: the candidate
-// wins every GPU-execution round by about 10 (a clear result) while its
-// job-wall round differences straddle zero (not a result). Must not be
-// copied after.
+// A paired measurement of two copies of the synthetic run, 12 rounds per
+// metric: the candidate wins every GPU-span and host-submission round (a
+// clear result) while its job-wall round differences go both ways, 6 of 12
+// (not a result). Must not be copied after.
 inline void populate_pair(mlx_perf::PairedMeasurement& paired_measurement) {
   populate_two_stream_run(paired_measurement.baseline);
   populate_two_stream_run(paired_measurement.candidate);
   paired_measurement.baseline.variant_name = "stock";
   paired_measurement.candidate.variant_name = "custom";
-  paired_measurement.baseline_rounds = {{100, 110, 120}, {50, 52, 51}, {200, 210, 220}, {9, 9, 9}};
-  paired_measurement.candidate_rounds = {{105, 100, 125}, {40, 41, 42}, {190, 200, 210}, {7, 8, 9}};
+  paired_measurement.baseline_rounds = {
+      {100, 104, 102, 101, 103, 99, 105, 100, 102, 101, 104, 103},
+      {9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9},
+      {50, 52, 51, 50, 52, 51, 50, 52, 51, 50, 52, 51}};
+  paired_measurement.candidate_rounds = {
+      {105, 94, 107, 98, 107, 93, 107, 99, 105, 99, 105, 99},
+      {7, 7, 8, 7, 7, 8, 7, 7, 8, 7, 7, 8},
+      {40, 42, 41, 40, 42, 41, 40, 42, 41, 40, 42, 41}};
   paired_measurement.output_agreement = {1, 0.25};
 }
 

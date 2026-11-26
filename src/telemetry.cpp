@@ -85,6 +85,10 @@ RunTelemetry run_attributed_pass(
   std::printf(
       "attributed pass: timing %d nodes individually\n", run_telemetry.node_count);
   const Clock::time_point pass_started_at = Clock::now();
+  // Peaks are counted above what was already allocated when the pass began
+  // (other graphs a caller keeps alive, e.g. the other variant of a pair),
+  // so two variants' figures compare like for like.
+  const size_t active_bytes_at_pass_start = mlx::core::get_active_memory();
 
   for (const std::size_t node_index : captured_graph.topological) {
     const GraphNode& captured_node = captured_graph.nodes[node_index];
@@ -94,8 +98,11 @@ RunTelemetry run_attributed_pass(
     run_telemetry.attributed_nodes.push_back(node_telemetry);
     run_telemetry.attributed_total_microseconds +=
         node_telemetry.duration_microseconds;
+    const size_t node_peak_bytes = mlx::core::get_peak_memory();
     run_telemetry.run_peak_memory_bytes = std::max(
-        run_telemetry.run_peak_memory_bytes, mlx::core::get_peak_memory());
+        run_telemetry.run_peak_memory_bytes,
+        node_peak_bytes > active_bytes_at_pass_start ? node_peak_bytes - active_bytes_at_pass_start
+                                                     : size_t{0});
 
     print_node_progress(
         static_cast<int>(run_telemetry.attributed_nodes.size()),
@@ -118,7 +125,8 @@ bool are_all_available(const std::vector<mlx::core::array>& output_nodes) {
   return true;
 }
 
-double run_pipeline_pass(std::vector<mlx::core::array> output_nodes) {
+PipelinePassTiming run_pipeline_pass(std::vector<mlx::core::array> output_nodes) {
+  PipelinePassTiming pipeline_timing;
   const Clock::time_point started_at = Clock::now();
   // One async_eval keeps the job uninstrumented (MLX batches the whole graph,
   // streams overlap), and completion is then observed by spinning on
@@ -127,16 +135,17 @@ double run_pipeline_pass(std::vector<mlx::core::array> output_nodes) {
   // ~1 ms swings on a ~1 ms job), which would make the instrumented pass look
   // faster than the uninstrumented one.
   mlx::core::async_eval(output_nodes);
+  pipeline_timing.host_submission_microseconds = elapsed_microseconds(started_at);
   while (!are_all_available(output_nodes)) {
     std::this_thread::yield();
   }
-  const double job_wall_microseconds = elapsed_microseconds(started_at);
+  pipeline_timing.job_wall_microseconds = elapsed_microseconds(started_at);
   // Outputs whose eval was a no-op (already evaluated) are still waited on,
   // so a caller can rely on every output being materialized on return.
   for (mlx::core::array& output_node : output_nodes) {
     output_node.wait();
   }
-  return job_wall_microseconds;
+  return pipeline_timing;
 }
 
 const NodeTelemetry* find_attributed_node(

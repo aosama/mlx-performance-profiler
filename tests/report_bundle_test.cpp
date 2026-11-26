@@ -52,8 +52,8 @@ void should_write_a_pair_of_empty_variants_without_failing() {
   PairedMeasurement paired_measurement;
   paired_measurement.baseline.variant_name = "first";
   paired_measurement.candidate.variant_name = "second";
-  paired_measurement.baseline_rounds = {{1}, {0}, {1}, {0}};
-  paired_measurement.candidate_rounds = {{1}, {0}, {1}, {0}};
+  paired_measurement.baseline_rounds = {{1}, {0}, {1}};
+  paired_measurement.candidate_rounds = {{1}, {0}, {1}};
   const ReportBundleRequest bundle_request{"Empty", ".", "bundle_test_empty"};
   EXPECT_TRUE(mlx_perf::write_report_bundle(bundle_request, paired_measurement));
   EXPECT_TRUE(
@@ -61,6 +61,16 @@ void should_write_a_pair_of_empty_variants_without_failing() {
 }
 
 // --- negative ---
+
+void should_refuse_variant_names_that_differ_only_in_case() {
+  PairedMeasurement paired_measurement;
+  report_fixture::populate_pair(paired_measurement);
+  paired_measurement.baseline.variant_name = "Stock";
+  paired_measurement.candidate.variant_name = "stock";
+  const ReportBundleRequest bundle_request{"Collide", ".", "bundle_test_collide"};
+  EXPECT_TRUE(!mlx_perf::write_report_bundle(bundle_request, paired_measurement));
+  EXPECT_TRUE(!file_exists("bundle_test_collide.html"));
+}
 
 void should_report_failure_when_the_directory_is_missing() {
   PairedMeasurement paired_measurement;
@@ -75,6 +85,7 @@ int main() {
   return test_harness::run_all({
       TEST_CASE(should_write_three_reports_two_measurement_files_and_the_comparison_record),
       TEST_CASE(should_write_a_pair_of_empty_variants_without_failing),
+      TEST_CASE(should_refuse_variant_names_that_differ_only_in_case),
       TEST_CASE(should_report_failure_when_the_directory_is_missing),
   });
 }

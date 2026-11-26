@@ -110,7 +110,7 @@ std::string render_variant_column(const ComparedVariant& compared_variant) {
   column_html << "<div class=\"variant\"><h3>" << escape_html_text(variant.variant_name)
               << " <small>(" << variant.gpu_timeline.nodes.size()
               << " nodes) — <a href=\""
-              << escape_html_text(compared_variant.full_report_file)
+              << escape_html_text(encode_url_path_segment(compared_variant.full_report_file))
               << "\">full report</a></small></h3><div class=\"dag\">";
   if (compared_variant.plan_svg.empty()) {
     column_html << "<p class=\"note\">Graphviz unavailable: open the full report"

@@ -17,7 +17,7 @@ void sample_job_wall(const GraphFactory& graph_factory, JobTotals& job_totals) {
   std::vector<double> job_wall_samples;
   ProgressReporter progress("job wall samples", JOB_WALL_SAMPLE_COUNT);
   for (int sample_index = 0; sample_index < JOB_WALL_SAMPLE_COUNT; ++sample_index) {
-    job_wall_samples.push_back(sample_job_wall_once(graph_factory));
+    job_wall_samples.push_back(sample_job_wall_once(graph_factory).job_wall_microseconds);
     progress.update(sample_index + 1);
   }
   progress.finish(JOB_WALL_SAMPLE_COUNT);
@@ -54,8 +54,18 @@ std::vector<mlx::core::array> run_warm_up(const GraphFactory& graph_factory) {
   return warm_up_outputs;
 }
 
-double sample_job_wall_once(const GraphFactory& graph_factory) {
+PipelinePassTiming sample_job_wall_once(const GraphFactory& graph_factory) {
   return run_pipeline_pass(graph_factory.build_fresh_graph());
+}
+
+double measure_gpu_span_once(
+    const GraphFactory& graph_factory,
+    const std::unordered_map<int, mlx::core::Stream>& stream_index_to_stream) {
+  const CapturedGraph whole_job_graph = capture_graph(graph_factory.build_fresh_graph());
+  // No stage cuts: the whole job is one stage, one task per stream.
+  const GpuTimeline whole_job_timeline =
+      capture_stage_timeline(whole_job_graph, stream_index_to_stream, {}, "whole job");
+  return whole_job_timeline.measured_gpu_compute_microseconds;
 }
 
 void record_job_wall_samples(const std::vector<double>& job_wall_samples,

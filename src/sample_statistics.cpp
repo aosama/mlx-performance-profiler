@@ -1,6 +1,7 @@
 #include "sample_statistics.h"
 
 #include <algorithm>
+#include <cmath>
 #include <stdexcept>
 #include <string>
 
@@ -17,6 +18,59 @@ double interpolate_percentile(const std::vector<double>& sorted_samples, double 
   const double upper_weight = position - static_cast<double>(lower_index);
   return sorted_samples[lower_index] * (1.0 - upper_weight) +
          sorted_samples[upper_index] * upper_weight;
+}
+
+// P(X ≤ success_limit) for X ~ Binomial(trial_count, 1/2): the sign test's
+// null distribution. Exact enough in doubles for the round counts used here.
+double binomial_half_cumulative(int trial_count, int success_limit) {
+  double cumulative_probability = 0.0;
+  double combinations = 1.0;  // C(trial_count, successes), built up incrementally
+  for (int successes = 0; successes <= success_limit && successes <= trial_count; ++successes) {
+    if (successes > 0) {
+      combinations = combinations * (trial_count - successes + 1) / successes;
+    }
+    cumulative_probability += combinations;
+  }
+  return cumulative_probability / std::pow(2.0, trial_count);
+}
+
+struct OrderStatisticInterval {
+  double low = 0.0;
+  double high = 0.0;
+  double coverage = 0.0;
+};
+
+// [x(k), x(n−k+1)] covers the median with probability 1 − 2·P(X ≤ k−1).
+// Takes the largest k (narrowest interval) that still reaches the minimum
+// coverage, or the full range when none does.
+OrderStatisticInterval interval_for_median(const std::vector<double>& sorted_differences) {
+  const int round_count = static_cast<int>(sorted_differences.size());
+  OrderStatisticInterval median_interval{sorted_differences.front(), sorted_differences.back(),
+                                         1.0 - 2.0 * binomial_half_cumulative(round_count, 0)};
+  for (int order_index = 2; order_index <= (round_count + 1) / 2; ++order_index) {
+    const double coverage = 1.0 - 2.0 * binomial_half_cumulative(round_count, order_index - 1);
+    if (coverage < MINIMUM_INTERVAL_COVERAGE) {
+      break;
+    }
+    median_interval = {sorted_differences[order_index - 1],
+                       sorted_differences[round_count - order_index], coverage};
+  }
+  return median_interval;
+}
+
+double sign_test_p_value(const std::vector<double>& round_differences) {
+  int negative_count = 0;
+  int positive_count = 0;
+  for (const double round_difference : round_differences) {
+    negative_count += round_difference < 0.0 ? 1 : 0;
+    positive_count += round_difference > 0.0 ? 1 : 0;
+  }
+  const int non_zero_count = negative_count + positive_count;
+  if (non_zero_count == 0) {
+    return 1.0;
+  }
+  return std::min(1.0, 2.0 * binomial_half_cumulative(
+                               non_zero_count, std::min(negative_count, positive_count)));
 }
 
 } // namespace
@@ -68,10 +122,18 @@ PairedComparison compare_paired_samples(const std::vector<double>& baseline_samp
   paired_comparison.relative_difference = paired_comparison.baseline.median == 0.0
       ? 0.0
       : paired_comparison.median_difference / paired_comparison.baseline.median;
-  if (paired_comparison.round_difference.upper_quartile < 0.0) {
-    paired_comparison.verdict = ComparisonVerdict::candidate_faster;
-  } else if (paired_comparison.round_difference.lower_quartile > 0.0) {
-    paired_comparison.verdict = ComparisonVerdict::candidate_slower;
+  std::sort(round_differences.begin(), round_differences.end());
+  const OrderStatisticInterval median_interval = interval_for_median(round_differences);
+  paired_comparison.difference_interval_low = median_interval.low;
+  paired_comparison.difference_interval_high = median_interval.high;
+  paired_comparison.difference_interval_coverage = median_interval.coverage;
+  paired_comparison.sign_test_p_value = sign_test_p_value(round_differences);
+  if (median_interval.coverage >= MINIMUM_INTERVAL_COVERAGE) {
+    if (median_interval.high < 0.0) {
+      paired_comparison.verdict = ComparisonVerdict::candidate_faster;
+    } else if (median_interval.low > 0.0) {
+      paired_comparison.verdict = ComparisonVerdict::candidate_slower;
+    }
   }
   return paired_comparison;
 }

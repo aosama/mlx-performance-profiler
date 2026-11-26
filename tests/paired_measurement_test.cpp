@@ -63,25 +63,33 @@ int count_builds(const std::vector<std::string>& build_log, const std::string& j
 
 // --- positive ---
 
+// The build log reads the schedule back: warm-ups A B; 12 uninstrumented
+// rounds and 12 GPU-span rounds, each A B then B A alternately; then one
+// timeline and one serial pass each, A B.
 void should_alternate_the_variants_and_flip_the_order_every_round() {
   PairFixture fixture;
   const LoggingJobFactory exp_job("exp", fixture.job_stream, false, fixture.build_log);
   const LoggingJobFactory sin_job("sin", fixture.job_stream, true, fixture.build_log);
   measure_pair({"exp", exp_job}, {"sin", sin_job}, fixture.stream_index_to_stream);
-  // warm-ups A B; job wall A B, B A, … (7 rounds); timeline A B, B A, … (5); serial A B.
   const std::vector<std::string>& build_log = fixture.build_log;
-  EXPECT_TRUE(build_log.size() ==
-              static_cast<std::size_t>(2 + 2 * JOB_WALL_SAMPLE_COUNT +
-                                       2 * PAIRED_TIMELINE_ROUND_COUNT + 2));
-  if (build_log.size() >= 6) {
-    EXPECT_TRUE(build_log[0] == "exp" && build_log[1] == "sin");
-    EXPECT_TRUE(build_log[2] == "exp" && build_log[3] == "sin");  // job-wall round 0
-    EXPECT_TRUE(build_log[4] == "sin" && build_log[5] == "exp");  // job-wall round 1
+  constexpr std::size_t ROUND_BUILDS = 2 * PAIRED_ROUND_COUNT;
+  EXPECT_TRUE(build_log.size() == 2 + ROUND_BUILDS + ROUND_BUILDS + 2 + 2);
+  if (build_log.size() != 2 + 2 * ROUND_BUILDS + 4) {
+    return;
   }
+  for (const std::size_t round_start : {std::size_t{2}, 2 + ROUND_BUILDS}) {
+    for (int round_index = 0; round_index < PAIRED_ROUND_COUNT; ++round_index) {
+      const std::string& first_runner = build_log[round_start + 2 * round_index];
+      EXPECT_TRUE(first_runner == (round_index % 2 == 0 ? "exp" : "sin"));
+    }
+  }
+  const std::size_t tail_start = 2 + 2 * ROUND_BUILDS;
+  EXPECT_TRUE(build_log[tail_start] == "exp" && build_log[tail_start + 1] == "sin");
+  EXPECT_TRUE(build_log[tail_start + 2] == "exp" && build_log[tail_start + 3] == "sin");
   EXPECT_TRUE(count_builds(build_log, "exp") == count_builds(build_log, "sin"));
 }
 
-void should_keep_per_round_numbers_and_the_median_timeline() {
+void should_keep_every_rounds_numbers_and_one_illustrative_timeline() {
   PairFixture fixture;
   const LoggingJobFactory exp_job("exp", fixture.job_stream, false, fixture.build_log);
   const LoggingJobFactory sin_job("sin", fixture.job_stream, true, fixture.build_log);
@@ -89,33 +97,35 @@ void should_keep_per_round_numbers_and_the_median_timeline() {
       measure_pair({"exp", exp_job}, {"sin", sin_job}, fixture.stream_index_to_stream);
   for (const VariantRounds* variant_rounds :
        {&paired_measurement.baseline_rounds, &paired_measurement.candidate_rounds}) {
-    EXPECT_TRUE(variant_rounds->job_wall_microseconds.size() == JOB_WALL_SAMPLE_COUNT);
-    EXPECT_TRUE(variant_rounds->gpu_execution_microseconds.size() ==
-                PAIRED_TIMELINE_ROUND_COUNT);
-    EXPECT_TRUE(variant_rounds->host_submission_microseconds.size() ==
-                PAIRED_TIMELINE_ROUND_COUNT);
+    EXPECT_TRUE(variant_rounds->job_wall_microseconds.size() == PAIRED_ROUND_COUNT);
+    EXPECT_TRUE(variant_rounds->host_submission_microseconds.size() == PAIRED_ROUND_COUNT);
+    EXPECT_TRUE(variant_rounds->gpu_span_microseconds.size() == PAIRED_ROUND_COUNT);
+    for (std::size_t round_index = 0; round_index < PAIRED_ROUND_COUNT; ++round_index) {
+      EXPECT_TRUE(variant_rounds->host_submission_microseconds[round_index] <=
+                  variant_rounds->job_wall_microseconds[round_index]);
+      EXPECT_TRUE(variant_rounds->gpu_span_microseconds[round_index] > 0);
+    }
   }
-  // The kept timeline is the round with the median GPU execution.
-  const double kept_gpu_execution =
-      paired_measurement.candidate.gpu_timeline.measured_gpu_compute_microseconds;
-  EXPECT_TRUE(kept_gpu_execution ==
-              summarize_samples(paired_measurement.candidate_rounds.gpu_execution_microseconds)
-                  .median);
   EXPECT_TRUE(paired_measurement.baseline.variant_name == "exp");
+  EXPECT_TRUE(paired_measurement.candidate.gpu_timeline.granularity ==
+              TimelineGranularity::per_node);
+  EXPECT_TRUE(!paired_measurement.candidate.gpu_timeline.nodes.empty());
   EXPECT_TRUE(paired_measurement.candidate.serial_telemetry.attributed_nodes.size() ==
               paired_measurement.candidate.timeline_graph.topological.size());
   EXPECT_TRUE(paired_measurement.output_agreement.output_count == 1);
 }
 
-void should_compare_the_pair_on_job_wall_gpu_execution_and_host_submission() {
+void should_compare_the_pair_on_job_wall_gpu_span_and_host_submission() {
   PairFixture fixture;
   const LoggingJobFactory exp_job("exp", fixture.job_stream, false, fixture.build_log);
   const LoggingJobFactory sin_job("sin", fixture.job_stream, true, fixture.build_log);
   const PairComparisons pair_comparisons = compare_pair(
       measure_pair({"exp", exp_job}, {"sin", sin_job}, fixture.stream_index_to_stream));
-  EXPECT_TRUE(pair_comparisons.job_wall.round_count == JOB_WALL_SAMPLE_COUNT);
-  EXPECT_TRUE(pair_comparisons.gpu_execution.round_count == PAIRED_TIMELINE_ROUND_COUNT);
+  EXPECT_TRUE(pair_comparisons.job_wall.round_count == PAIRED_ROUND_COUNT);
+  EXPECT_TRUE(pair_comparisons.gpu_span.round_count == PAIRED_ROUND_COUNT);
   EXPECT_TRUE(pair_comparisons.host_submission.baseline.median > 0);
+  EXPECT_TRUE(pair_comparisons.job_wall.difference_interval_coverage >=
+              MINIMUM_INTERVAL_COVERAGE);
 }
 
 // Two stage cuts' worth of job (matmul, then the unary op) on one stream.
@@ -153,7 +163,7 @@ void should_time_both_variants_per_stage_when_asked() {
     EXPECT_TRUE(variant->gpu_timeline.granularity == TimelineGranularity::per_stage);
     EXPECT_TRUE(variant->gpu_timeline.stages.size() == 2);
   }
-  EXPECT_TRUE(compare_pair(paired_measurement).gpu_execution.baseline.median > 0);
+  EXPECT_TRUE(compare_pair(paired_measurement).gpu_span.baseline.median > 0);
 }
 
 void should_find_a_job_compared_with_itself_in_full_agreement() {
@@ -186,8 +196,8 @@ void should_refuse_jobs_with_different_output_shapes_before_timing_anything() {
 int main() {
   return test_harness::run_all({
       TEST_CASE(should_alternate_the_variants_and_flip_the_order_every_round),
-      TEST_CASE(should_keep_per_round_numbers_and_the_median_timeline),
-      TEST_CASE(should_compare_the_pair_on_job_wall_gpu_execution_and_host_submission),
+      TEST_CASE(should_keep_every_rounds_numbers_and_one_illustrative_timeline),
+      TEST_CASE(should_compare_the_pair_on_job_wall_gpu_span_and_host_submission),
       TEST_CASE(should_time_both_variants_per_stage_when_asked),
       TEST_CASE(should_find_a_job_compared_with_itself_in_full_agreement),
       TEST_CASE(should_refuse_jobs_with_different_output_shapes_before_timing_anything),

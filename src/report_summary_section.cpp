@@ -65,7 +65,9 @@ std::string render_cards(const ReportInputs& report_inputs) {
       "Sum of stages", "Serial pass: each node synchronized alone, no overlap.");
   append_card(cards_html,
       format_bytes(report_inputs.serial_telemetry.run_peak_memory_bytes),
-      "Peak memory", "Highest per-node peak during the serial pass.");
+      "Peak memory",
+      "Highest per-node peak during the serial pass, above what was already allocated when it"
+      " began.");
   append_card(cards_html,
       std::to_string(gpu_timeline.nodes.size()) + " · " +
           std::to_string(gpu_timeline.streams.size()),

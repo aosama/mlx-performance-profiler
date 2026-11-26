@@ -5,6 +5,7 @@
 #include "report_comparison_page.h"
 #include "report_verdict_section.h"
 #include "report_writer.h"
+#include "text_format.h"
 
 #include <cstdio>
 
@@ -104,6 +105,13 @@ bool write_comparison_record(const ReportBundleRequest& bundle_request,
 // not stop the others from being written.
 bool write_report_bundle(const ReportBundleRequest& bundle_request,
                          const PairedMeasurement& paired_measurement) {
+  if (are_equal_ignoring_case(paired_measurement.baseline.variant_name,
+                              paired_measurement.candidate.variant_name)) {
+    std::fprintf(stderr, "error: both variants are named \"%s\" (ignoring case); their files"
+                         " would overwrite each other\n",
+                 paired_measurement.candidate.variant_name.c_str());
+    return false;
+  }
   const ReportPaths baseline_paths = write_variant(bundle_request, paired_measurement.baseline);
   const ReportPaths candidate_paths =
       write_variant(bundle_request, paired_measurement.candidate);

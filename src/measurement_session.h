@@ -83,8 +83,19 @@ struct TimelineCapture {
 // (and, for a compiled variant, tracing and fused-kernel JIT).
 std::vector<mlx::core::array> run_warm_up(const GraphFactory& graph_factory);
 
-// One uninstrumented job-wall sample on a fresh graph, in microseconds.
-double sample_job_wall_once(const GraphFactory& graph_factory);
+// One uninstrumented run on a fresh graph: job wall and host submission.
+PipelinePassTiming sample_job_wall_once(const GraphFactory& graph_factory);
+
+// The job's GPU span on a fresh graph, timed as ONE unit per stream (one
+// async_eval, as a plain eval would submit it): first command buffer's GPU
+// start to the last one's end, summed over streams. A span, not busy time:
+// it includes any GPU gap while the host is still encoding a long job, and
+// its end is bounded by an empty marker buffer (an upper bound by about the
+// marker's scheduling gap, the same for any two variants). CPU-only jobs
+// have no GPU window and return 0.
+double measure_gpu_span_once(
+    const GraphFactory& graph_factory,
+    const std::unordered_map<int, mlx::core::Stream>& stream_index_to_stream);
 
 // Median, range and the samples themselves (in measured order) into
 // `job_totals`. Throws std::invalid_argument on no samples.

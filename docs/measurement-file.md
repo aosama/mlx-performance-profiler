@@ -57,7 +57,7 @@ call, so they never disagree. Any JSON reader works: Python's `json`, Rust's
 | `measured_gpu_execution_us` | the sum of GPU-measured compute |
 | `cross_stream_stall_us` | the sum of `wait_on_other_stream_us`; can exceed the wall when streams stall at the same time |
 | `executed_node_count`, `gpu_measured_node_count`, `timed_unit_count`, `stream_count` | counts |
-| `peak_memory_bytes` | the highest peak during the serial pass |
+| `peak_memory_bytes` | the highest per-node peak during the serial pass, above the memory already allocated when that pass began |
 | `command_buffers.timeline_pass_observed` | MLX command buffers seen to complete during the timeline pass |
 | `command_buffers.is_lower_bound` | `true` when MLX may have committed buffers the probe never held (stage-timed runs) |
 | `graph_build[]` | per pass (`stream_discovery`, `warm_up`, `job_wall`, `timeline`, `serial`): `calls_us`, the time each call spent inside the job's own graph-building code, and `total_us` |

@@ -33,6 +33,8 @@ struct RunTelemetry {
   // uninstrumented job wall lives in JobTotals, not here: it is a different
   // pass and has exactly one home.
   double attributed_total_microseconds = 0.0;
+  // Highest per-node peak during the pass, above the memory already active
+  // when the pass began.
   size_t run_peak_memory_bytes = 0;
   int node_count = 0;
 };
@@ -43,13 +45,22 @@ RunTelemetry run_attributed_pass(
     const CapturedGraph& captured_graph,
     const std::unordered_map<int, mlx::core::Stream>& stream_index_to_stream);
 
+// One uninstrumented run of the job, in microseconds.
+struct PipelinePassTiming {
+  // First issue to every output observed complete: the honest job duration.
+  double job_wall_microseconds = 0.0;
+  // Host time inside the single async_eval: walking, encoding and committing
+  // the whole job, with no per-node instrumentation in the way.
+  double host_submission_microseconds = 0.0;
+};
+
 // The honest end-to-end number: evaluates `output_nodes` once with a single
-// async_eval (MLX batches the whole graph, streams overlap), observes
-// completion by polling like the timeline pass, and returns the wall-clock
-// in microseconds. Run it on a freshly built graph, and only after
-// a warm-up run: the first eval in a process pays one-time Metal library load
-// and kernel compilation, which is not the job's cost.
-double run_pipeline_pass(std::vector<mlx::core::array> output_nodes);
+// async_eval (MLX batches the whole graph, streams overlap) and observes
+// completion by polling like the timeline pass. Run it on a freshly built
+// graph, and only after a warm-up run: the first eval in a process pays
+// one-time Metal library load and kernel compilation, which is not the
+// job's cost.
+PipelinePassTiming run_pipeline_pass(std::vector<mlx::core::array> output_nodes);
 
 // The serial pass ran an identical graph, so topological position joins it
 // to the timeline pass; the op name guards the join, and a mismatch returns

@@ -67,6 +67,17 @@ void should_open_with_the_callers_verdict_and_subtitle() {
 
 // Without a verdict (no rounds to judge) the page has no verdict section, and
 // the default subtitle names both implementations.
+void should_percent_encode_report_links_with_special_characters() {
+  VariantMeasurement stock_measurement;
+  VariantMeasurement custom_measurement;
+  populate_variant(stock_measurement, "stock", 200);
+  populate_variant(custom_measurement, "v2#fast", 100);
+  const std::string document = build_comparison_document(
+      "Job", {stock_measurement, "", "base_stock.html"},
+      {custom_measurement, "", "base_v2#fast.html"});
+  EXPECT_TRUE(document.find("href=\"base_v2%23fast.html\"") != std::string::npos);
+}
+
 void should_omit_the_verdict_and_the_fused_column_when_there_is_nothing_to_show() {
   VariantMeasurement stock_measurement;
   VariantMeasurement custom_measurement;
@@ -145,6 +156,7 @@ int main() {
       TEST_CASE(should_split_a_compiled_name_into_its_fused_primitives),
       TEST_CASE(should_render_metrics_plans_shared_timelines_and_primitive_mix),
       TEST_CASE(should_open_with_the_callers_verdict_and_subtitle),
+      TEST_CASE(should_percent_encode_report_links_with_special_characters),
       TEST_CASE(should_omit_the_verdict_and_the_fused_column_when_there_is_nothing_to_show),
       TEST_CASE(should_flag_mixed_granularities_and_tally_stage_timed_primitives_from_serial),
       TEST_CASE(should_leave_a_bare_compiled_name_and_single_primitive_sensible),
