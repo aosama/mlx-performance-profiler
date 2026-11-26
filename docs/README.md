@@ -15,6 +15,7 @@ Every C program and CMake project on these pages is a file in [`examples/`](exam
 | Know whether your kernel or rewrite is really faster | [Comparing two implementations](comparing-implementations.md) |
 | Compare two loops or pipelines that evaluate many graphs (a token loop, a sampler) | [Comparing procedures](comparing-procedures.md) |
 | Know how much room the GPU has under macOS's wire limit, and when "wired outside MLX" misleads | [Wired memory](wired-memory.md) |
+| Know whether a change uses more memory than it saves time, or whether a slow round crossed the wire limit | [Comparing procedures: memory](comparing-procedures.md#memory-judged-on-the-same-rounds) |
 | Measure inside a test, benchmark or CI job, silently | [Measuring from code](measuring-from-code.md) |
 | Read per-node numbers as data (Python, jq, any language) | [The measurement file](measurement-file.md) |
 | Understand the report: the six slices, the timeline, the graph | [Reading the report](reading-the-report.md) |
@@ -33,4 +34,4 @@ Every C program and CMake project on these pages is a file in [`examples/`](exam
 
 ## Versions
 
-These pages describe the current release, 0.5.0 (MLX 0.32.4 and 0.32.5). 0.4.0 and 0.5.0 added to the C API (procedure comparisons, `mlx_perf_install_launch_recorder`, and the wired memory reading and probe) without changing any existing function or struct; the measurement file is still `schema_version` 1, with new fields only. What changed in each release is in the [changelog](../CHANGELOG.md) and the [release notes](https://github.com/aosama/mlx-performance-profiler/releases).
+These pages describe the current release, 0.6.0 (MLX 0.32.4 and 0.32.5). 0.4.0 to 0.6.0 added to the C API (procedure comparisons, `mlx_perf_install_launch_recorder`, the wired memory reading and probe, and memory comparisons) without changing any existing function; 0.6.0 grew `mlx_perf_procedure_comparison_summary`, so code that allocates it must be rebuilt. The JSON files are still `schema_version` 1, with new fields only. What changed in each release is in the [changelog](../CHANGELOG.md) and the [release notes](https://github.com/aosama/mlx-performance-profiler/releases).

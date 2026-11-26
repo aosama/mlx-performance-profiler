@@ -151,7 +151,7 @@ Each procedure runs 14 times: one warm-up, one observed run that records its ker
 
 ## How the verdict is decided
 
-Exactly as for [two graph jobs](comparing-implementations.md#how-the-verdict-is-decided): 12 rounds, each running both procedures, flipping which goes first; the verdict is judged on the per-round differences, and a difference counts only when the whole 96% interval lies on one side of zero (at least 10 of 12 rounds). Three metrics are judged, each an `mlx_perf_metric_comparison` in `mlx_perf_procedure_comparison_summary`:
+Exactly as for [two graph jobs](comparing-implementations.md#how-the-verdict-is-decided): 12 rounds, each running both procedures, flipping which goes first; the verdict is judged on the per-round differences, and a difference counts only when the whole 96% interval lies on one side of zero (at least 10 of 12 rounds). Three time metrics are judged, each an `mlx_perf_metric_comparison` in `mlx_perf_procedure_comparison_summary` (three memory metrics are judged on the same rounds too: see [Memory, judged on the same rounds](#memory-judged-on-the-same-rounds)):
 
 | Metric | What it measures |
 |---|---|

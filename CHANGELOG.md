@@ -3,7 +3,15 @@
 Versions follow [`VERSIONING.md`](VERSIONING.md). Each release lists the
 MLX releases it was built and tested against.
 
-## Unreleased
+## 0.6.0 (2026-11-26)
+
+Tested MLX releases: 0.32.4, 0.32.5 (Metal, macOS).
+
+A minor release under `VERSIONING.md`: the C API gains a struct and
+`mlx_perf_procedure_comparison_summary` gains fields (it grows from 496 to
+704 bytes, so code that allocates it must be rebuilt); the JSON files gain
+fields under the same `schema_version` 1. Consumers pinning `0.5` move to
+`find_package(mlx_perf 0.6)`.
 
 ### Added
 - **Memory judged like time (#46).** Procedure and graph comparisons judge
