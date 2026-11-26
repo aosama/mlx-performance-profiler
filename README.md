@@ -153,7 +153,7 @@ The profiler itself knows nothing about Qwen.
 ## From Rust (mlx-bridge)
 
 The same measurement and report are available through a C API
-(`src/mlx_perf_c_api.h`). [`rust/mlx_perf_rust_example`](rust/mlx_perf_rust_example)
+(`include/mlx_perf/mlx_perf_c_api.h`). [`rust/mlx_perf_rust_example`](rust/mlx_perf_rust_example)
 builds a three-stream job with `mlx-bridge` and profiles it:
 
 ```sh

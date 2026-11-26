@@ -2,7 +2,7 @@
 // MLX-C the way a non-C++ caller (e.g. Rust via mlx-bridge) would.
 
 #include "mlx_c_interop.h"
-#include "mlx_perf_c_api.h"
+#include "mlx_perf/mlx_perf_c_api.h"
 #include "test_harness.h"
 
 #include "mlx/c/array.h"
@@ -57,11 +57,11 @@ void should_measure_an_mlx_c_job_and_write_its_report() {
   ApiFixture fixture;
   mlx_perf_job_summary summary{};
   const int status = mlx_perf_profile_to_report(
-      build_two_stream_graph, &fixture.payload, "c-api", "C API job", "build",
+      build_two_stream_graph, &fixture.payload, "c-api", "C API job", ".",
       "c_api_test_report", &summary);
   EXPECT_TRUE(status == 0);
   EXPECT_TRUE(std::string(mlx_perf_last_error()).empty());
-  EXPECT_TRUE(std::ifstream("build/c_api_test_report.html").good());
+  EXPECT_TRUE(std::ifstream("c_api_test_report.html").good());
   EXPECT_TRUE(summary.executed_node_count > 0);
   EXPECT_TRUE(summary.gpu_measured_node_count == summary.executed_node_count);
   EXPECT_TRUE(summary.stream_count == 2);
@@ -85,17 +85,32 @@ void should_read_mlx_c_handles_as_the_same_core_arrays() {
   EXPECT_TRUE(core_arrays[0].item<float>() == 3.0f);
 }
 
+void should_report_the_library_version_the_header_names() {
+  EXPECT_TRUE(std::string(mlx_perf_version()) == MLX_PERF_VERSION_STRING);
+  EXPECT_TRUE(std::string(mlx_perf_version()) ==
+              std::to_string(MLX_PERF_VERSION_MAJOR) + "." +
+                  std::to_string(MLX_PERF_VERSION_MINOR) + "." +
+                  std::to_string(MLX_PERF_VERSION_PATCH));
+}
+
 // --- edge / boundary ---
+void should_leave_the_last_error_untouched_when_asked_for_the_version() {
+  EXPECT_TRUE(mlx_perf_profile_to_report(build_failure, nullptr, "v", "t", ".", "x",
+                                         nullptr) != 0);
+  EXPECT_TRUE(mlx_perf_version() != nullptr);
+  EXPECT_TRUE(std::string(mlx_perf_last_error()).find("returned 7") != std::string::npos);
+}
+
 
 void should_accept_a_null_summary() {
   ApiFixture fixture;
   EXPECT_TRUE(mlx_perf_profile_to_report(build_two_stream_graph, &fixture.payload,
-                                         "c-api", "t", "build", "c_api_null_summary",
+                                         "c-api", "t", ".", "c_api_null_summary",
                                          nullptr) == 0);
 }
 
 void should_reject_a_callback_that_produces_no_outputs() {
-  EXPECT_TRUE(mlx_perf_profile_to_report(build_nothing, nullptr, "v", "t", "build",
+  EXPECT_TRUE(mlx_perf_profile_to_report(build_nothing, nullptr, "v", "t", ".",
                                          "x", nullptr) != 0);
   EXPECT_TRUE(std::string(mlx_perf_last_error()).find("no outputs") != std::string::npos);
 }
@@ -103,22 +118,22 @@ void should_reject_a_callback_that_produces_no_outputs() {
 // --- negative ---
 
 void should_surface_a_failing_callback_as_an_error_not_a_crash() {
-  EXPECT_TRUE(mlx_perf_profile_to_report(build_failure, nullptr, "v", "t", "build",
+  EXPECT_TRUE(mlx_perf_profile_to_report(build_failure, nullptr, "v", "t", ".",
                                          "x", nullptr) != 0);
   EXPECT_TRUE(std::string(mlx_perf_last_error()).find("returned 7") != std::string::npos);
 }
 
 void should_reject_null_arguments() {
-  EXPECT_TRUE(mlx_perf_profile_to_report(nullptr, nullptr, "v", "t", "build", "x",
+  EXPECT_TRUE(mlx_perf_profile_to_report(nullptr, nullptr, "v", "t", ".", "x",
                                          nullptr) != 0);
-  EXPECT_TRUE(mlx_perf_profile_to_report(build_nothing, nullptr, nullptr, "t", "build",
+  EXPECT_TRUE(mlx_perf_profile_to_report(build_nothing, nullptr, nullptr, "t", ".",
                                          "x", nullptr) != 0);
 }
 
 void should_report_an_unwritable_output_directory() {
   ApiFixture fixture;
   EXPECT_TRUE(mlx_perf_profile_to_report(build_two_stream_graph, &fixture.payload, "v",
-                                         "t", "build/no/such/directory", "x",
+                                         "t", "no/such/directory", "x",
                                          nullptr) != 0);
   EXPECT_TRUE(std::string(mlx_perf_last_error()).find("cannot write") !=
               std::string::npos);
@@ -140,6 +155,8 @@ int main() {
   return test_harness::run_all({
       TEST_CASE(should_measure_an_mlx_c_job_and_write_its_report),
       TEST_CASE(should_read_mlx_c_handles_as_the_same_core_arrays),
+      TEST_CASE(should_report_the_library_version_the_header_names),
+      TEST_CASE(should_leave_the_last_error_untouched_when_asked_for_the_version),
       TEST_CASE(should_accept_a_null_summary),
       TEST_CASE(should_reject_a_callback_that_produces_no_outputs),
       TEST_CASE(should_surface_a_failing_callback_as_an_error_not_a_crash),

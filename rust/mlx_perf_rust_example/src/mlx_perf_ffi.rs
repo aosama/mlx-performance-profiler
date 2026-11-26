@@ -1,4 +1,4 @@
-//! The C API of mlx-performance-profiler (src/mlx_perf_c_api.h), declared for Rust.
+//! The C API of mlx-performance-profiler (include/mlx_perf/mlx_perf_c_api.h), declared for Rust.
 
 use std::ffi::{CStr, CString, c_char, c_int, c_void};
 

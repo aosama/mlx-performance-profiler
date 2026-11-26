@@ -19,6 +19,7 @@
 #pragma once
 
 #include "mlx/c/vector.h"
+#include "mlx_perf/mlx_perf_version.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -51,6 +52,11 @@ int mlx_perf_profile_to_report(mlx_perf_build_graph_fn build_graph,
                                const char* output_directory,
                                const char* report_file_base,
                                mlx_perf_job_summary* summary);
+
+/* The library version, "MAJOR.MINOR.PATCH" (MLX_PERF_VERSION_STRING of the
+ * build that produced the library). Compare it with the header's macro to
+ * catch a header and an archive from different releases. Static storage. */
+const char* mlx_perf_version(void);
 
 /* The last failure's message on this thread ("" if none). Valid until the
  * next mlx_perf_* call on the same thread. */

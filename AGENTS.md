@@ -34,7 +34,7 @@ sidecar: it observes, it never changes MLX semantics.
   step, generation, token text). The generic profiler in `src/` never
   depends on it; `qwen35_profile.cpp` only orchestrates.
 - `rust/mlx_perf_rust_example` is the Rust (mlx-bridge) entry point through
-  the C API in `src/mlx_perf_c_api.h`; see its `.cargo/config.toml` for how
+  the C API in `include/mlx_perf/mlx_perf_c_api.h`; see its `.cargo/config.toml` for how
   to run it. Build the CMake library first.
 - MLX source of truth for API questions: `../mlx-explore/mlx`, checked out at
   0.32.4. The prebuilt prefix may be 0.32.5 (the library builds and tests on
