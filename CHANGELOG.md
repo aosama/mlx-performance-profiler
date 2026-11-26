@@ -5,6 +5,13 @@ MLX releases it was built and tested against.
 
 ## Unreleased
 
+### Verified
+- **MLX 0.32.4.** Until now every test run used MLX 0.32.5, though 0.32.4 was
+  declared. The 0.3.0 library code now passes the full suite (57 tests,
+  including the Metal GPU, packaging and documentation-example tests) on
+  MLX 0.32.4, and a Qwen3.5 decode step profiles the same 1,144 nodes in 25
+  stages there.
+
 ### Added
 - **Documentation for people and coding agents.** `docs/` holds task
   guides (getting started, profiling a job, comparing two implementations,

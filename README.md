@@ -131,7 +131,7 @@ program against it. It also builds and links the program through the
 
 | | |
 |---|---|
-| Tested MLX releases | 0.32.4, 0.32.5 |
+| Tested MLX releases | 0.32.4, 0.32.5: the full test suite and a Qwen3.5 run pass on each |
 | Backend | Metal (macOS); Linux and CUDA are tracked in #15 |
 
 Configure prints the MLX release it found and warns, without failing, when
