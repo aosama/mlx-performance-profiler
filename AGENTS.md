@@ -62,8 +62,11 @@ sidecar: it observes, it never changes MLX semantics.
   `docs/schema/`. A new JSON field needs its schema entry; a new error
   message needs its troubleshooting entry.
 - Releases: write `release-notes/vX.Y.Z.md` with the `release-notes` skill
-  (`.claude/skills/release-notes/`) in the release pull request; the
-  release workflow publishes it and refuses a tag without it.
+  (the release skill, `.claude/skills/release-notes/`) in the release pull
+  request; the release workflow publishes it and refuses a tag without it.
+  The same skill's step 6 makes sure `docs/` and `context7.json` cover every
+  new capability and changed behaviour, and that Context7 serves them after
+  the merge.
 - Versions follow `VERSIONING.md`; the MLX releases a version is tested
   against live in `MLX_PERF_TESTED_MLX_VERSIONS`
   (`cmake/mlx_perf_mlx_prefix.cmake`).
