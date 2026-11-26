@@ -102,7 +102,7 @@ void should_state_which_quantized_projection_is_faster_by_how_much_and_against_t
   EXPECT_TRUE(contains(verdict_sentence, "interval for the per-round difference"));
   EXPECT_TRUE(contains(verdict_sentence, "% faster than") ||
               contains(verdict_sentence, "% slower than") ||
-              contains(verdict_sentence, "inside the spread"));
+              contains(verdict_sentence, "is not a result"));
 
   // The dequantizing path writes and re-reads a full float matrix that the
   // fused kernel never materializes: over the whole job's GPU span (one

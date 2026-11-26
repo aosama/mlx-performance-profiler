@@ -239,7 +239,10 @@ std::string render_shared_scale_timelines(
                candidate.gpu_timeline.timeline_wall_microseconds);
   std::ostringstream timelines_html;
   timelines_html << render_slice_legend() << "<p class=\"note\">Both timeline"
-                 << " passes on one time axis, so lengths compare directly.</p>";
+                 << " passes on one time axis, so lengths compare directly. These are"
+                 << " per-node timelines, instrumented (each node submitted on its own), drawn"
+                 << " to show what ran where; a verdict, when shown, comes from separate"
+                 << " uninstrumented rounds.</p>";
   for (const VariantMeasurement* variant : {&baseline, &candidate}) {
     timelines_html << "<h3>" << escape_html_text(variant->variant_name)
                    << "</h3><div class=\"gantt-wrap\">"

@@ -26,6 +26,11 @@ get_target_property(mlx_perf_include_directories mlx_perf INTERFACE_INCLUDE_DIRE
 if(mlx_perf_include_directories MATCHES "/src[;>]|/src$")
   message(FATAL_ERROR "internal headers leak to consumers: ${mlx_perf_include_directories}")
 endif()
+# ... optimised even though this consumer chose no build type ...
+get_target_property(mlx_perf_compile_options mlx_perf COMPILE_OPTIONS)
+if(NOT mlx_perf_compile_options MATCHES "-O2")
+  message(FATAL_ERROR "mlx_perf is not optimised without a build type: ${mlx_perf_compile_options}")
+endif()
 message(STATUS "source consumer: library only")
 
 # ... and links a program against it through the in-tree MLX recipe.
