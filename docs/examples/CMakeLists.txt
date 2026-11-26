@@ -15,7 +15,7 @@ project(mlx_perf_examples LANGUAGES C CXX)
 include(FetchContent)
 FetchContent_Declare(mlx_perf
   GIT_REPOSITORY https://github.com/aosama/mlx-performance-profiler.git
-  GIT_TAG v0.3.0)
+  GIT_TAG v0.4.0)
 FetchContent_MakeAvailable(mlx_perf)
 
 foreach(example_name profile_one_job compare_two_implementations compare_two_procedures measure_quietly)

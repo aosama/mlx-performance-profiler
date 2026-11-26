@@ -3,7 +3,14 @@
 Versions follow [`VERSIONING.md`](VERSIONING.md). Each release lists the
 MLX releases it was built and tested against.
 
-## Unreleased
+## 0.4.0 (2026-11-26)
+
+Tested MLX releases: 0.32.4, 0.32.5 (Metal, macOS).
+
+A minor release under `VERSIONING.md`: the C API gains functions and
+structs without changing existing ones, and the measurement file gains
+fields under the same `schema_version` 1. Consumers pinning `0.3` move to
+`find_package(mlx_perf 0.4)`.
 
 ### Verified
 - **MLX 0.32.4.** Until now every test run used MLX 0.32.5, though 0.32.4 was
