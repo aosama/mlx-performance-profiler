@@ -2,9 +2,9 @@
 
 **X-ray vision for Apple MLX. See what the GPU actually did, and prove which version is faster.**
 
-![One Qwen3.5 decode step, profiled: 24 decoder layers in one view, coloured by cost. The LM head glows gold, costing as much as about eight layers.](docs/images/graph-stages.png)
+![One Qwen3.5 decode step, profiled: 24 decoder layers in one view, coloured by cost. The LM head glows gold: the most expensive stage, costing as much as several decoder layers.](docs/images/graph-stages.png)
 
-*One decode step of Qwen3.5-0.8B (4-bit), profiled. Each tile is a decoder layer timed on the GPU, and the brighter the tile, the more it cost. The LM head at the end (gold) costs as much as about eight layers. Click any layer in the report to open its operations (up to 59 of them).*
+*One decode step of Qwen3.5-0.8B (4-bit), profiled. Each tile is a decoder layer timed on the GPU, and the brighter the tile, the more it cost. The LM head at the end (gold) is the most expensive stage, costing as much as several decoder layers (about 5× a layer on a quiet machine; this capture ran beside other work, which stretched it to about 8×). Click any layer in the report to open its operations (up to 59 of them).*
 
 MLX is lazy: you describe a graph, and MLX decides what runs, on which stream, and when. This profiler shows you what it actually did, the way Apache Spark's Web UI shows a query. Every operation, every stream, and every microsecond is split into **computing** and **waiting**. The waiting is broken down further: on the host, behind earlier work on the same GPU stream, or on another stream's data.
 
