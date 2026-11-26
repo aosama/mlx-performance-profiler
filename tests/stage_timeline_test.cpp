@@ -17,8 +17,8 @@
 namespace {
 
 using namespace mlx::core;
-using mlx_plan::GpuTimeline;
-using mlx_plan::StageTimeline;
+using mlx_perf::GpuTimeline;
+using mlx_perf::StageTimeline;
 
 constexpr double SLICE_SUM_TOLERANCE_MICROSECONDS = 1e-6;
 // Far more ops than MLX's per-buffer budget (20–50), so the stage MUST span
@@ -27,7 +27,7 @@ constexpr int MULTI_BUFFER_CHAIN_LENGTH = 300;
 
 struct StagedJob {
   std::vector<array> output_arrays;
-  std::vector<mlx_plan::StageBoundary> stage_boundaries;
+  std::vector<mlx_perf::StageBoundary> stage_boundaries;
   std::unordered_map<int, Stream> stream_index_to_stream;
 };
 
@@ -42,10 +42,10 @@ StagedJob build_two_layer_job() {
           {{gpu_stream.index, gpu_stream}}};
 }
 
-GpuTimeline capture_staged(const StagedJob& job, const mlx_plan::CapturedGraph& job_graph) {
-  return mlx_plan::capture_stage_timeline(
+GpuTimeline capture_staged(const StagedJob& job, const mlx_perf::CapturedGraph& job_graph) {
+  return mlx_perf::capture_stage_timeline(
       job_graph, job.stream_index_to_stream,
-      mlx_plan::resolve_stage_cuts(job_graph, job.stage_boundaries), "head");
+      mlx_perf::resolve_stage_cuts(job_graph, job.stage_boundaries), "head");
 }
 
 void expect_slices_sum_to_wall(const StageTimeline& stage_task) {
@@ -61,9 +61,9 @@ void expect_slices_sum_to_wall(const StageTimeline& stage_task) {
 
 void should_time_one_task_per_stage_with_slices_summing_to_wall() {
   const StagedJob job = build_two_layer_job();
-  const mlx_plan::CapturedGraph job_graph = mlx_plan::capture_graph(job.output_arrays);
+  const mlx_perf::CapturedGraph job_graph = mlx_perf::capture_graph(job.output_arrays);
   const GpuTimeline gpu_timeline = capture_staged(job, job_graph);
-  EXPECT_TRUE(gpu_timeline.granularity == mlx_plan::TimelineGranularity::per_stage);
+  EXPECT_TRUE(gpu_timeline.granularity == mlx_perf::TimelineGranularity::per_stage);
   EXPECT_TRUE(gpu_timeline.stages.size() == 3);
   if (gpu_timeline.stages.size() == 3) {
     EXPECT_TRUE(gpu_timeline.stages[0].stage_name == "layer 0");
@@ -86,7 +86,7 @@ void should_time_one_task_per_stage_with_slices_summing_to_wall() {
 // per-node timing (the pass never measured one).
 void should_partition_every_node_into_exactly_one_stage_task() {
   const StagedJob job = build_two_layer_job();
-  const mlx_plan::CapturedGraph job_graph = mlx_plan::capture_graph(job.output_arrays);
+  const mlx_perf::CapturedGraph job_graph = mlx_perf::capture_graph(job.output_arrays);
   const GpuTimeline gpu_timeline = capture_staged(job, job_graph);
   std::vector<int> position_to_membership_count(gpu_timeline.nodes.size(), 0);
   for (std::size_t task_position = 0; task_position < gpu_timeline.stages.size();
@@ -115,8 +115,8 @@ void should_cover_every_command_buffer_of_a_multi_buffer_stage() {
   for (int add_index = 0; add_index < MULTI_BUFFER_CHAIN_LENGTH; ++add_index) {
     chain = add(chain, array(1.0f), gpu_stream);
   }
-  const mlx_plan::CapturedGraph job_graph = mlx_plan::capture_graph({chain});
-  const GpuTimeline gpu_timeline = mlx_plan::capture_stage_timeline(
+  const mlx_perf::CapturedGraph job_graph = mlx_perf::capture_graph({chain});
+  const GpuTimeline gpu_timeline = mlx_perf::capture_stage_timeline(
       job_graph, {{gpu_stream.index, gpu_stream}}, {}, "whole job");
   EXPECT_TRUE(gpu_timeline.stages.size() == 1);
   if (gpu_timeline.stages.size() == 1) {
@@ -137,10 +137,10 @@ void should_link_cross_stream_stage_tasks_across_stages() {
   const array side_branch = exp(ones({64, 64}, float32, side_stream), side_stream);
   const array main_branch = exp(zeros({64, 64}, float32, main_stream), main_stream);
   const array joined = add(side_branch, main_branch, main_stream);
-  const mlx_plan::CapturedGraph job_graph = mlx_plan::capture_graph({joined});
-  const GpuTimeline gpu_timeline = mlx_plan::capture_stage_timeline(
+  const mlx_perf::CapturedGraph job_graph = mlx_perf::capture_graph({joined});
+  const GpuTimeline gpu_timeline = mlx_perf::capture_stage_timeline(
       job_graph, {{main_stream.index, main_stream}, {side_stream.index, side_stream}},
-      mlx_plan::resolve_stage_cuts(job_graph, {{"branches", {side_branch, main_branch}}}),
+      mlx_perf::resolve_stage_cuts(job_graph, {{"branches", {side_branch, main_branch}}}),
       "join");
   // Stage "branches" runs on two streams (two tasks); "join" on one.
   EXPECT_TRUE(gpu_timeline.stages.size() == 3);
@@ -162,10 +162,10 @@ void should_link_cross_stream_stage_tasks_across_stages() {
 
 void should_skip_boundaries_that_are_not_in_the_graph() {
   const StagedJob job = build_two_layer_job();
-  const mlx_plan::CapturedGraph job_graph = mlx_plan::capture_graph(job.output_arrays);
+  const mlx_perf::CapturedGraph job_graph = mlx_perf::capture_graph(job.output_arrays);
   array unrelated = ones({2});
-  const std::vector<mlx_plan::StageCut> stage_cuts =
-      mlx_plan::resolve_stage_cuts(job_graph, {{"unrelated", {unrelated}}});
+  const std::vector<mlx_perf::StageCut> stage_cuts =
+      mlx_perf::resolve_stage_cuts(job_graph, {{"unrelated", {unrelated}}});
   EXPECT_TRUE(stage_cuts.size() == 1);
   EXPECT_TRUE(stage_cuts.front().boundary_positions.empty());
   eval(job.output_arrays);
@@ -174,8 +174,8 @@ void should_skip_boundaries_that_are_not_in_the_graph() {
 void should_leave_cpu_stream_stage_unmeasured_but_complete() {
   const Stream cpu_stream = new_stream(Device::cpu);
   const array cpu_output = exp(ones({16}, float32, cpu_stream), cpu_stream);
-  const mlx_plan::CapturedGraph job_graph = mlx_plan::capture_graph({cpu_output});
-  const GpuTimeline gpu_timeline = mlx_plan::capture_stage_timeline(
+  const mlx_perf::CapturedGraph job_graph = mlx_perf::capture_graph({cpu_output});
+  const GpuTimeline gpu_timeline = mlx_perf::capture_stage_timeline(
       job_graph, {{cpu_stream.index, cpu_stream}}, {}, "whole job");
   EXPECT_TRUE(gpu_timeline.stages.size() == 1);
   if (!gpu_timeline.stages.empty()) {
@@ -189,9 +189,9 @@ void should_leave_cpu_stream_stage_unmeasured_but_complete() {
 void should_return_empty_timeline_for_already_materialized_graph() {
   array materialized_output = ones({4}, float32);
   materialized_output.eval();
-  const mlx_plan::CapturedGraph job_graph = mlx_plan::capture_graph({materialized_output});
+  const mlx_perf::CapturedGraph job_graph = mlx_perf::capture_graph({materialized_output});
   const GpuTimeline gpu_timeline =
-      mlx_plan::capture_stage_timeline(job_graph, {}, {}, "whole job");
+      mlx_perf::capture_stage_timeline(job_graph, {}, {}, "whole job");
   EXPECT_TRUE(gpu_timeline.stages.empty());
   EXPECT_TRUE(gpu_timeline.nodes.empty());
   EXPECT_TRUE(gpu_timeline.timeline_wall_microseconds == 0);
@@ -201,10 +201,10 @@ void should_return_empty_timeline_for_already_materialized_graph() {
 
 void should_throw_before_dispatch_when_a_stream_is_missing() {
   const StagedJob job = build_two_layer_job();
-  const mlx_plan::CapturedGraph job_graph = mlx_plan::capture_graph(job.output_arrays);
+  const mlx_perf::CapturedGraph job_graph = mlx_perf::capture_graph(job.output_arrays);
   bool has_thrown = false;
   try {
-    mlx_plan::capture_stage_timeline(job_graph, {}, {}, "whole job");
+    mlx_perf::capture_stage_timeline(job_graph, {}, {}, "whole job");
   } catch (const std::out_of_range&) {
     has_thrown = true;
   }

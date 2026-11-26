@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-namespace mlx_plan {
+namespace mlx_perf {
 
 // Per-run: peak, and nodes ranked by active memory added (serial pass).
 std::string render_memory_section(const VariantMeasurement& variant_measurement);
@@ -17,4 +17,4 @@ std::string render_memory_section(const VariantMeasurement& variant_measurement)
 // Live: active / cache / peak bytes over the sampled window, as inline SVG.
 std::string render_memory_timeline(const std::vector<MemorySample>& memory_samples);
 
-} // namespace mlx_plan
+} // namespace mlx_perf

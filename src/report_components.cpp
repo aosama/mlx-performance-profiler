@@ -5,7 +5,7 @@
 
 #include <sstream>
 
-namespace mlx_plan {
+namespace mlx_perf {
 
 std::string render_stacked_bar(const LatencyBreakdown& breakdown) {
   std::ostringstream bar_html;
@@ -85,4 +85,4 @@ std::string render_slice_cells(const LatencyBreakdown& breakdown) {
   return cells_html;
 }
 
-} // namespace mlx_plan
+} // namespace mlx_perf

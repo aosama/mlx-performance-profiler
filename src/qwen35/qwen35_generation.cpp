@@ -5,7 +5,7 @@
 
 #include <stdexcept>
 
-namespace mlx_plan::qwen35 {
+namespace mlx_perf::qwen35 {
 namespace {
 
 using namespace mlx::core;
@@ -48,4 +48,4 @@ std::vector<int> generate_greedy(const Qwen35Weights& weights, const Qwen35TextC
   return generated_token_ids;
 }
 
-} // namespace mlx_plan::qwen35
+} // namespace mlx_perf::qwen35

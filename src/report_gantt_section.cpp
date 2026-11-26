@@ -11,7 +11,7 @@
 #include <map>
 #include <sstream>
 
-namespace mlx_plan {
+namespace mlx_perf {
 namespace {
 
 constexpr double LABEL_GUTTER_PIXELS = 140.0;
@@ -298,4 +298,4 @@ std::string render_gantt_section(const ReportInputs& report_inputs) {
   return section_html.str();
 }
 
-} // namespace mlx_plan
+} // namespace mlx_perf

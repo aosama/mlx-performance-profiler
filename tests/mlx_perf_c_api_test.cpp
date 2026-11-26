@@ -2,7 +2,7 @@
 // MLX-C the way a non-C++ caller (e.g. Rust via mlx-c-rust) would.
 
 #include "mlx_c_interop.h"
-#include "mlx_plan_c_api.h"
+#include "mlx_perf_c_api.h"
 #include "test_harness.h"
 
 #include "mlx/c/array.h"
@@ -55,12 +55,12 @@ struct ApiFixture {
 
 void should_measure_an_mlx_c_job_and_write_its_report() {
   ApiFixture fixture;
-  mlx_plan_job_summary summary{};
-  const int status = mlx_plan_profile_to_report(
+  mlx_perf_job_summary summary{};
+  const int status = mlx_perf_profile_to_report(
       build_two_stream_graph, &fixture.payload, "c-api", "C API job", "build",
       "c_api_test_report", &summary);
   EXPECT_TRUE(status == 0);
-  EXPECT_TRUE(std::string(mlx_plan_last_error()).empty());
+  EXPECT_TRUE(std::string(mlx_perf_last_error()).empty());
   EXPECT_TRUE(std::ifstream("build/c_api_test_report.html").good());
   EXPECT_TRUE(summary.executed_node_count > 0);
   EXPECT_TRUE(summary.gpu_measured_node_count == summary.executed_node_count);
@@ -76,7 +76,7 @@ void should_read_mlx_c_handles_as_the_same_core_arrays() {
   mlx_vector_array handles = mlx_vector_array_new();
   mlx_array three = mlx_array_new_float(3.0f);
   mlx_vector_array_append_value(handles, three);
-  const auto core_arrays = mlx_plan::read_mlx_c_vector(handles);
+  const auto core_arrays = mlx_perf::read_mlx_c_vector(handles);
   EXPECT_TRUE(core_arrays.size() == 1);
   EXPECT_TRUE(core_arrays[0].item<float>() == 3.0f);
   mlx_array_free(three);
@@ -89,45 +89,45 @@ void should_read_mlx_c_handles_as_the_same_core_arrays() {
 
 void should_accept_a_null_summary() {
   ApiFixture fixture;
-  EXPECT_TRUE(mlx_plan_profile_to_report(build_two_stream_graph, &fixture.payload,
+  EXPECT_TRUE(mlx_perf_profile_to_report(build_two_stream_graph, &fixture.payload,
                                          "c-api", "t", "build", "c_api_null_summary",
                                          nullptr) == 0);
 }
 
 void should_reject_a_callback_that_produces_no_outputs() {
-  EXPECT_TRUE(mlx_plan_profile_to_report(build_nothing, nullptr, "v", "t", "build",
+  EXPECT_TRUE(mlx_perf_profile_to_report(build_nothing, nullptr, "v", "t", "build",
                                          "x", nullptr) != 0);
-  EXPECT_TRUE(std::string(mlx_plan_last_error()).find("no outputs") != std::string::npos);
+  EXPECT_TRUE(std::string(mlx_perf_last_error()).find("no outputs") != std::string::npos);
 }
 
 // --- negative ---
 
 void should_surface_a_failing_callback_as_an_error_not_a_crash() {
-  EXPECT_TRUE(mlx_plan_profile_to_report(build_failure, nullptr, "v", "t", "build",
+  EXPECT_TRUE(mlx_perf_profile_to_report(build_failure, nullptr, "v", "t", "build",
                                          "x", nullptr) != 0);
-  EXPECT_TRUE(std::string(mlx_plan_last_error()).find("returned 7") != std::string::npos);
+  EXPECT_TRUE(std::string(mlx_perf_last_error()).find("returned 7") != std::string::npos);
 }
 
 void should_reject_null_arguments() {
-  EXPECT_TRUE(mlx_plan_profile_to_report(nullptr, nullptr, "v", "t", "build", "x",
+  EXPECT_TRUE(mlx_perf_profile_to_report(nullptr, nullptr, "v", "t", "build", "x",
                                          nullptr) != 0);
-  EXPECT_TRUE(mlx_plan_profile_to_report(build_nothing, nullptr, nullptr, "t", "build",
+  EXPECT_TRUE(mlx_perf_profile_to_report(build_nothing, nullptr, nullptr, "t", "build",
                                          "x", nullptr) != 0);
 }
 
 void should_report_an_unwritable_output_directory() {
   ApiFixture fixture;
-  EXPECT_TRUE(mlx_plan_profile_to_report(build_two_stream_graph, &fixture.payload, "v",
+  EXPECT_TRUE(mlx_perf_profile_to_report(build_two_stream_graph, &fixture.payload, "v",
                                          "t", "build/no/such/directory", "x",
                                          nullptr) != 0);
-  EXPECT_TRUE(std::string(mlx_plan_last_error()).find("cannot write") !=
+  EXPECT_TRUE(std::string(mlx_perf_last_error()).find("cannot write") !=
               std::string::npos);
 }
 
 void should_reject_a_null_mlx_c_vector() {
   bool has_thrown = false;
   try {
-    mlx_plan::read_mlx_c_vector(mlx_vector_array{nullptr});
+    mlx_perf::read_mlx_c_vector(mlx_vector_array{nullptr});
   } catch (const std::runtime_error&) {
     has_thrown = true;
   }

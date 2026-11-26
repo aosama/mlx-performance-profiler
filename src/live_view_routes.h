@@ -16,7 +16,7 @@
 #include <atomic>
 #include <string>
 
-namespace mlx_plan {
+namespace mlx_perf {
 
 class LiveViewRoutes final : public HttpHandler {
  public:
@@ -35,4 +35,4 @@ class LiveViewRoutes final : public HttpHandler {
   std::atomic<bool> are_event_streams_closing_{false};
 };
 
-} // namespace mlx_plan
+} // namespace mlx_perf

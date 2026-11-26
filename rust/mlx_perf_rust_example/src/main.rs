@@ -1,15 +1,15 @@
-//! Profiles an MLX job built in Rust (mlx-c-rust) with mlx-visual-plan:
+//! Profiles an MLX job built in Rust (mlx-c-rust) with mlx-performance-profiler:
 //! the same four passes and the same Spark-style HTML report the C++ demo
 //! produces. Orchestration only.
 
-mod mlx_plan_ffi;
+mod mlx_perf_ffi;
 mod summary_format;
 mod two_stream_job;
 
 use std::ffi::c_void;
 use std::process::ExitCode;
 
-use mlx_plan_ffi::{ProfileRequest, profile_to_report};
+use mlx_perf_ffi::{ProfileRequest, profile_to_report};
 use two_stream_job::{TwoStreamJob, build_two_stream_graph};
 
 fn main() -> ExitCode {

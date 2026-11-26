@@ -2,8 +2,8 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "mlx-plan-live",
-      "runtimeExecutable": "./build/mlx_plan_server",
+      "name": "mlx-perf-live",
+      "runtimeExecutable": "./build/mlx_perf_server",
       "runtimeArgs": [
         "--port",
         "8765"
@@ -11,7 +11,7 @@
       "port": 8765
     },
     {
-      "name": "mlx-plan-reports",
+      "name": "mlx-perf-reports",
       "runtimeExecutable": "python3",
       "runtimeArgs": [
         "-m",

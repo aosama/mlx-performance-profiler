@@ -9,7 +9,7 @@
 #include <string>
 #include <utility>
 
-namespace mlx_plan {
+namespace mlx_perf {
 namespace {
 
 using mlx::core::array;
@@ -120,4 +120,4 @@ std::vector<array> CompiledDemoGraphFactory::build_fresh_graph() const {
   return compiled_computation_(demo_inputs_);
 }
 
-} // namespace mlx_plan
+} // namespace mlx_perf

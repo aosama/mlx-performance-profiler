@@ -11,7 +11,7 @@
 
 namespace {
 
-using namespace mlx_plan;
+using namespace mlx_perf;
 using mlx::core::array;
 using mlx::core::Stream;
 

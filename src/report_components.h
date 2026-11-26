@@ -8,7 +8,7 @@
 
 #include <string>
 
-namespace mlx_plan {
+namespace mlx_perf {
 
 // Spark's task-assignment duration bar: one segment per slice, in causal
 // order, widths proportional to the node's wall. Hover shows each slice.
@@ -24,4 +24,4 @@ std::string render_duration_cell(double microseconds);
 std::string render_slice_header_cells();
 std::string render_slice_cells(const LatencyBreakdown& breakdown);
 
-} // namespace mlx_plan
+} // namespace mlx_perf

@@ -1,6 +1,6 @@
 #pragma once
 
-// Server options: one concern only — parse mlx_plan_server's command line.
+// Server options: one concern only — parse mlx_perf_server's command line.
 // Configuration is flags, never environment variables, so every run states
 // its settings where they can be seen.
 
@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-namespace mlx_plan {
+namespace mlx_perf {
 
 struct ServerOptions {
   std::uint16_t port = 8765;
@@ -19,4 +19,4 @@ struct ServerOptions {
 ServerOptions parse_server_options(const std::vector<std::string>& arguments);
 std::string server_usage_text();
 
-} // namespace mlx_plan
+} // namespace mlx_perf

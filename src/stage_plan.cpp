@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include <string_view>
 
-namespace mlx_plan {
+namespace mlx_perf {
 namespace {
 
 constexpr int UNASSIGNED_STAGE = -1;
@@ -133,4 +133,4 @@ StagePlan plan_stages(
   return stage_plan;
 }
 
-} // namespace mlx_plan
+} // namespace mlx_perf

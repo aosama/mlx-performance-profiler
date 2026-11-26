@@ -1,5 +1,5 @@
 /*
- * mlx_plan C API: the measurement and Spark-style report of this repository,
+ * mlx_perf C API: the measurement and Spark-style report of this repository,
  * callable from any language that speaks MLX-C (e.g. Rust via mlx-c-rust).
  *
  * The caller describes its job as a callback that appends a FRESH, unevaluated
@@ -10,9 +10,9 @@
  * Ownership never crosses the boundary: the library creates and frees the
  * vector; the callback only appends (MLX-C copies array handles on append).
  * Errors never unwind across it either: every entry point returns 0 on
- * success, non-zero on failure, with mlx_plan_last_error() describing it.
+ * success, non-zero on failure, with mlx_perf_last_error() describing it.
  *
- * Link exactly one MLX into the final binary: libmlx_plan.a carries only
+ * Link exactly one MLX into the final binary: libmlx_perf.a carries only
  * this library's objects and resolves MLX/MLX-C symbols from the same
  * prebuilt prefix the caller links.
  */
@@ -26,11 +26,11 @@ extern "C" {
 
 /* Appends a fresh graph's output arrays to `fresh_outputs`; returns 0 on
  * success. `builder_payload` is passed through untouched. */
-typedef int (*mlx_plan_build_graph_fn)(mlx_vector_array fresh_outputs,
+typedef int (*mlx_perf_build_graph_fn)(mlx_vector_array fresh_outputs,
                                        void* builder_payload);
 
 /* Headline numbers, in microseconds unless named otherwise. */
-typedef struct mlx_plan_job_summary {
+typedef struct mlx_perf_job_summary {
   double job_wall_median_us;
   double job_wall_min_us;
   double job_wall_max_us;
@@ -41,20 +41,20 @@ typedef struct mlx_plan_job_summary {
   int executed_node_count;
   int gpu_measured_node_count;
   int stream_count;
-} mlx_plan_job_summary;
+} mlx_perf_job_summary;
 
 /* Measures the job and writes its HTML report. `summary` may be NULL. */
-int mlx_plan_profile_to_report(mlx_plan_build_graph_fn build_graph,
+int mlx_perf_profile_to_report(mlx_perf_build_graph_fn build_graph,
                                void* builder_payload,
                                const char* variant_name,
                                const char* report_title,
                                const char* output_directory,
                                const char* report_file_base,
-                               mlx_plan_job_summary* summary);
+                               mlx_perf_job_summary* summary);
 
 /* The last failure's message on this thread ("" if none). Valid until the
- * next mlx_plan_* call on the same thread. */
-const char* mlx_plan_last_error(void);
+ * next mlx_perf_* call on the same thread. */
+const char* mlx_perf_last_error(void);
 
 #ifdef __cplusplus
 }

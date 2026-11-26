@@ -19,7 +19,7 @@
 #include <optional>
 #include <vector>
 
-namespace mlx_plan::qwen35 {
+namespace mlx_perf::qwen35 {
 
 // Per-layer recurrent/cache state. Gated DeltaNet layers use the first two,
 // full-attention layers the last two.
@@ -76,4 +76,4 @@ DecodeStepResult unflatten_step_outputs(const std::vector<mlx::core::array>& ste
 DecodeState unflatten_state(const std::vector<mlx::core::array>& state_arrays,
                             std::size_t first_index, const Qwen35TextConfig& config);
 
-} // namespace mlx_plan::qwen35
+} // namespace mlx_perf::qwen35

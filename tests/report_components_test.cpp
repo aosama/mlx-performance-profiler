@@ -8,7 +8,7 @@
 
 namespace {
 
-using namespace mlx_plan;
+using namespace mlx_perf;
 
 std::size_t count_occurrences(const std::string& text, const std::string& needle) {
   std::size_t occurrence_count = 0;

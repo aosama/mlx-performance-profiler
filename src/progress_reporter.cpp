@@ -3,7 +3,7 @@
 #include <cstdio>
 #include <utility>
 
-namespace mlx_plan {
+namespace mlx_perf {
 
 double estimate_remaining_seconds(
     double elapsed_seconds, int completed_units, int total_units) {
@@ -56,4 +56,4 @@ void ProgressReporter::print_line(int completed_units) const {
   std::fflush(stdout);
 }
 
-} // namespace mlx_plan
+} // namespace mlx_perf

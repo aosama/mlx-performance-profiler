@@ -7,7 +7,7 @@
 
 #include <utility>
 
-namespace mlx_plan::qwen35 {
+namespace mlx_perf::qwen35 {
 
 using mlx::core::array;
 
@@ -72,4 +72,4 @@ StagedGraph CompiledDecodeGraphFactory::build_fresh_staged_graph() const {
   return {std::move(step_outputs), std::move(stage_boundaries), FINAL_STAGE_NAME};
 }
 
-} // namespace mlx_plan::qwen35
+} // namespace mlx_perf::qwen35

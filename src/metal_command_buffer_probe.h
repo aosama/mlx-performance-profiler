@@ -34,7 +34,7 @@
 #include <chrono>
 #include <vector>
 
-namespace mlx_plan {
+namespace mlx_perf {
 
 struct GpuExecutionWindow {
   bool is_measured = false;
@@ -74,4 +74,4 @@ class MetalCommandBufferProbe {
   double pass_anchor_host_seconds_ = 0.0;
 };
 
-} // namespace mlx_plan
+} // namespace mlx_perf

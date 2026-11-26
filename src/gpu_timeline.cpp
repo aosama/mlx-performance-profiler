@@ -11,7 +11,7 @@
 #include <chrono>
 #include <thread>
 
-namespace mlx_plan {
+namespace mlx_perf {
 namespace {
 
 using Clock = TimelineClock;
@@ -179,4 +179,4 @@ GpuTimeline capture_gpu_timeline(
   return gpu_timeline;
 }
 
-} // namespace mlx_plan
+} // namespace mlx_perf

@@ -13,7 +13,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace mlx_plan {
+namespace mlx_perf {
 
 struct TimedUnit {
   int stream_index = 0;
@@ -40,4 +40,4 @@ LatencyBreakdown aggregate_breakdown(const std::vector<TimedUnit>& timed_units);
 // "node" or "stage" — the noun the reports use for one timed unit.
 const char* timed_unit_noun(const GpuTimeline& gpu_timeline);
 
-} // namespace mlx_plan
+} // namespace mlx_perf

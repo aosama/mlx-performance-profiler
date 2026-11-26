@@ -3,7 +3,7 @@
 #include "report_assets.h"
 #include "text_format.h"
 
-namespace mlx_plan {
+namespace mlx_perf {
 namespace {
 
 std::string_view live_view_stylesheet() {
@@ -68,7 +68,7 @@ std::string build_live_view_page(const std::string& job_title) {
   page_html += report_stylesheet();
   page_html += live_view_stylesheet();
   page_html += "</style></head><body><header><h1>" + escape_html_text(job_title) +
-      "</h1><p>mlx-visual-plan live — what MLX actually did, and what it was"
+      "</h1><p>mlx-performance-profiler live — what MLX actually did, and what it was"
       " waiting for</p></header><nav class=\"tabs\" role=\"tablist\">"
       "<button data-tab=\"job\" aria-selected=\"true\">Job</button>"
       "<button data-tab=\"stages\">Stages</button>"
@@ -82,4 +82,4 @@ std::string build_live_view_page(const std::string& job_title) {
   return page_html;
 }
 
-} // namespace mlx_plan
+} // namespace mlx_perf

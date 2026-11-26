@@ -16,7 +16,7 @@ using report_fixture::SyntheticRun;
 void should_label_nodes_with_their_measured_compute_and_class() {
   SyntheticRun synthetic_run;
   report_fixture::populate_two_stream_run(synthetic_run);
-  const std::string plan_dot = mlx_plan::write_plan_dot(
+  const std::string plan_dot = mlx_perf::write_plan_dot(
       synthetic_run.timeline_graph, synthetic_run.gpu_timeline, "plan");
   EXPECT_TRUE(plan_dot.find("wait_on_dependency") != std::string::npos);
   EXPECT_TRUE(plan_dot.find("penwidth=2.5") != std::string::npos);
@@ -28,7 +28,7 @@ void should_label_nodes_with_their_measured_compute_and_class() {
 void should_cluster_nodes_by_stage_and_name_the_stage() {
   SyntheticRun synthetic_run;
   report_fixture::populate_two_stage_run(synthetic_run);
-  const std::string plan_dot = mlx_plan::write_plan_dot(
+  const std::string plan_dot = mlx_perf::write_plan_dot(
       synthetic_run.timeline_graph, synthetic_run.gpu_timeline, "plan");
   EXPECT_TRUE(plan_dot.find("subgraph \"cluster_stage_0\"") != std::string::npos);
   EXPECT_TRUE(plan_dot.find("subgraph \"cluster_stage_1\"") != std::string::npos);
@@ -41,9 +41,9 @@ void should_cluster_nodes_by_stage_and_name_the_stage() {
 // --- edge / boundary ---
 
 void should_write_a_valid_empty_digraph() {
-  const mlx_plan::CapturedGraph empty_graph;
-  const mlx_plan::GpuTimeline empty_timeline;
-  const std::string plan_dot = mlx_plan::write_plan_dot(empty_graph, empty_timeline, "empty");
+  const mlx_perf::CapturedGraph empty_graph;
+  const mlx_perf::GpuTimeline empty_timeline;
+  const std::string plan_dot = mlx_perf::write_plan_dot(empty_graph, empty_timeline, "empty");
   EXPECT_TRUE(plan_dot.rfind("digraph \"empty\" {", 0) == 0);
   EXPECT_TRUE(plan_dot.find("}\n") != std::string::npos);
 }
@@ -54,7 +54,7 @@ void should_escape_quotes_in_stage_names() {
   SyntheticRun synthetic_run;
   report_fixture::populate_two_stage_run(synthetic_run);
   synthetic_run.gpu_timeline.stages[0].stage_name = "layer \"0\"";
-  const std::string plan_dot = mlx_plan::write_plan_dot(
+  const std::string plan_dot = mlx_perf::write_plan_dot(
       synthetic_run.timeline_graph, synthetic_run.gpu_timeline, "plan");
   EXPECT_TRUE(plan_dot.find("label=\"layer \\\"0\\\"\"") != std::string::npos);
 }

@@ -12,7 +12,7 @@
 namespace tiny_qwen35_model {
 
 using namespace mlx::core;
-using namespace mlx_plan::qwen35;
+using namespace mlx_perf::qwen35;
 
 inline constexpr int TINY_VOCABULARY = 64;
 

@@ -13,7 +13,7 @@
 #include <string>
 #include <thread>
 
-namespace mlx_plan {
+namespace mlx_perf {
 
 struct HttpRequest {
   std::string method;  // "GET", "POST"
@@ -72,4 +72,4 @@ class HttpServer {
 // Parses "GET /path?query HTTP/1.1"; false when the line is malformed.
 bool parse_request_line(const std::string& request_line, HttpRequest& request);
 
-} // namespace mlx_plan
+} // namespace mlx_perf

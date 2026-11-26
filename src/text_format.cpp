@@ -2,7 +2,7 @@
 
 #include <cstdio>
 
-namespace mlx_plan {
+namespace mlx_perf {
 namespace {
 
 constexpr double MICROSECONDS_PER_MILLISECOND = 1000.0;
@@ -100,4 +100,4 @@ std::string escape_dot_text(const std::string& raw_text) {
   return escaped_text;
 }
 
-} // namespace mlx_plan
+} // namespace mlx_perf

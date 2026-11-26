@@ -9,7 +9,7 @@
 
 namespace {
 
-using namespace mlx_plan;
+using namespace mlx_perf;
 using std::chrono::milliseconds;
 
 // --- positive ---

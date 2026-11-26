@@ -2,7 +2,7 @@
 
 #include <utility>
 
-namespace mlx_plan {
+namespace mlx_perf {
 
 void LiveViewStore::publish_views(RenderedViews rendered_views) {
   {
@@ -82,4 +82,4 @@ bool LiveViewStore::wait_for_run_request(std::chrono::milliseconds timeout) {
   return was_requested;
 }
 
-} // namespace mlx_plan
+} // namespace mlx_perf

@@ -2,7 +2,7 @@
 
 #include <cstdlib>
 
-namespace mlx_plan {
+namespace mlx_perf {
 namespace {
 
 constexpr long MAX_PORT_NUMBER = 65535;
@@ -45,10 +45,10 @@ ServerOptions parse_server_options(const std::vector<std::string>& arguments) {
 }
 
 std::string server_usage_text() {
-  return "usage: mlx_plan_server [--port N]\n"
+  return "usage: mlx_perf_server [--port N]\n"
          "  Measures the demo job (eager and compiled) and serves a live,\n"
          "  Spark-UI-style view at http://127.0.0.1:N/ (default N = 8765).\n"
          "  Loopback only. Ctrl-C to stop.\n";
 }
 
-} // namespace mlx_plan
+} // namespace mlx_perf

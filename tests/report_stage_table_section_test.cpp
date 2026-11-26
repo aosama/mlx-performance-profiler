@@ -12,10 +12,10 @@ namespace {
 using report_fixture::SyntheticRun;
 
 std::string render_stage_table(SyntheticRun& synthetic_run) {
-  const mlx_plan::ReportInputs report_inputs{
+  const mlx_perf::ReportInputs report_inputs{
       "staged", synthetic_run.timeline_graph, synthetic_run.gpu_timeline,
       synthetic_run.serial_telemetry, synthetic_run.job_totals};
-  return mlx_plan::render_stage_table_section(report_inputs);
+  return mlx_perf::render_stage_table_section(report_inputs);
 }
 
 // --- positive ---
@@ -45,21 +45,21 @@ void should_rank_ops_by_count_then_name_and_truncate() {
   SyntheticRun synthetic_run;
   report_fixture::populate_two_stream_run(synthetic_run);
   synthetic_run.timeline_graph.nodes[1].op_name = "MatMul";
-  const mlx_plan::GpuTimeline& gpu_timeline = synthetic_run.gpu_timeline;
-  EXPECT_TRUE(mlx_plan::summarize_op_mix(gpu_timeline, {0, 1}, 4) == "MatMul ×2");
+  const mlx_perf::GpuTimeline& gpu_timeline = synthetic_run.gpu_timeline;
+  EXPECT_TRUE(mlx_perf::summarize_op_mix(gpu_timeline, {0, 1}, 4) == "MatMul ×2");
   synthetic_run.timeline_graph.nodes[1].op_name = "Add";
-  EXPECT_TRUE(mlx_plan::summarize_op_mix(gpu_timeline, {0, 1}, 4) == "Add ×1, MatMul ×1");
-  EXPECT_TRUE(mlx_plan::summarize_op_mix(gpu_timeline, {0, 1}, 1) == "Add ×1, …");
+  EXPECT_TRUE(mlx_perf::summarize_op_mix(gpu_timeline, {0, 1}, 4) == "Add ×1, MatMul ×1");
+  EXPECT_TRUE(mlx_perf::summarize_op_mix(gpu_timeline, {0, 1}, 1) == "Add ×1, …");
 }
 
 // --- edge / boundary ---
 
 void should_render_an_empty_table_for_no_stages() {
   SyntheticRun synthetic_run;
-  synthetic_run.gpu_timeline.granularity = mlx_plan::TimelineGranularity::per_stage;
+  synthetic_run.gpu_timeline.granularity = mlx_perf::TimelineGranularity::per_stage;
   const std::string section = render_stage_table(synthetic_run);
   EXPECT_TRUE(section.find("<tbody></tbody>") != std::string::npos);
-  EXPECT_TRUE(mlx_plan::summarize_op_mix(synthetic_run.gpu_timeline, {}, 4).empty());
+  EXPECT_TRUE(mlx_perf::summarize_op_mix(synthetic_run.gpu_timeline, {}, 4).empty());
 }
 
 // --- negative ---

@@ -2,7 +2,7 @@
 
 #include <string>
 
-namespace mlx_plan {
+namespace mlx_perf {
 
 std::string_view report_stylesheet() {
   // Slice colors follow Spark's legend semantics (computing green, stalled
@@ -120,4 +120,4 @@ std::string_view report_sort_script() {
   return sort_script;
 }
 
-} // namespace mlx_plan
+} // namespace mlx_perf

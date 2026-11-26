@@ -11,7 +11,7 @@
 #include <map>
 #include <thread>
 
-namespace mlx_plan {
+namespace mlx_perf {
 namespace {
 
 // Stage tasks in dispatch order: by stage, then by stream index.
@@ -355,4 +355,4 @@ GpuTimeline capture_stage_timeline(
   return gpu_timeline;
 }
 
-} // namespace mlx_plan
+} // namespace mlx_perf

@@ -15,7 +15,7 @@
 #include <string>
 #include <vector>
 
-namespace mlx_plan {
+namespace mlx_perf {
 
 struct NodeTelemetry {
   const GraphNode* node = nullptr;
@@ -59,4 +59,4 @@ const NodeTelemetry* find_attributed_node(
     std::size_t position,
     const std::string& expected_op_name);
 
-} // namespace mlx_plan
+} // namespace mlx_perf

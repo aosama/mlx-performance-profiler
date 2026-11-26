@@ -4,7 +4,7 @@
 
 #include <stdexcept>
 
-namespace mlx_plan::qwen35 {
+namespace mlx_perf::qwen35 {
 namespace {
 
 int read_positive_int(const JsonValue& text_config, const std::string& field_name) {
@@ -81,4 +81,4 @@ Qwen35TextConfig load_qwen35_text_config(const std::string& model_directory) {
   return config;
 }
 
-} // namespace mlx_plan::qwen35
+} // namespace mlx_perf::qwen35

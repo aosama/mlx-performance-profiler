@@ -1,4 +1,4 @@
-# mlx-visual-plan — Phased Plan: from spike to a Spark-like UX
+# mlx-performance-profiler — Phased Plan: from spike to a Spark-like UX
 
 ## 0. Vision
 
@@ -71,7 +71,8 @@ Structural rule copied from Spark: **`compute = total − waiting`**. In MLX:
 - `git init`, `.gitignore` (`build/`, `*.o`, `.DS_Store`), `README.md`,
   `LICENSE` (propose Apache-2.0 to match Spark + `mlx-bridge`; user's call),
   this `PHASED_PLAN.md`.
-- Create the **private** GitHub repo `aosama/mlx-visual-plan` and push.
+- Create the **private** GitHub repo `aosama/mlx-visual-plan` and push
+  (renamed to `mlx-performance-profiler` on 2026-11-26).
 - **CMake:** make `MLX_PREFIX` a hard requirement with a clear error when unset
   (currently it silently defaults to one cached identity). Document `-DMLX_PREFIX`.
 - **Decision recorded here:** keep `graph_model`; rewrite `telemetry` +
@@ -247,9 +248,9 @@ helpers):
 ### Phase 5 — Live, interactive server
 - Replace the static HTML with a small local server (Spark-UI-like tabs: Job /
   Stages / Tasks / Memory), streaming results.
-- **Acceptance:** `mlx_plan_server` serves the report at `localhost:PORT` with
+- **Acceptance:** `mlx_perf_server` serves the report at `localhost:PORT` with
   the same views as Phase 3, live.
-- **Status (2026-11-23): implemented.** `mlx_plan_server [--port N]`
+- **Status (2026-11-23): implemented.** `mlx_perf_server [--port N]`
   serves Job / Stages / Tasks / Memory tabs, a Re-run button and a live
   status line. Decisions:
   - **Threading.** All MLX work (measuring, rendering, memory sampling)
@@ -289,18 +290,18 @@ helpers):
     Re-implementing the telemetry in Rust would mean a large new C shim in
     the bridge plus duplicated logic that drifts. Instead, this repo exposes
     its existing C++ measurement through a small **C ABI**
-    (`mlx_plan_c_api.h`): the caller passes a callback that appends a fresh
+    (`mlx_perf_c_api.h`): the caller passes a callback that appends a fresh
     graph's outputs to an `mlx_vector_array`, and the library runs the same
     four passes and writes the same report.
   - Ownership never crosses the boundary (the library creates and frees the
     vector; MLX-C copies handles on append), and exceptions never cross it
-    either (status code + `mlx_plan_last_error()`). The one private-layout
+    either (status code + `mlx_perf_last_error()`). The one private-layout
     assumption (an MLX-C `mlx_array`'s `ctx` is an `mlx::core::array*`)
     lives in `mlx_c_interop` and is pinned by a test.
   - **One MLX in the binary.** The bridge links the same shared prebuilt
-    prefix, and `libmlx_plan.a` holds only this repo's objects, so every MLX
+    prefix, and `libmlx_perf.a` holds only this repo's objects, so every MLX
     symbol resolves to the bridge's single `libmlx.a`.
-  - `rust/mlx_plan_rust_example` (pinned to the bridge's nightly) builds a
+  - `rust/mlx_perf_rust_example` (pinned to the bridge's nightly) builds a
     three-stream job with the safe API (`MlxBindingsContext::on_stream`)
     and profiles it: 19/19 nodes GPU-measured, three streams, a measured
     cross-stream stall, and `build/rust_example.html`. Verified against the
@@ -408,7 +409,7 @@ helpers):
 | `demo_model` / `graph_factory` / `measurement_session` | The job, and the four passes per variant | P4 ✓ |
 | `report_comparison_page` | Eager vs compiled side by side | P4 ✓ |
 | `http_server` / `live_view_*` / `server_options` / `report_memory_section` | Live server | P5 ✓ |
-| `hello_world` / `mlx_plan_server` | Orchestration only | ✓ |
+| `hello_world` / `mlx_perf_server` | Orchestration only | ✓ |
 
 ## 6. Testing strategy (as built)
 
@@ -429,7 +430,7 @@ helpers):
   (tiny synthetic model, eager and compiled cuts).
 - **Integration (Metal GPU):** `gpu_timeline`, `metal_command_buffer_probe`,
   `telemetry`, `demo_model` (eager and compiled outputs are numerically
-  equal), `measurement_session`, and `mlx_plan_c_api` (driven only through
+  equal), `measurement_session`, and `mlx_perf_c_api` (driven only through
   MLX-C). There are also Rust unit tests in the example crate.
 - **Performance test (asserts a threshold):** sum of stages ≥ job duration,
   the decomposition invariant, in `measurement_session_test`.

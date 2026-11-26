@@ -1,10 +1,10 @@
 [package]
-name = "mlx-plan-rust-example"
+name = "mlx-perf-rust-example"
 version = "0.1.0"
 edition = "2024"
 publish = false
 license = "Apache-2.0"
-description = "Profiles an MLX job built with mlx-c-rust through mlx-visual-plan's C API."
+description = "Profiles an MLX job built with mlx-c-rust through mlx-performance-profiler's C API."
 
 [dependencies]
 # The sibling bridge checkout, read-only. It links the same shared prebuilt

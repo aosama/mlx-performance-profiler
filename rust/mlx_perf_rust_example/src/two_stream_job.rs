@@ -48,7 +48,7 @@ impl TwoStreamJob {
     }
 }
 
-/// The C callback handed to mlx-visual-plan. A panic must never unwind into
+/// The C callback handed to mlx-performance-profiler. A panic must never unwind into
 /// C++ frames (undefined behavior), so it is caught and reported as failure;
 /// catch_unwind's closure is the one closure this crate cannot avoid.
 ///

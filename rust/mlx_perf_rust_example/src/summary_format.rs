@@ -1,6 +1,6 @@
 //! Human-readable job summary for the terminal.
 
-use crate::mlx_plan_ffi::JobSummary;
+use crate::mlx_perf_ffi::JobSummary;
 
 const MICROSECONDS_PER_MILLISECOND: f64 = 1000.0;
 

@@ -5,7 +5,7 @@
 
 #include <cstdio>
 
-namespace mlx_plan {
+namespace mlx_perf {
 namespace {
 
 std::string variant_file_base(const ReportBundleRequest& bundle_request,
@@ -59,4 +59,4 @@ bool write_report_bundle(const ReportBundleRequest& bundle_request,
   return baseline_paths.is_written && candidate_paths.is_written && is_comparison_written;
 }
 
-} // namespace mlx_plan
+} // namespace mlx_perf

@@ -17,14 +17,14 @@
 namespace {
 
 using namespace tiny_qwen35_model;
-using mlx_plan::GpuTimeline;
-using mlx_plan::StagedGraph;
+using mlx_perf::GpuTimeline;
+using mlx_perf::StagedGraph;
 
 GpuTimeline time_staged_graph(const StagedGraph& staged_graph) {
-  const mlx_plan::CapturedGraph job_graph = mlx_plan::capture_graph(staged_graph.output_arrays);
-  return mlx_plan::capture_stage_timeline(
-      job_graph, mlx_plan::collect_streams(job_graph),
-      mlx_plan::resolve_stage_cuts(job_graph, staged_graph.stage_boundaries),
+  const mlx_perf::CapturedGraph job_graph = mlx_perf::capture_graph(staged_graph.output_arrays);
+  return mlx_perf::capture_stage_timeline(
+      job_graph, mlx_perf::collect_streams(job_graph),
+      mlx_perf::resolve_stage_cuts(job_graph, staged_graph.stage_boundaries),
       staged_graph.final_stage_name);
 }
 

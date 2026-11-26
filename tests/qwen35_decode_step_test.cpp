@@ -15,7 +15,7 @@
 namespace {
 
 using namespace mlx::core;
-using namespace mlx_plan::qwen35;
+using namespace mlx_perf::qwen35;
 
 using namespace tiny_qwen35_model;
 

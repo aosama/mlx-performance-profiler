@@ -9,7 +9,7 @@
 
 #include <sstream>
 
-namespace mlx_plan {
+namespace mlx_perf {
 namespace {
 
 ReportInputs make_report_inputs(const std::string& job_title,
@@ -54,4 +54,4 @@ RenderedViews render_live_views(
   return {job_html.str(), stages_html.str(), tasks_html.str(), memory_html.str()};
 }
 
-} // namespace mlx_plan
+} // namespace mlx_perf

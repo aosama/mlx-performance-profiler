@@ -5,7 +5,7 @@
 #include <sstream>
 #include <stdexcept>
 
-namespace mlx_plan {
+namespace mlx_perf {
 namespace {
 
 // Nesting limit: a hostile or corrupt file must not overflow the stack.
@@ -273,4 +273,4 @@ JsonValue parse_json_file(const std::string& file_path) {
   return parse_json(file_text.str());
 }
 
-} // namespace mlx_plan
+} // namespace mlx_perf

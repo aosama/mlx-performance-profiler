@@ -1,4 +1,4 @@
-# mlx-visual-plan
+# mlx-performance-profiler
 
 A feasibility experiment: give Apple [MLX](https://github.com/ml-explore/mlx)
 computations the Apache Spark Web UI experience. It captures MLX's lazy
@@ -7,6 +7,9 @@ computational graph, measures what each node spent **computing** versus
 and reports it the way Spark's StagePage does.
 
 It is an observer: it never changes MLX semantics.
+
+Formerly named `mlx-visual-plan`; the project is a profiler, and the name now
+says so. In code it uses the short prefix `mlx_perf`.
 
 See [`PHASED_PLAN.md`](PHASED_PLAN.md) for the roadmap and
 [`AGENTS.md`](AGENTS.md) for contributor conventions.
@@ -59,7 +62,7 @@ timeline pass); a `~` marks the rare fallback to a host-observed residual
 ## Live view
 
 ```sh
-./build/mlx_plan_server            # or: --port 9000
+./build/mlx_perf_server            # or: --port 9000
 ```
 
 Open <http://127.0.0.1:8765/>. The server measures the job (eager and
@@ -83,12 +86,12 @@ Claude can open and click through the views with you:
 
 | Name | Port | What it serves |
 |---|---|---|
-| `mlx-plan-live` | 8765 | the live view above (`./build/mlx_plan_server`) |
-| `mlx-plan-reports` | 8766 | the static HTML reports in `build/` (e.g. `/hello_world.html`, `/qwen35_decode.html`), via `python3 -m http.server` |
+| `mlx-perf-live` | 8765 | the live view above (`./build/mlx_perf_server`) |
+| `mlx-perf-reports` | 8766 | the static HTML reports in `build/` (e.g. `/hello_world.html`, `/qwen35_decode.html`), via `python3 -m http.server` |
 
 The reports server exists because the browser pane does not open local
 `file://` pages. Both bind to 127.0.0.1 only. Build first (see **Build**):
-the live server needs `build/mlx_plan_server`, and the reports server needs
+the live server needs `build/mlx_perf_server`, and the reports server needs
 reports already written to `build/`. Outside the app, run the same commands
 in a terminal; the file is ignored by everything else.
 
@@ -149,18 +152,18 @@ The profiler itself knows nothing about Qwen.
 ## From Rust (mlx-c-rust)
 
 The same measurement and report are available through a C API
-(`src/mlx_plan_c_api.h`). [`rust/mlx_plan_rust_example`](rust/mlx_plan_rust_example)
+(`src/mlx_perf_c_api.h`). [`rust/mlx_perf_rust_example`](rust/mlx_perf_rust_example)
 builds a three-stream job with `mlx-c-rust` and profiles it:
 
 ```sh
-cmake --build build                      # builds libmlx_plan.a
-cd rust/mlx_plan_rust_example
+cmake --build build                      # builds libmlx_perf.a
+cd rust/mlx_perf_rust_example
 cargo profile-job                        # writes build/rust_example.html
 ```
 
 It expects the `mlx-bridge` checkout as a sibling directory and uses that
 crate's pinned nightly toolchain. The final binary links exactly one MLX: the
-static `libmlx_plan.a` contains only this repository's code, and it resolves
+static `libmlx_perf.a` contains only this repository's code, and it resolves
 MLX from the same prebuilt prefix the bridge links.
 
 ## Reading the report

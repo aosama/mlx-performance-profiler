@@ -12,7 +12,7 @@
 
 namespace {
 
-using namespace mlx_plan;
+using namespace mlx_perf;
 
 void print_variant_console(const VariantMeasurement& variant_measurement) {
   std::printf("\n######## %s ########", variant_measurement.variant_name.c_str());

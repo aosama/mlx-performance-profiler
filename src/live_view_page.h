@@ -7,8 +7,8 @@
 
 #include <string>
 
-namespace mlx_plan {
+namespace mlx_perf {
 
 std::string build_live_view_page(const std::string& job_title);
 
-} // namespace mlx_plan
+} // namespace mlx_perf

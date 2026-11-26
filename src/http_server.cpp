@@ -10,7 +10,7 @@
 #include <functional>
 #include <sstream>
 
-namespace mlx_plan {
+namespace mlx_perf {
 namespace {
 
 constexpr std::size_t MAX_REQUEST_HEAD_BYTES = 8192;
@@ -190,4 +190,4 @@ void HttpServer::accept_loop() {
   }
 }
 
-} // namespace mlx_plan
+} // namespace mlx_perf

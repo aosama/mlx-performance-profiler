@@ -8,7 +8,7 @@
 
 #include <string>
 
-namespace mlx_plan {
+namespace mlx_perf {
 
 struct ReportPaths {
   std::string html_path;
@@ -40,4 +40,4 @@ std::string build_report_document(
     const std::string& plan_svg,
     const std::string& plan_dot);
 
-} // namespace mlx_plan
+} // namespace mlx_perf

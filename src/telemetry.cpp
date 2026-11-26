@@ -8,7 +8,7 @@
 #include <cstdio>
 #include <thread>
 
-namespace mlx_plan {
+namespace mlx_perf {
 namespace {
 
 using mlx::core::Stream;
@@ -150,4 +150,4 @@ const NodeTelemetry* find_attributed_node(
   return serial_node.node->op_name == expected_op_name ? &serial_node : nullptr;
 }
 
-} // namespace mlx_plan
+} // namespace mlx_perf

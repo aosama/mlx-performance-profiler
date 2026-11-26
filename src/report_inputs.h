@@ -11,7 +11,7 @@
 
 #include <string>
 
-namespace mlx_plan {
+namespace mlx_perf {
 
 struct ReportInputs {
   std::string report_title;
@@ -24,4 +24,4 @@ struct ReportInputs {
   JobTotals job_totals;
 };
 
-} // namespace mlx_plan
+} // namespace mlx_perf

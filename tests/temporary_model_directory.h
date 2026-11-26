@@ -15,7 +15,7 @@ class TemporaryModelDirectory {
   TemporaryModelDirectory() {
     std::random_device entropy;
     directory_path_ = std::filesystem::temp_directory_path() /
-        ("mlx_plan_test_model_" + std::to_string(entropy()));
+        ("mlx_perf_test_model_" + std::to_string(entropy()));
     std::filesystem::create_directories(directory_path_);
   }
   ~TemporaryModelDirectory() {

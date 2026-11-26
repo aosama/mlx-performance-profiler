@@ -7,7 +7,7 @@
 #include <sstream>
 #include <unordered_map>
 
-namespace mlx_plan {
+namespace mlx_perf {
 namespace {
 
 // Spark colors stages; here one hue per stream index. Chosen to stay legible
@@ -145,4 +145,4 @@ std::string write_plan_dot(
   return plan_dot.str();
 }
 
-} // namespace mlx_plan
+} // namespace mlx_perf

@@ -11,7 +11,7 @@
 #include <stdexcept>
 #include <unordered_map>
 
-namespace mlx_plan::qwen35 {
+namespace mlx_perf::qwen35 {
 namespace {
 
 using mlx::core::array;
@@ -202,4 +202,4 @@ Qwen35Weights load_qwen35_weights(const std::string& model_directory,
   return weights;
 }
 
-} // namespace mlx_plan::qwen35
+} // namespace mlx_perf::qwen35

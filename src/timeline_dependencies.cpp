@@ -4,7 +4,7 @@
 #include <stdexcept>
 #include <string>
 
-namespace mlx_plan {
+namespace mlx_perf {
 
 // Sibling outputs of a multi-output primitive complete with that primitive,
 // so every sibling id resolves to the primitive's own position.
@@ -115,4 +115,4 @@ double latest_ready(
   return latest_microseconds;
 }
 
-} // namespace mlx_plan
+} // namespace mlx_perf

@@ -2,7 +2,7 @@
 
 #include <algorithm>
 
-namespace mlx_plan {
+namespace mlx_perf {
 namespace {
 
 // Host-observed completion can only trail the true completion, never lead
@@ -143,4 +143,4 @@ NodeClass classify_breakdown(const LatencyBreakdown& breakdown) {
   return dominant_class;
 }
 
-} // namespace mlx_plan
+} // namespace mlx_perf

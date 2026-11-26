@@ -9,7 +9,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace mlx_plan::qwen35 {
+namespace mlx_perf::qwen35 {
 
 class TokenText {
  public:
@@ -29,4 +29,4 @@ class TokenText {
 // Exposed for tests.
 std::string unmap_byte_level_text(const std::string& vocabulary_text);
 
-} // namespace mlx_plan::qwen35
+} // namespace mlx_perf::qwen35

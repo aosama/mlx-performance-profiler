@@ -166,7 +166,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "mlx-plan-rust-example"
+name = "mlx-perf-rust-example"
 version = "0.1.0"
 dependencies = [
  "mlx-c-rust",

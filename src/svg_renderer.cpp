@@ -7,7 +7,7 @@
 #include <string>
 #include <sys/stat.h>
 
-namespace mlx_plan {
+namespace mlx_perf {
 namespace {
 
 bool write_text_file(
@@ -52,4 +52,4 @@ std::string render_plan_svg(
   return read_text_file(svg_file_path);
 }
 
-} // namespace mlx_plan
+} // namespace mlx_perf

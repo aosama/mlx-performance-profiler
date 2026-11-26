@@ -8,7 +8,7 @@
 
 #include <string>
 
-namespace mlx_plan {
+namespace mlx_perf {
 
 // Node labels carry op, shape/dtype, measured GPU compute and class; fill
 // color encodes the stream; a red outline marks nodes classified as stalled
@@ -19,4 +19,4 @@ std::string write_plan_dot(
     const GpuTimeline& gpu_timeline,
     const std::string& report_title);
 
-} // namespace mlx_plan
+} // namespace mlx_perf

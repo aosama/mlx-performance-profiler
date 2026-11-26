@@ -1,11 +1,11 @@
-// Unit tests for server_options: the mlx_plan_server command line.
+// Unit tests for server_options: the mlx_perf_server command line.
 
 #include "server_options.h"
 #include "test_harness.h"
 
 namespace {
 
-using mlx_plan::parse_server_options;
+using mlx_perf::parse_server_options;
 
 // --- positive ---
 
