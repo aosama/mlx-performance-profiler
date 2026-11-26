@@ -1,8 +1,8 @@
 #include "metal_command_buffer_probe.h"
 
-#include "mlx/backend/metal/device.h"
+#include "metal_host_clock.h"
 
-#include <mach/mach_time.h>
+#include "mlx/backend/metal/device.h"
 
 #include <algorithm>
 #include <unordered_set>
@@ -12,27 +12,12 @@ namespace {
 
 constexpr double MICROSECONDS_PER_SECOND = 1e6;
 
-mach_timebase_info_data_t query_timebase() {
-  mach_timebase_info_data_t queried_timebase{};
-  mach_timebase_info(&queried_timebase);
-  return queried_timebase;
-}
-
-// The timebase Metal reports GPUStartTime/GPUEndTime in (the same one
-// CACurrentMediaTime uses), computed directly to avoid a QuartzCore call.
-double current_host_seconds() {
-  static const mach_timebase_info_data_t timebase = query_timebase();
-  const double nanoseconds = static_cast<double>(mach_absolute_time()) *
-      timebase.numer / timebase.denom;
-  return nanoseconds / 1e9;
-}
-
 // Back-dates the Metal clock to the pass anchor: sample both clocks back to
 // back (sub-microsecond apart) and subtract the steady time already elapsed.
 // steady_clock and mach_absolute_time tick at the same rate while the machine
 // is awake; they differ only across sleep, which a millisecond pass never spans.
 double anchor_host_seconds(std::chrono::steady_clock::time_point pass_started_at) {
-  const double host_seconds_now = current_host_seconds();
+  const double host_seconds_now = current_metal_host_seconds();
   const double seconds_since_pass_start = std::chrono::duration<double>(
       std::chrono::steady_clock::now() - pass_started_at).count();
   return host_seconds_now - seconds_since_pass_start;

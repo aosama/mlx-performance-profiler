@@ -6,16 +6,19 @@ Every profile writes its measurements as JSON beside the HTML report:
 - `mlx_perf_profile_to_measurements` writes only `<measurements_file_base>.json`.
 - `hello_world` and `qwen35_profile` write `<base>_<variant>.json` for each variant.
 - A comparison (`mlx_perf_compare_to_report`, `hello_world`, `qwen35_profile`)
-  also writes `<base>.json`, the comparison record described at the end.
+  also writes `<base>.json`, the comparison record described below.
+- A procedure comparison (`mlx_perf_compare_procedures_to_report`) writes
+  `<base>.json`, the procedure comparison record described below.
 
 The HTML report and this file are built from the same measurement in the same
 call, so they never disagree. Any JSON reader works: Python's `json`, Rust's
 `serde_json`, `jq`, a browser.
 
-Both formats have a JSON Schema (draft 2020-12), checked against real output
+Every format has a JSON Schema (draft 2020-12), checked against real output
 by the test suite:
-[`schema/measurement-file.schema.json`](schema/measurement-file.schema.json) and
-[`schema/comparison-record.schema.json`](schema/comparison-record.schema.json).
+[`schema/measurement-file.schema.json`](schema/measurement-file.schema.json),
+[`schema/comparison-record.schema.json`](schema/comparison-record.schema.json) and
+[`schema/procedure-comparison-record.schema.json`](schema/procedure-comparison-record.schema.json).
 
 ## Conventions
 
@@ -183,6 +186,39 @@ to its last one's end, summed over streams. It includes GPU gaps while the
 host is still encoding, and its end is bounded by an empty marker buffer
 (an upper bound by the marker's small scheduling gap, the same for both
 variants). The order of the two variants flips every round.
+
+## The procedure comparison record (`"kind": "procedure_comparison"`)
+
+Written as `<base>.json` beside a procedure comparison page
+([guide](comparing-procedures.md)). A procedure is measured whole, so there
+is no per-node file; the record holds every run.
+
+| Field | Meaning |
+|---|---|
+| `schema_version`, `kind` | `1`, `"procedure_comparison"` |
+| `gpu` | `name` and `core_count` of the GPU, each `null` when unknown |
+| `baseline`, `candidate` | one procedure record each, below |
+| `metrics.duration_us`, `metrics.gpu_busy_us`, `metrics.gpu_idle_us` | one metric record each, exactly as in the comparison record above |
+
+Each procedure record:
+
+| Field | Meaning |
+|---|---|
+| `procedure_name` | as passed |
+| `rounds[]` | one run per round, in round order (12) |
+| `observed_run` | the extra run that recorded the kernel launches; not judged |
+| `kernel_launch_count` | launches in the observed run |
+| `kernel_launches[]` | the observed run's launches grouped by Metal function: `metal_function_name` (`"(unnamed pipeline)"` for pipelines MLX compiled before the recorder started), `launch_count`, `fewest_threadgroups`, `most_threadgroups`, `lowest_gpu_core_coverage` and `has_launch_unable_to_fill_gpu` (both `null` when the core count is unknown) |
+
+Each run (`rounds[]` and `observed_run`):
+
+| Field | Meaning |
+|---|---|
+| `duration_us` | from `run` starting until every command buffer it committed completed |
+| `gpu_busy_us` | time in the run when at least one of those buffers was on the GPU (the union of their GPU windows) |
+| `gpu_idle_us` | `duration_us` − `gpu_busy_us` |
+| `command_buffer_count` | command buffers MLX committed during the run |
+| `blocking_wait_count`, `blocking_wait_us` | evaluations and synchronizes that blocked the host until the GPU finished, and the host time they took |
 
 ## Example: where did the time go?
 

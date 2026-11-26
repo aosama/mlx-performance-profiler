@@ -1,10 +1,10 @@
 #include "report_launch_comparison_section.h"
 
-#include "kernel_launch_summary.h"
 #include "text_format.h"
 
 #include <algorithm>
 #include <sstream>
+#include <string>
 #include <vector>
 
 namespace mlx_perf {
@@ -58,9 +58,10 @@ std::string render_variant_cells(const KernelLaunchSummary* kernel_summary, int 
   return cells_html.str();
 }
 
-std::string render_header(const std::string& baseline_name, const std::string& candidate_name) {
+std::string render_header(const std::string& baseline_name, const std::string& candidate_name,
+                          const std::string& key_heading) {
   std::ostringstream header_html;
-  header_html << "<thead><tr><th rowspan=\"2\">Kernel</th>";
+  header_html << "<thead><tr><th rowspan=\"2\">" << escape_html_text(key_heading) << "</th>";
   for (const std::string* variant_name : {&baseline_name, &candidate_name}) {
     header_html << "<th colspan=\"3\">" << escape_html_text(*variant_name) << "</th>";
   }
@@ -76,31 +77,43 @@ std::string render_header(const std::string& baseline_name, const std::string& c
 } // namespace
 
 std::string render_launch_comparison_section(const std::string& baseline_name,
-                                             const RunTelemetry& baseline_serial_telemetry,
+                                             const std::vector<KernelLaunchSummary>& baseline_kernels,
                                              const std::string& candidate_name,
-                                             const RunTelemetry& candidate_serial_telemetry) {
-  const std::vector<KernelLaunchSummary> baseline_kernels = summarize_kernel_launches(baseline_serial_telemetry);
-  const std::vector<KernelLaunchSummary> candidate_kernels = summarize_kernel_launches(candidate_serial_telemetry);
+                                             const std::vector<KernelLaunchSummary>& candidate_kernels,
+                                             int gpu_core_count, const std::string& key_heading) {
   if (baseline_kernels.empty() && candidate_kernels.empty()) {
     return std::string();
   }
-  const int gpu_core_count = baseline_serial_telemetry.gpu_device_facts.gpu_core_count;
   std::ostringstream section_html;
   section_html << "<section id=\"launches\"><h2>Kernel launches side by side</h2>"
-               << "<div class=\"table-wrap\"><table>" << render_header(baseline_name, candidate_name) << "<tbody>";
+               << "<div class=\"table-wrap\"><table>"
+               << render_header(baseline_name, candidate_name, key_heading) << "<tbody>";
   for (const std::string& kernel_key : collect_kernel_keys(baseline_kernels, candidate_kernels)) {
     section_html << "<tr><td>" << escape_html_text(kernel_key) << "</td>"
                  << render_variant_cells(find_kernel(baseline_kernels, kernel_key), gpu_core_count)
                  << render_variant_cells(find_kernel(candidate_kernels, kernel_key), gpu_core_count)
                  << "</tr>";
   }
-  section_html << "</tbody></table></div><p class=\"note\">Each variant's kernel launches in its"
-               << " serial pass, matched by kernel name (a custom kernel's name, otherwise the MLX"
-               << " operation). A threadgroup runs on one GPU core, so a launch with fewer threadgroups"
-               << " than the GPU's " << gpu_core_count << " cores leaves cores idle (⚠): a common reason"
-               << " a kernel is slower although it does the same work. Covering every core does not"
-               << " prove a launch is efficient; it only rules this reason out.</p></section>";
+  section_html << "</tbody></table></div><p class=\"note\">Each side's kernel launches, matched by "
+               << escape_html_text(key_heading == "Kernel" ? "kernel name (a custom kernel's name, otherwise"
+                                                             " the MLX operation)" : "Metal function")
+               << ". A threadgroup runs on one GPU core, so a launch with fewer threadgroups than the GPU's "
+               // An unknown core count (0) is never printed as a number.
+               << (gpu_core_count > 0 ? std::to_string(gpu_core_count) + " cores" : std::string("cores"))
+               << " leaves cores idle (⚠): a common reason a kernel is slower"
+               << " although it does the same work. Covering every core does not prove a launch is"
+               << " efficient; it only rules this reason out.</p></section>";
   return section_html.str();
+}
+
+std::string render_launch_comparison_section(const std::string& baseline_name,
+                                             const RunTelemetry& baseline_serial_telemetry,
+                                             const std::string& candidate_name,
+                                             const RunTelemetry& candidate_serial_telemetry) {
+  return render_launch_comparison_section(
+      baseline_name, summarize_kernel_launches(baseline_serial_telemetry), candidate_name,
+      summarize_kernel_launches(candidate_serial_telemetry),
+      baseline_serial_telemetry.gpu_device_facts.gpu_core_count, "Kernel");
 }
 
 } // namespace mlx_perf

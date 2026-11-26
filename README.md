@@ -12,6 +12,7 @@ MLX is lazy: you describe a graph, and MLX decides what runs, on which stream, a
 
 - 🔬 **An execution graph you can actually explore.** Every operation MLX ran, coloured by where its time went and brighter the more it cost. Hover for the full breakdown, click to light up everything upstream and downstream, search by op or kernel, and flip on the **hot path**: the most expensive dependency chain, highlighted end to end. Big models open as stages (a decoder's layers) that you drill into.
 - 🧩 **The why, not just the what.** Every kernel launch MLX makes is recorded with its Metal function, grid and threadgroup shape. A launch with fewer threadgroups than the GPU has cores is flagged ⚠: in one comparison, the same work took about 30× as long launched as 4 threadgroups as it did as 512 (8.96 ms against 0.30 ms), and the report shows why: 4 threadgroups can keep only 4 of 16 cores busy.
+- 🔁 **Whole loops, not just graphs.** A token loop that reads a value back every step evaluates 32 graphs, not one. Hand it two such procedures and it times each one whole, splits the time into GPU busy and GPU *idle*, and counts every hand-off between host and GPU. In one comparison, a 32-step loop that read back each step took about 9× as long as the same loop evaluated once (5.6 ms against 0.6 ms): the GPU sat idle for 4.7 ms of it, across 32 blocking waits against 1.
 - ⏱️ **GPU time measured, not guessed.** Compute comes from Metal's own command-buffer timestamps (`GPUStartTime` / `GPUEndTime`), for every node or stage.
 - ⚖️ **A verdict, not vibes.** Hand it two versions of a job, say a stock MLX primitive and your custom Metal kernel, and it says which is faster, by how much, and whether that beats run-to-run noise. Identical variants are called different under 4% of the time, and that guarantee is tested, not assumed.
 - 🧠 **Real models, proven correct first.** Ships a Qwen3.5 decode step rebuilt from MLX's own kernels, which refuses to profile until it greedily decodes " Paris" after "The capital of France is".
@@ -353,6 +354,30 @@ file per variant.
 The suite's acceptance test is a separate example: one 4-bit quantized
 projection, computed by `quantized_matmul` against `dequantize` followed by
 `matmul`. The fused kernel wins beyond the spread.
+
+## Comparing procedures: loops and pipelines
+
+A token loop, a sampler or a pipeline with host code between evaluations is
+not one graph. `mlx_perf_compare_procedures_to_report` compares two of them
+measured whole: `run` is timed from its start until every command buffer it
+committed has completed, and an optional `prepare` resets state, untimed,
+before every run.
+
+```c
+mlx_perf_procedure reading = {"read_every_step", prepare_loop, run_loop, &reading_loop};
+mlx_perf_procedure batched = {"eval_once",       prepare_loop, run_loop, &batched_loop};
+mlx_perf_procedure_comparison_summary summary;
+mlx_perf_compare_procedures_to_report(&reading, &batched, "A 32-step loop", "build", "token_loop", &summary);
+```
+
+The same 12 interleaved rounds and the same verdict judge three metrics:
+the duration, **GPU busy** (time at least one of the run's command buffers
+was on the GPU, from Metal's timestamps) and **GPU idle** (the rest: the GPU
+waiting on the host). Hooks on MLX's Metal command buffers and events count
+each run's command buffers and blocking waits, the hand-offs in which
+neither side can run ahead. The page shows them per run, with every kernel
+launch grouped by Metal function. The full example and guide:
+[Comparing procedures](docs/comparing-procedures.md).
 
 ## Quiet output for library use
 

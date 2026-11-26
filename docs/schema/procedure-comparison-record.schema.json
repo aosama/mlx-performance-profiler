@@ -1,0 +1,789 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/aosama/mlx-performance-profiler/blob/main/docs/schema/procedure-comparison-record.schema.json",
+  "title": "mlx-performance-profiler procedure comparison record, schema version 1",
+  "description": "Written as <report_file_base>.json by mlx_perf_compare_procedures_to_report: every round of both procedures, the verdicts on duration, GPU busy and GPU idle time, and each procedure's kernel launches by Metal function.",
+  "type": "object",
+  "required": [
+    "baseline",
+    "candidate",
+    "gpu",
+    "kind",
+    "metrics",
+    "schema_version"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "kind": {
+      "const": "procedure_comparison"
+    },
+    "gpu": {
+      "type": "object",
+      "required": [
+        "core_count",
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "core_count": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      }
+    },
+    "baseline": {
+      "type": "object",
+      "required": [
+        "kernel_launch_count",
+        "kernel_launches",
+        "observed_run",
+        "procedure_name",
+        "rounds"
+      ],
+      "properties": {
+        "procedure_name": {
+          "type": "string"
+        },
+        "rounds": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "blocking_wait_count",
+              "blocking_wait_us",
+              "command_buffer_count",
+              "duration_us",
+              "gpu_busy_us",
+              "gpu_idle_us"
+            ],
+            "properties": {
+              "duration_us": {
+                "type": "number",
+                "description": "From run() starting until every command buffer it committed completed."
+              },
+              "gpu_busy_us": {
+                "type": "number",
+                "description": "Time inside the run when at least one of its command buffers was on the GPU."
+              },
+              "gpu_idle_us": {
+                "type": "number",
+                "description": "duration_us - gpu_busy_us: the GPU had nothing of the procedure's to do."
+              },
+              "command_buffer_count": {
+                "type": "integer",
+                "description": "Command buffers MLX committed during the run."
+              },
+              "blocking_wait_count": {
+                "type": "integer",
+                "description": "Evals and synchronizes that blocked the host until the GPU finished."
+              },
+              "blocking_wait_us": {
+                "type": "number",
+                "description": "Host time spent in those waits."
+              }
+            }
+          },
+          "description": "One run per round, in round order."
+        },
+        "observed_run": {
+          "type": "object",
+          "required": [
+            "blocking_wait_count",
+            "blocking_wait_us",
+            "command_buffer_count",
+            "duration_us",
+            "gpu_busy_us",
+            "gpu_idle_us"
+          ],
+          "properties": {
+            "duration_us": {
+              "type": "number",
+              "description": "From run() starting until every command buffer it committed completed."
+            },
+            "gpu_busy_us": {
+              "type": "number",
+              "description": "Time inside the run when at least one of its command buffers was on the GPU."
+            },
+            "gpu_idle_us": {
+              "type": "number",
+              "description": "duration_us - gpu_busy_us: the GPU had nothing of the procedure's to do."
+            },
+            "command_buffer_count": {
+              "type": "integer",
+              "description": "Command buffers MLX committed during the run."
+            },
+            "blocking_wait_count": {
+              "type": "integer",
+              "description": "Evals and synchronizes that blocked the host until the GPU finished."
+            },
+            "blocking_wait_us": {
+              "type": "number",
+              "description": "Host time spent in those waits."
+            }
+          },
+          "description": "The extra run that recorded kernel launches; not judged."
+        },
+        "kernel_launch_count": {
+          "type": "integer"
+        },
+        "kernel_launches": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "fewest_threadgroups",
+              "has_launch_unable_to_fill_gpu",
+              "launch_count",
+              "lowest_gpu_core_coverage",
+              "metal_function_name",
+              "most_threadgroups"
+            ],
+            "properties": {
+              "metal_function_name": {
+                "type": "string",
+                "description": "The Metal function, or \"(unnamed pipeline)\" for pipelines compiled before the recorder was installed."
+              },
+              "launch_count": {
+                "type": "integer"
+              },
+              "fewest_threadgroups": {
+                "type": "integer"
+              },
+              "most_threadgroups": {
+                "type": "integer"
+              },
+              "lowest_gpu_core_coverage": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "Threadgroups over GPU cores, at most 1, for the smallest launch; null when the core count is unknown."
+              },
+              "has_launch_unable_to_fill_gpu": {
+                "type": [
+                  "boolean",
+                  "null"
+                ],
+                "description": "Whether any launch had fewer threadgroups than GPU cores; null when the core count is unknown."
+              }
+            }
+          },
+          "description": "The observed run's launches grouped by Metal function."
+        }
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "required": [
+        "kernel_launch_count",
+        "kernel_launches",
+        "observed_run",
+        "procedure_name",
+        "rounds"
+      ],
+      "properties": {
+        "procedure_name": {
+          "type": "string"
+        },
+        "rounds": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "blocking_wait_count",
+              "blocking_wait_us",
+              "command_buffer_count",
+              "duration_us",
+              "gpu_busy_us",
+              "gpu_idle_us"
+            ],
+            "properties": {
+              "duration_us": {
+                "type": "number",
+                "description": "From run() starting until every command buffer it committed completed."
+              },
+              "gpu_busy_us": {
+                "type": "number",
+                "description": "Time inside the run when at least one of its command buffers was on the GPU."
+              },
+              "gpu_idle_us": {
+                "type": "number",
+                "description": "duration_us - gpu_busy_us: the GPU had nothing of the procedure's to do."
+              },
+              "command_buffer_count": {
+                "type": "integer",
+                "description": "Command buffers MLX committed during the run."
+              },
+              "blocking_wait_count": {
+                "type": "integer",
+                "description": "Evals and synchronizes that blocked the host until the GPU finished."
+              },
+              "blocking_wait_us": {
+                "type": "number",
+                "description": "Host time spent in those waits."
+              }
+            }
+          },
+          "description": "One run per round, in round order."
+        },
+        "observed_run": {
+          "type": "object",
+          "required": [
+            "blocking_wait_count",
+            "blocking_wait_us",
+            "command_buffer_count",
+            "duration_us",
+            "gpu_busy_us",
+            "gpu_idle_us"
+          ],
+          "properties": {
+            "duration_us": {
+              "type": "number",
+              "description": "From run() starting until every command buffer it committed completed."
+            },
+            "gpu_busy_us": {
+              "type": "number",
+              "description": "Time inside the run when at least one of its command buffers was on the GPU."
+            },
+            "gpu_idle_us": {
+              "type": "number",
+              "description": "duration_us - gpu_busy_us: the GPU had nothing of the procedure's to do."
+            },
+            "command_buffer_count": {
+              "type": "integer",
+              "description": "Command buffers MLX committed during the run."
+            },
+            "blocking_wait_count": {
+              "type": "integer",
+              "description": "Evals and synchronizes that blocked the host until the GPU finished."
+            },
+            "blocking_wait_us": {
+              "type": "number",
+              "description": "Host time spent in those waits."
+            }
+          },
+          "description": "The extra run that recorded kernel launches; not judged."
+        },
+        "kernel_launch_count": {
+          "type": "integer"
+        },
+        "kernel_launches": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "fewest_threadgroups",
+              "has_launch_unable_to_fill_gpu",
+              "launch_count",
+              "lowest_gpu_core_coverage",
+              "metal_function_name",
+              "most_threadgroups"
+            ],
+            "properties": {
+              "metal_function_name": {
+                "type": "string",
+                "description": "The Metal function, or \"(unnamed pipeline)\" for pipelines compiled before the recorder was installed."
+              },
+              "launch_count": {
+                "type": "integer"
+              },
+              "fewest_threadgroups": {
+                "type": "integer"
+              },
+              "most_threadgroups": {
+                "type": "integer"
+              },
+              "lowest_gpu_core_coverage": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "Threadgroups over GPU cores, at most 1, for the smallest launch; null when the core count is unknown."
+              },
+              "has_launch_unable_to_fill_gpu": {
+                "type": [
+                  "boolean",
+                  "null"
+                ],
+                "description": "Whether any launch had fewer threadgroups than GPU cores; null when the core count is unknown."
+              }
+            }
+          },
+          "description": "The observed run's launches grouped by Metal function."
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "required": [
+        "duration_us",
+        "gpu_busy_us",
+        "gpu_idle_us"
+      ],
+      "properties": {
+        "duration_us": {
+          "type": "object",
+          "required": [
+            "baseline",
+            "candidate",
+            "difference_interval_us",
+            "median_difference_us",
+            "relative_difference",
+            "round_count",
+            "round_difference_us",
+            "rounds_candidate_faster",
+            "sign_test_p_value",
+            "verdict"
+          ],
+          "properties": {
+            "baseline": {
+              "type": "object",
+              "required": [
+                "lower_quartile",
+                "max",
+                "median",
+                "min",
+                "samples",
+                "upper_quartile"
+              ],
+              "properties": {
+                "median": {
+                  "type": "number"
+                },
+                "min": {
+                  "type": "number"
+                },
+                "max": {
+                  "type": "number"
+                },
+                "lower_quartile": {
+                  "type": "number"
+                },
+                "upper_quartile": {
+                  "type": "number"
+                },
+                "samples": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                }
+              }
+            },
+            "candidate": {
+              "type": "object",
+              "required": [
+                "lower_quartile",
+                "max",
+                "median",
+                "min",
+                "samples",
+                "upper_quartile"
+              ],
+              "properties": {
+                "median": {
+                  "type": "number"
+                },
+                "min": {
+                  "type": "number"
+                },
+                "max": {
+                  "type": "number"
+                },
+                "lower_quartile": {
+                  "type": "number"
+                },
+                "upper_quartile": {
+                  "type": "number"
+                },
+                "samples": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                }
+              }
+            },
+            "round_difference_us": {
+              "type": "object",
+              "required": [
+                "max",
+                "median",
+                "min"
+              ],
+              "properties": {
+                "median": {
+                  "type": "number"
+                },
+                "min": {
+                  "type": "number"
+                },
+                "max": {
+                  "type": "number"
+                }
+              },
+              "description": "Per-round candidate - baseline differences."
+            },
+            "difference_interval_us": {
+              "type": "object",
+              "required": [
+                "coverage",
+                "high",
+                "low"
+              ],
+              "properties": {
+                "low": {
+                  "type": "number"
+                },
+                "high": {
+                  "type": "number"
+                },
+                "coverage": {
+                  "type": "number"
+                }
+              },
+              "description": "Distribution-free interval for the median per-round difference (12 rounds: 3rd and 10th smallest, coverage 0.961)."
+            },
+            "sign_test_p_value": {
+              "type": "number",
+              "description": "Exact two-sided sign test over non-zero per-round differences."
+            },
+            "median_difference_us": {
+              "type": "number",
+              "description": "Median per-round difference; negative means the candidate is faster."
+            },
+            "relative_difference": {
+              "type": "number",
+              "description": "median_difference_us / baseline median (0 when that is 0)."
+            },
+            "verdict": {
+              "enum": [
+                "candidate_faster",
+                "candidate_slower",
+                "within_spread"
+              ],
+              "description": "candidate_faster when the whole interval lies below zero, candidate_slower when above, otherwise within_spread: no result."
+            },
+            "rounds_candidate_faster": {
+              "type": "integer"
+            },
+            "round_count": {
+              "type": "integer"
+            }
+          }
+        },
+        "gpu_busy_us": {
+          "type": "object",
+          "required": [
+            "baseline",
+            "candidate",
+            "difference_interval_us",
+            "median_difference_us",
+            "relative_difference",
+            "round_count",
+            "round_difference_us",
+            "rounds_candidate_faster",
+            "sign_test_p_value",
+            "verdict"
+          ],
+          "properties": {
+            "baseline": {
+              "type": "object",
+              "required": [
+                "lower_quartile",
+                "max",
+                "median",
+                "min",
+                "samples",
+                "upper_quartile"
+              ],
+              "properties": {
+                "median": {
+                  "type": "number"
+                },
+                "min": {
+                  "type": "number"
+                },
+                "max": {
+                  "type": "number"
+                },
+                "lower_quartile": {
+                  "type": "number"
+                },
+                "upper_quartile": {
+                  "type": "number"
+                },
+                "samples": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                }
+              }
+            },
+            "candidate": {
+              "type": "object",
+              "required": [
+                "lower_quartile",
+                "max",
+                "median",
+                "min",
+                "samples",
+                "upper_quartile"
+              ],
+              "properties": {
+                "median": {
+                  "type": "number"
+                },
+                "min": {
+                  "type": "number"
+                },
+                "max": {
+                  "type": "number"
+                },
+                "lower_quartile": {
+                  "type": "number"
+                },
+                "upper_quartile": {
+                  "type": "number"
+                },
+                "samples": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                }
+              }
+            },
+            "round_difference_us": {
+              "type": "object",
+              "required": [
+                "max",
+                "median",
+                "min"
+              ],
+              "properties": {
+                "median": {
+                  "type": "number"
+                },
+                "min": {
+                  "type": "number"
+                },
+                "max": {
+                  "type": "number"
+                }
+              },
+              "description": "Per-round candidate - baseline differences."
+            },
+            "difference_interval_us": {
+              "type": "object",
+              "required": [
+                "coverage",
+                "high",
+                "low"
+              ],
+              "properties": {
+                "low": {
+                  "type": "number"
+                },
+                "high": {
+                  "type": "number"
+                },
+                "coverage": {
+                  "type": "number"
+                }
+              },
+              "description": "Distribution-free interval for the median per-round difference (12 rounds: 3rd and 10th smallest, coverage 0.961)."
+            },
+            "sign_test_p_value": {
+              "type": "number",
+              "description": "Exact two-sided sign test over non-zero per-round differences."
+            },
+            "median_difference_us": {
+              "type": "number",
+              "description": "Median per-round difference; negative means the candidate is faster."
+            },
+            "relative_difference": {
+              "type": "number",
+              "description": "median_difference_us / baseline median (0 when that is 0)."
+            },
+            "verdict": {
+              "enum": [
+                "candidate_faster",
+                "candidate_slower",
+                "within_spread"
+              ],
+              "description": "candidate_faster when the whole interval lies below zero, candidate_slower when above, otherwise within_spread: no result."
+            },
+            "rounds_candidate_faster": {
+              "type": "integer"
+            },
+            "round_count": {
+              "type": "integer"
+            }
+          }
+        },
+        "gpu_idle_us": {
+          "type": "object",
+          "required": [
+            "baseline",
+            "candidate",
+            "difference_interval_us",
+            "median_difference_us",
+            "relative_difference",
+            "round_count",
+            "round_difference_us",
+            "rounds_candidate_faster",
+            "sign_test_p_value",
+            "verdict"
+          ],
+          "properties": {
+            "baseline": {
+              "type": "object",
+              "required": [
+                "lower_quartile",
+                "max",
+                "median",
+                "min",
+                "samples",
+                "upper_quartile"
+              ],
+              "properties": {
+                "median": {
+                  "type": "number"
+                },
+                "min": {
+                  "type": "number"
+                },
+                "max": {
+                  "type": "number"
+                },
+                "lower_quartile": {
+                  "type": "number"
+                },
+                "upper_quartile": {
+                  "type": "number"
+                },
+                "samples": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                }
+              }
+            },
+            "candidate": {
+              "type": "object",
+              "required": [
+                "lower_quartile",
+                "max",
+                "median",
+                "min",
+                "samples",
+                "upper_quartile"
+              ],
+              "properties": {
+                "median": {
+                  "type": "number"
+                },
+                "min": {
+                  "type": "number"
+                },
+                "max": {
+                  "type": "number"
+                },
+                "lower_quartile": {
+                  "type": "number"
+                },
+                "upper_quartile": {
+                  "type": "number"
+                },
+                "samples": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                }
+              }
+            },
+            "round_difference_us": {
+              "type": "object",
+              "required": [
+                "max",
+                "median",
+                "min"
+              ],
+              "properties": {
+                "median": {
+                  "type": "number"
+                },
+                "min": {
+                  "type": "number"
+                },
+                "max": {
+                  "type": "number"
+                }
+              },
+              "description": "Per-round candidate - baseline differences."
+            },
+            "difference_interval_us": {
+              "type": "object",
+              "required": [
+                "coverage",
+                "high",
+                "low"
+              ],
+              "properties": {
+                "low": {
+                  "type": "number"
+                },
+                "high": {
+                  "type": "number"
+                },
+                "coverage": {
+                  "type": "number"
+                }
+              },
+              "description": "Distribution-free interval for the median per-round difference (12 rounds: 3rd and 10th smallest, coverage 0.961)."
+            },
+            "sign_test_p_value": {
+              "type": "number",
+              "description": "Exact two-sided sign test over non-zero per-round differences."
+            },
+            "median_difference_us": {
+              "type": "number",
+              "description": "Median per-round difference; negative means the candidate is faster."
+            },
+            "relative_difference": {
+              "type": "number",
+              "description": "median_difference_us / baseline median (0 when that is 0)."
+            },
+            "verdict": {
+              "enum": [
+                "candidate_faster",
+                "candidate_slower",
+                "within_spread"
+              ],
+              "description": "candidate_faster when the whole interval lies below zero, candidate_slower when above, otherwise within_spread: no result."
+            },
+            "rounds_candidate_faster": {
+              "type": "integer"
+            },
+            "round_count": {
+              "type": "integer"
+            }
+          }
+        }
+      }
+    }
+  }
+}

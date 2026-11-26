@@ -50,6 +50,19 @@ int mlx_perf_compare_to_report(const mlx_perf_variant* baseline,
 
 Measures two implementations of one job with their runs interleaved (12 rounds, order flipped every round) and writes `<report_file_base>.html` (the comparison, opening with its verdict), `<report_file_base>.json` (the [comparison record](../measurement-file.md#the-comparison-record-kind-comparison)) and, per variant, `<report_file_base>_<variant_name>.html` and `.json`. Fails, writing nothing, when the two jobs' outputs differ in count, shape or dtype, or the variant names are unusable. `summary` may be `NULL`. Guide: [Comparing two implementations](../comparing-implementations.md).
 
+### mlx_perf_compare_procedures_to_report
+
+```c
+int mlx_perf_compare_procedures_to_report(const mlx_perf_procedure* baseline,
+                                          const mlx_perf_procedure* candidate,
+                                          const char* report_title,
+                                          const char* output_directory,
+                                          const char* report_file_base,
+                                          mlx_perf_procedure_comparison_summary* summary);
+```
+
+Measures two procedures, code that evaluates any number of MLX graphs, each run whole: one warm-up and one observed run each, then 12 rounds with the order flipped every round. Writes `<report_file_base>.html` (the verdict, the hand-offs per run and the kernel launches by Metal function) and `<report_file_base>.json` (the [procedure comparison record](../measurement-file.md#the-procedure-comparison-record-kind-procedure_comparison)). Fails, writing nothing, when a callback returns non-zero or the names are unusable. `summary` may be `NULL`. Guide: [Comparing procedures](../comparing-procedures.md).
+
 ### mlx_perf_set_console_output
 
 ```c
@@ -175,6 +188,55 @@ typedef struct mlx_perf_comparison_summary {
 ```
 
 `job_wall` is the job's uninstrumented duration (the headline), `gpu_span` the GPU time from the job's first command buffer's start to its last one's end summed over streams, `host_submission` the host time inside the job's `async_eval`. `max_absolute_output_difference` is the largest element-wise difference between the two variants' outputs, computed in float32, or `NaN` when any difference is not finite; it is reported, not judged. 584 bytes.
+
+### mlx_perf_procedure_step_fn
+
+```c
+typedef int (*mlx_perf_procedure_step_fn)(void* procedure_payload);
+```
+
+A procedure's `prepare` or `run` callback. Return `0` on success; any other value stops the comparison with `procedure <name>: run returned <n>` (or `prepare returned <n>`).
+
+### mlx_perf_procedure
+
+```c
+typedef struct mlx_perf_procedure {
+  const char* procedure_name;
+  mlx_perf_procedure_step_fn prepare;
+  mlx_perf_procedure_step_fn run;
+  void* procedure_payload;
+} mlx_perf_procedure;
+```
+
+One procedure in a procedure comparison. `run` is measured from its start until every command buffer it committed has completed. `prepare` (may be `NULL`) runs before every run, untimed; evaluate what it creates before returning, so that work is not left to the timed run. Both run on the calling thread with `procedure_payload`. `procedure_name` follows the rules of `variant_name`. 32 bytes.
+
+### mlx_perf_procedure_summary
+
+```c
+typedef struct mlx_perf_procedure_summary {
+  double median_command_buffer_count;
+  double median_blocking_wait_count;
+  double median_blocking_wait_us;
+  int kernel_launch_count;
+  int launches_unable_to_fill_gpu;
+} mlx_perf_procedure_summary;
+```
+
+One procedure's hand-offs: the medians over the 12 rounds of its command buffers, its blocking waits (evaluations and synchronizes that stopped the host until the GPU finished) and the host time they took. `kernel_launch_count` is from the observed run; `launches_unable_to_fill_gpu` counts its launches with fewer threadgroups than GPU cores, or is `-1` when the core count is unknown. 32 bytes.
+
+### mlx_perf_procedure_comparison_summary
+
+```c
+typedef struct mlx_perf_procedure_comparison_summary {
+  mlx_perf_procedure_summary baseline;
+  mlx_perf_procedure_summary candidate;
+  mlx_perf_metric_comparison duration;
+  mlx_perf_metric_comparison gpu_busy;
+  mlx_perf_metric_comparison gpu_idle;
+} mlx_perf_procedure_comparison_summary;
+```
+
+`duration` is the run until its GPU work completed (the headline), `gpu_busy` the time inside it when at least one of its command buffers was on the GPU, `gpu_idle` the rest: the GPU waiting on the host. 496 bytes.
 
 ## Constants
 
