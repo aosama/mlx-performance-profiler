@@ -2,7 +2,9 @@
 
 Copy this skeleton to `release-notes/vX.Y.Z.md` and fill every section from
 the fact sheet and the issues and PRs behind it. The comments in `<!-- -->`
-say what each section must contain; delete them when writing.
+say what each section must contain; delete them when writing. Write each
+paragraph and list item on a single line: GitHub renders every line break
+in a release body as a visible break.
 
 ````markdown
 # mlx-performance-profiler X.Y.Z: <the theme, in a few words>

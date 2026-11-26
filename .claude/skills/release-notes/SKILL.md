@@ -136,6 +136,10 @@ change" when that's true, because readers look for it) and "For agents".
   words the first time.
 - **Link everything shipped:** issue and PR, as `#N` (GitHub links these
   automatically in a release body). Link docs by full URL at the tag.
+- **One line per paragraph or list item; don't hard-wrap.** A release body
+  is not rendered like a README: GitHub turns every line break in it into a
+  visible break, so prose wrapped at 80 columns shows up ragged on the
+  release page. (Code blocks are unaffected.)
 - **Say what did not change** when readers would worry. For example: "0.1.0
   calls keep working unchanged."
 - **Credit work that improved the release,** such as an independent review
