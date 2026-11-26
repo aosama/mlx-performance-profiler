@@ -1,6 +1,7 @@
 #include "mlx_perf/mlx_perf_c_api.h"
 
 #include "graph_factory.h"
+#include "console_output.h"
 #include "graph_build_timer.h"
 #include "graph_model.h"
 #include "measurement_file.h"
@@ -333,6 +334,10 @@ extern "C" int mlx_perf_compare_to_report(
   } catch (...) {
     return record_failure_in_flight();
   }
+}
+
+extern "C" void mlx_perf_set_console_output(int is_enabled) {
+  set_console_output_enabled(is_enabled != 0);
 }
 
 extern "C" const char* mlx_perf_version(void) { return MLX_PERF_VERSION_STRING; }

@@ -25,7 +25,10 @@ Additive: the next release is a minor one (0.2.0) under `VERSIONING.md`.
   per-round differences: a result only when the 96% interval for the median
   difference excludes zero (at least 10 of 12 rounds). The comparison page
   opens with the verdict; `<base>.json` records it.
-- `hello_world` and `qwen35_profile` measure eager vs compiled this way.
+- `hello_world`, `qwen35_profile` and the live server measure eager vs
+  compiled this way; the live Job tab opens with the verdict (#25).
+- `mlx_perf_set_console_output` silences everything the library prints
+  (#24).
 
 ## 0.1.0 (2026-11-26)
 

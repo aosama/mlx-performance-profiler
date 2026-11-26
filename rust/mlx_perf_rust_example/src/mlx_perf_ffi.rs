@@ -91,6 +91,8 @@ unsafe extern "C" {
         report_file_base: *const c_char,
         summary: *mut ComparisonSummary,
     ) -> c_int;
+    #[allow(dead_code)] // declared for callers; this example keeps output on
+    fn mlx_perf_set_console_output(is_enabled: c_int);
     fn mlx_perf_profile_to_report(
         build_graph: BuildGraphCallback,
         builder_payload: *mut c_void,

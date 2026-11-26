@@ -69,10 +69,13 @@ struct PairComparisons {
 // `stream_index_to_stream` must hold every stream either job uses. Throws
 // std::invalid_argument when the two jobs' outputs differ in count, shape
 // or dtype (see output_agreement), before any timed pass runs.
+// `measurement_observer`, when given, is told as each phase begins, under
+// the label "<baseline> vs <candidate>".
 PairedMeasurement measure_pair(
     const ComparedJob& baseline_job, const ComparedJob& candidate_job,
     const std::unordered_map<int, mlx::core::Stream>& stream_index_to_stream,
-    const TimelineOptions& timeline_options = {});
+    const TimelineOptions& timeline_options = {},
+    MeasurementObserver* measurement_observer = nullptr);
 
 PairComparisons compare_pair(const PairedMeasurement& paired_measurement);
 

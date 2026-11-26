@@ -136,6 +136,12 @@ int mlx_perf_compare_to_report(const mlx_perf_variant* baseline,
                                const char* report_file_base,
                                mlx_perf_comparison_summary* summary);
 
+/* Switches the library's console output on (non-zero, the default) or off
+ * (0): progress and file lines on stdout, error lines on stderr. Off, the
+ * library writes nothing to either; failures still come back as return
+ * codes and mlx_perf_last_error(). Process-wide and thread-safe. */
+void mlx_perf_set_console_output(int is_enabled);
+
 /* The library version, "MAJOR.MINOR.PATCH" (MLX_PERF_VERSION_STRING of the
  * build that produced the library). Compare it with the header's macro to
  * catch a header and an archive from different releases. Static storage. */

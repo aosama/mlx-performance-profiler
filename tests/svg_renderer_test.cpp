@@ -2,6 +2,8 @@
 // carries caller-chosen text. Skips the layout checks when `dot` is absent
 // (the report then falls back to raw DOT, which is not an error).
 
+#include "captured_console.h"
+#include "console_output.h"
 #include "svg_renderer.h"
 #include "test_harness.h"
 
@@ -44,6 +46,18 @@ void should_never_run_shell_syntax_in_a_name() {
   EXPECT_TRUE(!file_exists("svg_renderer_injected"));
 }
 
+// With console output off, even dot's complaint about a bad graph is kept
+// off the caller's stderr.
+void should_keep_dots_errors_off_the_console_when_output_is_off() {
+  mlx_perf::set_console_output_enabled(false);
+  captured_console::CapturedConsole captured_console("svg_renderer_silenced");
+  const std::string plan_svg = render_plan_svg("this is not dot {", ".", "svg_renderer_bad_quiet");
+  const std::string stderr_text = captured_console.stderr_text();
+  mlx_perf::set_console_output_enabled(true);
+  EXPECT_TRUE(plan_svg.empty());
+  EXPECT_TRUE(stderr_text.empty());
+}
+
 void should_return_no_svg_for_a_malformed_graph() {
   EXPECT_TRUE(render_plan_svg("this is not dot {", ".", "svg_renderer_malformed").empty());
 }
@@ -55,6 +69,7 @@ int main() {
       TEST_CASE(should_lay_out_a_plan_as_svg_and_keep_the_dot_file),
       TEST_CASE(should_lay_out_a_plan_whose_name_has_spaces_and_quotes),
       TEST_CASE(should_never_run_shell_syntax_in_a_name),
+      TEST_CASE(should_keep_dots_errors_off_the_console_when_output_is_off),
       TEST_CASE(should_return_no_svg_for_a_malformed_graph),
   });
 }

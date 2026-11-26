@@ -1,5 +1,6 @@
 #include "report_bundle.h"
 
+#include "console_output.h"
 #include "comparison_record.h"
 #include "measurement_file.h"
 #include "report_comparison_page.h"
@@ -27,9 +28,9 @@ ReportPaths write_variant(const ReportBundleRequest& bundle_request,
       write_report(report_inputs, bundle_request.output_directory,
                    variant_file_base(bundle_request, variant_measurement));
   if (!report_paths.is_written) {
-    std::fprintf(stderr, "error: could not write %s\n", report_paths.html_path.c_str());
+    print_error_line("error: could not write %s\n", report_paths.html_path.c_str());
   } else {
-    std::printf("report: %s%s\n", report_paths.html_path.c_str(),
+    print_progress_line("report: %s%s\n", report_paths.html_path.c_str(),
                 report_paths.graphviz_available ? " (with SVG)" : " (no Graphviz)");
   }
   return report_paths;
@@ -43,11 +44,11 @@ bool write_variant_measurements(const ReportBundleRequest& bundle_request,
       write_measurement_file(variant_measurement, bundle_request.output_directory,
                              variant_file_base(bundle_request, variant_measurement));
   if (measurement_path.empty()) {
-    std::fprintf(stderr, "error: could not write the measurements of %s\n",
+    print_error_line("error: could not write the measurements of %s\n",
                  variant_measurement.variant_name.c_str());
     return false;
   }
-  std::printf("measurements: %s\n", measurement_path.c_str());
+  print_progress_line("measurements: %s\n", measurement_path.c_str());
   return true;
 }
 
@@ -73,10 +74,10 @@ bool write_comparison_page(const ReportBundleRequest& bundle_request,
                                     " vs " + candidate.variant_name,
                                 baseline_variant, candidate_variant, page_text));
   if (!is_comparison_written) {
-    std::fprintf(stderr, "error: could not write %s\n", comparison_path.c_str());
+    print_error_line("error: could not write %s\n", comparison_path.c_str());
     return false;
   }
-  std::printf("report: %s (%s vs %s)\n", comparison_path.c_str(),
+  print_progress_line("report: %s (%s vs %s)\n", comparison_path.c_str(),
               baseline.variant_name.c_str(), candidate.variant_name.c_str());
   return true;
 }
@@ -91,11 +92,11 @@ bool write_comparison_record(const ReportBundleRequest& bundle_request,
   const std::string record_path = write_json_file(
       comparison_record, bundle_request.output_directory, bundle_request.file_base);
   if (record_path.empty()) {
-    std::fprintf(stderr, "error: could not write the comparison record %s.json\n",
+    print_error_line("error: could not write the comparison record %s.json\n",
                  bundle_request.file_base.c_str());
     return false;
   }
-  std::printf("measurements: %s (comparison)\n", record_path.c_str());
+  print_progress_line("measurements: %s (comparison)\n", record_path.c_str());
   return true;
 }
 
@@ -107,7 +108,7 @@ bool write_report_bundle(const ReportBundleRequest& bundle_request,
                          const PairedMeasurement& paired_measurement) {
   if (are_equal_ignoring_case(paired_measurement.baseline.variant_name,
                               paired_measurement.candidate.variant_name)) {
-    std::fprintf(stderr, "error: both variants are named \"%s\" (ignoring case); their files"
+    print_error_line("error: both variants are named \"%s\" (ignoring case); their files"
                          " would overwrite each other\n",
                  paired_measurement.candidate.variant_name.c_str());
     return false;

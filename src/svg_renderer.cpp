@@ -1,10 +1,14 @@
 #include "svg_renderer.h"
 
+#include "console_output.h"
+
 #include <fstream>
 #include <sstream>
 #include <string>
 
+#include <fcntl.h>
 #include <spawn.h>
+#include <unistd.h>
 #include <sys/wait.h>
 
 // The process environment, passed through to `dot` unchanged.
@@ -43,8 +47,19 @@ bool run_dot_layout(const std::string& dot_file_path, const std::string& svg_fil
   std::string svg_path_argument = svg_file_path;
   char* dot_arguments[] = {program_name.data(), format_flag.data(), dot_path_argument.data(),
                            output_flag.data(), svg_path_argument.data(), nullptr};
+  // With console output off the library prints nothing, and that includes
+  // what dot would say about a graph it rejects.
+  posix_spawn_file_actions_t dot_file_actions;
+  posix_spawn_file_actions_init(&dot_file_actions);
+  if (!is_console_output_enabled()) {
+    posix_spawn_file_actions_addopen(&dot_file_actions, STDOUT_FILENO, "/dev/null", O_WRONLY, 0);
+    posix_spawn_file_actions_addopen(&dot_file_actions, STDERR_FILENO, "/dev/null", O_WRONLY, 0);
+  }
   pid_t dot_process_id = 0;
-  if (posix_spawnp(&dot_process_id, "dot", nullptr, nullptr, dot_arguments, environ) != 0) {
+  const int spawn_status = posix_spawnp(&dot_process_id, "dot", &dot_file_actions, nullptr,
+                                        dot_arguments, environ);
+  posix_spawn_file_actions_destroy(&dot_file_actions);
+  if (spawn_status != 0) {
     return false;
   }
   int dot_exit_status = 0;

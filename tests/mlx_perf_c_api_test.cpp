@@ -1,6 +1,7 @@
 // Integration tests for the C API on the Metal GPU, driven purely through
 // MLX-C the way a non-C++ caller (e.g. Rust via mlx-bridge) would.
 
+#include "captured_console.h"
 #include "json_value.h"
 #include "mlx_c_interop.h"
 #include "mlx_perf/mlx_perf_c_api.h"
@@ -269,6 +270,32 @@ void should_compare_two_mlx_c_jobs_and_write_the_verdict_page() {
   EXPECT_TRUE(record.at("candidate").at("variant_name").as_string() == "cos");
 }
 
+// #24: a consumer that switches output off gets no console text at all,
+// and the same files.
+void should_profile_and_compare_silently_when_console_output_is_off() {
+  CompareFixture fixture;
+  mlx_perf_set_console_output(0);
+  captured_console::CapturedConsole captured_console("c_api_silenced");
+  const int profile_status = mlx_perf_profile_to_report(
+      build_two_stream_graph, &fixture.sin_streams.payload, "quiet", "Quiet job", ".",
+      "c_api_quiet_report", nullptr);
+  const int compare_status = mlx_perf_compare_to_report(
+      &fixture.sin_variant, &fixture.cos_variant, "Quiet pair", ".", "c_api_quiet_compare",
+      nullptr);
+  const int failing_status = mlx_perf_profile_to_report(
+      build_two_stream_graph, &fixture.sin_streams.payload, "quiet", "t", "no/such/directory",
+      "x", nullptr);
+  const std::string stdout_text = captured_console.stdout_text();
+  const std::string stderr_text = captured_console.stderr_text();
+  mlx_perf_set_console_output(1);
+  EXPECT_TRUE(profile_status == 0 && compare_status == 0);
+  EXPECT_TRUE(failing_status != 0);  // still reported, through the return code
+  EXPECT_TRUE(stdout_text.empty());
+  EXPECT_TRUE(stderr_text.empty());
+  EXPECT_TRUE(std::ifstream("c_api_quiet_report.json").good());
+  EXPECT_TRUE(std::ifstream("c_api_quiet_compare.html").good());
+}
+
 // --- edge / boundary ---
 
 void should_leave_the_gap_empty_for_a_single_node_job() {
@@ -425,6 +452,7 @@ int main() {
       TEST_CASE(should_write_the_measurements_beside_the_report),
       TEST_CASE(should_leave_the_gap_empty_for_a_single_node_job),
       TEST_CASE(should_compare_two_mlx_c_jobs_and_write_the_verdict_page),
+      TEST_CASE(should_profile_and_compare_silently_when_console_output_is_off),
       TEST_CASE(should_leave_the_last_error_untouched_when_asked_for_the_version),
       TEST_CASE(should_accept_a_null_summary),
       TEST_CASE(should_reject_a_callback_that_produces_no_outputs),

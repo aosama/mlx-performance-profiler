@@ -1,8 +1,10 @@
 #include "paired_measurement.h"
 
+#include "console_output.h"
 #include "progress_reporter.h"
 
 #include <array>
+#include <string>
 #include <cstdio>
 
 namespace mlx_perf {
@@ -27,9 +29,13 @@ struct PairSide {
 };
 
 // Where the schedule is, for the ETA line.
+// Where the schedule is: the ETA line, and the caller's observer (a live
+// view's status line), told as each phase begins.
 struct ScheduleProgress {
   ProgressReporter progress{"paired passes", PAIRED_STEP_COUNT};
   int completed_steps = 0;
+  MeasurementObserver* measurement_observer = nullptr;
+  std::string pair_label;  // "eager vs compiled"
   void step_done() { progress.update(++completed_steps); }
 };
 
@@ -43,16 +49,20 @@ std::array<PairSide*, 2> order_for_round(int round_index, PairSide& baseline_sid
 }
 
 void begin_pass_on_both(PairSide& baseline_side, PairSide& candidate_side,
-                        const char* pass_name, const char* phase_description) {
-  std::printf("[pair] %s...\n", phase_description);
-  std::fflush(stdout);  // stay live when stdout is a pipe
+                        ScheduleProgress& schedule_progress, const char* pass_name,
+                        const char* phase_description) {
+  print_progress_line("[pair] %s...\n", phase_description);
+  if (schedule_progress.measurement_observer != nullptr) {
+    schedule_progress.measurement_observer->on_pass_started(schedule_progress.pair_label,
+                                                            phase_description);
+  }
   baseline_side.timed_factory.begin_pass(pass_name);
   candidate_side.timed_factory.begin_pass(pass_name);
 }
 
 OutputAgreement run_warm_ups(PairSide& baseline_side, PairSide& candidate_side,
                              ScheduleProgress& schedule_progress) {
-  begin_pass_on_both(baseline_side, candidate_side, "warm_up",
+  begin_pass_on_both(baseline_side, candidate_side, schedule_progress, "warm_up",
                      "warm-up, both variants (compile/JIT; discarded)");
   const auto baseline_outputs = run_warm_up(baseline_side.timed_factory);
   schedule_progress.step_done();
@@ -63,7 +73,7 @@ OutputAgreement run_warm_ups(PairSide& baseline_side, PairSide& candidate_side,
 
 void run_uninstrumented_rounds(PairSide& baseline_side, PairSide& candidate_side,
                                ScheduleProgress& schedule_progress) {
-  begin_pass_on_both(baseline_side, candidate_side, "job_wall",
+  begin_pass_on_both(baseline_side, candidate_side, schedule_progress, "job_wall",
                      "uninstrumented rounds: job wall and host submission, alternating");
   for (int round_index = 0; round_index < PAIRED_ROUND_COUNT; ++round_index) {
     for (PairSide* pair_side : order_for_round(round_index, baseline_side, candidate_side)) {
@@ -84,7 +94,7 @@ void run_uninstrumented_rounds(PairSide& baseline_side, PairSide& candidate_side
 void run_gpu_span_rounds(PairSide& baseline_side, PairSide& candidate_side,
                          const std::unordered_map<int, mlx::core::Stream>& stream_index_to_stream,
                          ScheduleProgress& schedule_progress) {
-  begin_pass_on_both(baseline_side, candidate_side, "gpu_span",
+  begin_pass_on_both(baseline_side, candidate_side, schedule_progress, "gpu_span",
                      "GPU-span rounds: whole job as one timed unit, alternating");
   for (int round_index = 0; round_index < PAIRED_ROUND_COUNT; ++round_index) {
     for (PairSide* pair_side : order_for_round(round_index, baseline_side, candidate_side)) {
@@ -101,7 +111,7 @@ void run_illustrative_timelines(
     PairSide& baseline_side, PairSide& candidate_side,
     const std::unordered_map<int, mlx::core::Stream>& stream_index_to_stream,
     const TimelineOptions& timeline_options, ScheduleProgress& schedule_progress) {
-  begin_pass_on_both(baseline_side, candidate_side, "timeline",
+  begin_pass_on_both(baseline_side, candidate_side, schedule_progress, "timeline",
                      "timeline per variant (the picture; not part of the verdict)");
   for (PairSide* pair_side : {&baseline_side, &candidate_side}) {
     TimelineCapture timeline_capture =
@@ -115,7 +125,7 @@ void run_illustrative_timelines(
 void run_serial_passes(PairSide& baseline_side, PairSide& candidate_side,
                        const std::unordered_map<int, mlx::core::Stream>& stream_index_to_stream,
                        ScheduleProgress& schedule_progress) {
-  begin_pass_on_both(baseline_side, candidate_side, "serial",
+  begin_pass_on_both(baseline_side, candidate_side, schedule_progress, "serial",
                      "serial pass, each variant (sum of stages)");
   for (PairSide* pair_side : {&baseline_side, &candidate_side}) {
     run_serial_pass(pair_side->timed_factory, stream_index_to_stream,
@@ -130,13 +140,15 @@ void run_serial_passes(PairSide& baseline_side, PairSide& candidate_side,
 PairedMeasurement measure_pair(
     const ComparedJob& baseline_job, const ComparedJob& candidate_job,
     const std::unordered_map<int, mlx::core::Stream>& stream_index_to_stream,
-    const TimelineOptions& timeline_options) {
+    const TimelineOptions& timeline_options, MeasurementObserver* measurement_observer) {
   PairedMeasurement paired_measurement;
   PairSide baseline_side(baseline_job, paired_measurement.baseline,
                          paired_measurement.baseline_rounds);
   PairSide candidate_side(candidate_job, paired_measurement.candidate,
                           paired_measurement.candidate_rounds);
   ScheduleProgress schedule_progress;
+  schedule_progress.measurement_observer = measurement_observer;
+  schedule_progress.pair_label = baseline_job.variant_name + " vs " + candidate_job.variant_name;
   paired_measurement.output_agreement =
       run_warm_ups(baseline_side, candidate_side, schedule_progress);
   run_uninstrumented_rounds(baseline_side, candidate_side, schedule_progress);

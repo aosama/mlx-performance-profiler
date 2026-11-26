@@ -23,6 +23,10 @@ sidecar: it observes, it never changes MLX semantics.
 - Variable names describe domain meaning: `output_node_ids`,
   `stream_index_to_stream`, `node_id_to_telemetry`. No `tmp`/`data`/`info`.
 - Any run longer than a few seconds prints live progress with an ETA.
+- Library code prints only through `console_output` (`print_progress_line`,
+  `print_error_line`), never `printf`/`std::cout` directly: callers switch
+  all of it off with `mlx_perf_set_console_output(0)`. Tools' own `main`
+  files may print directly.
 - The prebuilt MLX the spike links against lives at
   `~/.cache/mlx-bridge/native/<identity>/prefix` and is passed as the CMake
   cache variable `MLX_PREFIX` — never as an environment variable.

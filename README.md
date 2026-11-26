@@ -164,10 +164,12 @@ timeline pass); a `~` marks the rare fallback to a host-observed residual
 ./build/mlx_perf_server            # or: --port 9000
 ```
 
-Open <http://127.0.0.1:8765/>. The server measures the job (eager and
-compiled) and serves Spark-UI-like tabs:
+Open <http://127.0.0.1:8765/>. The server measures the job, eager against
+compiled, as an interleaved pair (see **Comparing two implementations**)
+and serves Spark-UI-like tabs:
 
-- **Job:** the comparison table plus each variant's summary cards.
+- **Job:** the verdict, then the single-figure comparison table and each
+  variant's summary cards.
 - **Stages:** per-stream Gantt and stream table.
 - **Tasks:** the sortable per-node table.
 - **Memory:** a live process-memory chart sampled at 1 Hz, plus the nodes
@@ -321,6 +323,18 @@ file per variant.
 The suite's acceptance test is a separate example: one 4-bit quantized
 projection, computed by `quantized_matmul` against `dequantize` followed by
 `matmul`. The fused kernel wins beyond the spread.
+
+## Quiet output for library use
+
+The library prints progress and file lines to stdout and errors to stderr.
+A consumer whose own output must stay machine-readable switches that off:
+
+```c
+mlx_perf_set_console_output(0);   /* 1 (the default) switches it back on */
+```
+
+Off, nothing is printed; failures still come back as return codes and
+`mlx_perf_last_error()`.
 
 ## Per-node measurements as data
 
