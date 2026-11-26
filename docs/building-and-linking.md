@@ -22,7 +22,7 @@ The simplest way: your project fetches the library at a release tag and builds i
 ```cmake
 # A project of your own that uses mlx-performance-profiler: it fetches the
 # library at a release tag, builds it against your prebuilt MLX, and links
-# four small C programs to it.
+# five small C programs to it.
 #
 #   cmake -S . -B build -DMLX_PREFIX=/path/to/mlx/prefix
 #   cmake --build build
@@ -40,7 +40,8 @@ FetchContent_Declare(mlx_perf
   GIT_TAG v0.4.0)
 FetchContent_MakeAvailable(mlx_perf)
 
-foreach(example_name profile_one_job compare_two_implementations compare_two_procedures measure_quietly)
+foreach(example_name profile_one_job compare_two_implementations compare_two_procedures measure_quietly
+    measure_wired_memory)
   add_executable(${example_name} ${example_name}.c)
   target_link_libraries(${example_name} PRIVATE mlx_perf::mlx_perf)
 endforeach()

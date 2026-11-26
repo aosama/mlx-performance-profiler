@@ -80,6 +80,13 @@ sidecar: it observes, it never changes MLX semantics.
   `procedure_comparison_record`, `procedure_report_files`). The C entry
   point is `mlx_perf_c_api_procedures.cpp`; plumbing every entry point
   shares is in `c_api_support`.
+- Wired memory (#45): `system_wired_memory` reads the kernel (sysctl, not
+  the rate-limited `host_statistics64`); `wired_memory_sample` and
+  `wired_memory_analysis` are pure; `wired_memory_sampler` takes samples
+  (an `EvaluationBoundaryListener` the submission recorder calls after each
+  blocking wait); `wired_memory_record` and `report_wired_memory_section`
+  present them; `wire_release_probe` is the probe. Sample only runs whose
+  timing is not judged.
 - Model-specific code lives under `src/qwen35/` (config, weights, decode
   step, generation, token text). The generic profiler in `src/` never
   depends on it; `qwen35_profile.cpp` only orchestrates.

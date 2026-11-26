@@ -85,6 +85,13 @@ add_library(mlx_perf STATIC
     src/metal_submission_recorder.cpp
     src/gpu_busy_time.cpp
     src/procedure_measurement.cpp
+    src/system_wired_memory.cpp
+    src/wired_memory_sample.cpp
+    src/wired_memory_analysis.cpp
+    src/wired_memory_sampler.cpp
+    src/wired_memory_record.cpp
+    src/report_wired_memory_section.cpp
+    src/wire_release_probe.cpp
     src/report_procedure_page.cpp
     src/procedure_comparison_record.cpp
     src/procedure_report_files.cpp
@@ -124,7 +131,8 @@ add_library(mlx_perf STATIC
     src/mlx_c_interop.cpp
     src/c_api_support.cpp
     src/mlx_perf_c_api.cpp
-    src/mlx_perf_c_api_procedures.cpp)
+    src/mlx_perf_c_api_procedures.cpp
+    src/mlx_perf_c_api_wired_memory.cpp)
 add_library(mlx_perf::mlx_perf ALIAS mlx_perf)
 # Consumers see the C API alone, installed or built from source.
 target_include_directories(mlx_perf

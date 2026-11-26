@@ -10,6 +10,7 @@ namespace {
 constexpr double MICROSECONDS_PER_MILLISECOND = 1000.0;
 constexpr double BYTES_PER_KIBIBYTE = 1024.0;
 constexpr double BYTES_PER_MEBIBYTE = 1024.0 * 1024.0;
+constexpr double BYTES_PER_GIBIBYTE = 1024.0 * BYTES_PER_MEBIBYTE;
 
 } // namespace
 
@@ -30,7 +31,13 @@ std::string format_microseconds(double duration_microseconds) {
 std::string format_bytes(std::size_t byte_count) {
   char formatted_size[48];
   const double byte_amount = static_cast<double>(byte_count);
-  if (byte_amount >= BYTES_PER_MEBIBYTE) {
+  if (byte_amount >= BYTES_PER_GIBIBYTE) {
+    // Two decimals: wired memory and its limit are tens of GiB, and a
+    // release of a few hundred MiB must still show.
+    std::snprintf(
+        formatted_size, sizeof(formatted_size), "%.2f GiB",
+        byte_amount / BYTES_PER_GIBIBYTE);
+  } else if (byte_amount >= BYTES_PER_MEBIBYTE) {
     std::snprintf(
         formatted_size, sizeof(formatted_size), "%.1f MiB",
         byte_amount / BYTES_PER_MEBIBYTE);

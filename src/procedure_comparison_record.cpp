@@ -3,6 +3,7 @@
 #include "comparison_record.h"
 #include "kernel_launch_summary.h"
 #include "measurement_document.h"
+#include "wired_memory_record.h"
 
 namespace mlx_perf {
 namespace {
@@ -49,7 +50,8 @@ JsonValue procedure_record(const ProcedureMeasurement& procedure_measurement, in
       {"rounds", JsonValue(std::move(round_records))},
       {"observed_run", run_record(procedure_measurement.observed_run)},
       {"kernel_launch_count", json_number(static_cast<double>(procedure_measurement.observed_launches.size()))},
-      {"kernel_launches", JsonValue(std::move(launch_records))}});
+      {"kernel_launches", JsonValue(std::move(launch_records))},
+      {"wired_memory", build_wired_memory_record(procedure_measurement.observed_wired_memory)}});
 }
 
 JsonValue metric_record(const PairedComparison& paired_comparison, const PairedProcedureMeasurement& paired_measurement,

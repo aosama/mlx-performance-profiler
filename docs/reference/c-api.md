@@ -63,6 +63,23 @@ int mlx_perf_compare_procedures_to_report(const mlx_perf_procedure* baseline,
 
 Measures two procedures, code that evaluates any number of MLX graphs, each run whole: one warm-up and one observed run each, then 12 rounds with the order flipped every round. Writes `<report_file_base>.html` (the verdict, the hand-offs per run and the kernel launches by Metal function) and `<report_file_base>.json` (the [procedure comparison record](../measurement-file.md#the-procedure-comparison-record-kind-procedure_comparison)). Fails, writing nothing, when a callback returns non-zero or the names are unusable. `summary` may be `NULL`. Guide: [Comparing procedures](../comparing-procedures.md).
 
+### mlx_perf_read_wired_memory
+
+```c
+int mlx_perf_read_wired_memory(mlx_perf_wired_memory* reading);
+```
+
+Reads the wired memory now into `reading`: the system's wired total and the wire limit, MLX's active memory and cache, and the derived "wired outside MLX" and room under the limit. Two system calls and MLX's two counters: cheap enough to call after every evaluation. Thread-safe. Fails when `reading` is `NULL` or the kernel refuses the read. Guide: [Wired memory](../wired-memory.md).
+
+### mlx_perf_measure_wire_release_lag
+
+```c
+int mlx_perf_measure_wire_release_lag(uint64_t allocation_bytes, int repetition_count,
+                                      mlx_perf_wire_release_lag* result);
+```
+
+Measures how long macOS keeps memory wired after MLX releases it, on this Mac. Each repetition waits for the wired total to settle (at most 3 s), allocates and evaluates `allocation_bytes` on the GPU, releases it and clears MLX's cache, then times from MLX's holding falling to the wired total falling by at least half the allocation (waiting at most 5 s). Prints progress with an ETA. `allocation_bytes` must be at least 4 and under 8 GiB; `repetition_count` at least 1. Run it with nothing else using MLX.
+
 ### mlx_perf_set_console_output
 
 ```c
@@ -237,6 +254,37 @@ typedef struct mlx_perf_procedure_comparison_summary {
 ```
 
 `duration` is the run until its GPU work completed (the headline), `gpu_busy` the time inside it when at least one of its command buffers was on the GPU, `gpu_idle` the rest: the GPU waiting on the host. 496 bytes.
+
+### mlx_perf_wired_memory
+
+```c
+typedef struct mlx_perf_wired_memory {
+  uint64_t system_wired_bytes;
+  uint64_t wire_limit_bytes;
+  uint64_t mlx_active_bytes;
+  uint64_t mlx_cache_bytes;
+  int64_t wired_outside_mlx_bytes;
+  int64_t wire_headroom_bytes;
+} mlx_perf_wired_memory;
+```
+
+One reading. `system_wired_bytes` is `vm.page_wired_count` times the page size; `wire_limit_bytes` is `vm.global_user_wire_limit`, or 0 when unknown. `wired_outside_mlx_bytes` is the wired total less MLX's active memory and cache (it may be negative); `wire_headroom_bytes` is the limit less the wired total, or 0 when the limit is unknown. 48 bytes.
+
+### mlx_perf_wire_release_lag
+
+```c
+typedef struct mlx_perf_wire_release_lag {
+  uint64_t allocation_bytes;
+  uint64_t wire_limit_bytes;
+  int64_t median_wired_rise_bytes;
+  double median_release_lag_us;
+  double largest_release_lag_us;
+  int repetition_count;
+  int resolved_count;
+} mlx_perf_wire_release_lag;
+```
+
+The probe's result. `allocation_bytes` is the size measured, rounded down to whole float32 elements. `median_wired_rise_bytes` is how far the wired total rose while the allocation was held. The lags are over the `resolved_count` repetitions whose un-wiring was seen in time, `NaN` when none was. 48 bytes.
 
 ## Constants
 

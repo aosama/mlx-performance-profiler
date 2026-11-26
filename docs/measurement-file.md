@@ -75,6 +75,27 @@ Graph building happens between the passes' clocks: no other number includes
 it. `job_wall_us` is evaluation only. Add the `job_wall` calls to it to get
 construction plus evaluation.
 
+## `job.wired_memory`
+
+The system's wired memory beside MLX's own, over the serial pass: `samples[0]`
+as the pass began, then `samples[k + 1]` after the node at position `k`
+([guide](wired-memory.md)). The same record, sampled over a procedure's
+observed run, is `baseline.wired_memory` and `candidate.wired_memory` in the
+procedure comparison record. `null` when no samples were taken.
+
+| Field | Meaning |
+|---|---|
+| `wire_limit_bytes` | `vm.global_user_wire_limit`; `null` when unknown |
+| `sample_count` | samples taken |
+| `peak_system_wired_bytes`, `peak_mlx_held_bytes` | highest system wired total, and highest MLX active + cache |
+| `peak_wired_outside_mlx_bytes`, `lowest_wired_outside_mlx_bytes` | the range of "wired outside MLX" (wired total less MLX's holding); the lowest falls when memory MLX holds has gone idle and been un-wired, and may be negative |
+| `lowest_wire_headroom_bytes`, `has_crossed_wire_limit` | least room under the limit, and whether any sample was over it; `null` when the limit is unknown |
+| `release_events[]` | each fall of 64 MiB or more in MLX's holding: `released_sample_index`, `released_bytes`, `unwired_sample_index` (the first sample whose wired total had fallen by half of it) and `release_lag_us`, both `null` when macOS had not followed before sampling stopped |
+| `median_release_lag_us`, `largest_release_lag_us` | over the resolved releases; `null` when none resolved |
+| `release_lag_inflated_sample_indices`, `largest_release_lag_inflation_bytes` | samples taken while a release was still wired, whose "outside MLX" counted MLX's released memory, and by how much at most |
+| `transient_jump_sample_indices` | samples where "outside MLX" rose by 64 MiB or more and came back within the next two samples |
+| `samples[]` | `time_us` (since the first sample), `sample_point` (`run_start`, `evaluation_boundary`, `interval`, `run_end`, `after_run`), `system_wired_bytes`, `wire_limit_bytes`, `mlx_active_bytes`, `mlx_cache_bytes`, `wired_outside_mlx_bytes`, `wire_headroom_bytes` |
+
 ## `nodes[]`
 
 Identity and structure:
@@ -208,6 +229,7 @@ Each procedure record:
 | `rounds[]` | one run per round, in round order (12) |
 | `observed_run` | the extra run that recorded the kernel launches; not judged |
 | `kernel_launch_count` | launches in the observed run |
+| `wired_memory` | the observed run's wired memory, the same record as [`job.wired_memory`](#jobwired_memory): sampled as it began, after every blocking wait on any thread, every millisecond, as its GPU work completed, and after it until macOS un-wired what it released (at most 3 s) |
 | `kernel_launches[]` | the observed run's launches grouped by Metal function: `metal_function_name` (`"(unnamed pipeline)"` for pipelines MLX compiled before the recorder started), `launch_count`, `fewest_threadgroups`, `most_threadgroups`, `lowest_gpu_core_coverage` and `has_launch_unable_to_fill_gpu` (both `null` when the core count is unknown) |
 
 Each run (`rounds[]` and `observed_run`):

@@ -5,6 +5,27 @@ MLX releases it was built and tested against.
 
 ## Unreleased
 
+### Added
+- **Wired memory beside MLX's own (#45).** On Apple silicon the GPU's memory
+  is wired and macOS keeps wired memory under `vm.global_user_wire_limit`.
+  Reports gain a **Wired memory** lane sampled after every node of the
+  serial pass; procedure comparisons gain one per procedure, sampled over
+  its observed run (not the judged rounds) after every blocking wait on any
+  thread, every millisecond, and after the run until macOS un-wired what it
+  released. Each shows the wired total, MLX's active memory and cache, the
+  part wired outside MLX, the limit and the room under it, every MLX release
+  with how long macOS took to un-wire it, and the samples whose "outside
+  MLX" that delay inflated. The JSON carries the same as `job.wired_memory`
+  and `baseline` / `candidate.wired_memory` (fields added; schema version 1).
+  New C API: `mlx_perf_read_wired_memory` and
+  `mlx_perf_measure_wire_release_lag`, with `mlx_perf_wired_memory` and
+  `mlx_perf_wire_release_lag`. Measured on one Mac: released memory stays
+  wired about 0.2 s; memory MLX still holds is un-wired after about 1.2 s
+  without GPU use. The wired total is read through `sysctl
+  vm.page_wired_count`, because macOS rate limits `host_statistics64`.
+- **Byte sizes of 1 GiB and over read in GiB** on every page (for example
+  "37.92 GiB" instead of "38830.6 MiB").
+
 ### Fixed
 - **Procedures that evaluate on another thread (#44).** A procedure whose
   `run` hands its MLX work to a worker thread (an engine with an owner

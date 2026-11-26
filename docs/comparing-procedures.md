@@ -173,7 +173,7 @@ A procedure comparison does not see inside the run node by node; it sees the run
 
 | File | Contents |
 |---|---|
-| `<base>.html` | the verdict and its metric table, the hand-offs per run, the kernel launches by Metal function |
+| `<base>.html` | the verdict and its metric table, the hand-offs per run, a [wired memory](wired-memory.md) lane for each procedure's observed run, the kernel launches by Metal function |
 | `<base>.json` | the procedure comparison record: every round of both procedures, the verdicts and the launches ([format](measurement-file.md#the-procedure-comparison-record-kind-procedure_comparison)) |
 
 Procedure names follow the rules of [variant names](comparing-implementations.md#naming-variants): non-empty, no `/`, distinct ignoring case.

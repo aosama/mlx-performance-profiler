@@ -96,6 +96,20 @@ The profiler could not find, or could not observe, the Metal command buffer and 
 
 As for the other reports: the directory does not exist, is not writable, or the disk is full.
 
+### The system's wired memory cannot be read
+
+> error: `cannot read the system's wired memory`
+
+`mlx_perf_read_wired_memory` got no answer from the kernel for the wired total: both `sysctl vm.page_wired_count` and `host_statistics64` were refused, for example by a sandbox. In the same situation a report's wired memory lane shows a wired total of 0.
+
+### The wire release probe refused its request
+
+> error: `wire release probe: allocation_bytes and repetition_count must be positive`
+
+> error: `wire release probe: allocation_bytes must be under 8 GiB`
+
+`mlx_perf_measure_wire_release_lag` needs at least one float32 element (4 bytes) and at least one repetition. One allocation must also fit one MLX array, whose shape holds at most 2³¹ − 1 elements: under 8 GiB of float32.
+
 ### An MLX-C handle could not be read
 
 > error: `mlx_vector_array handle is null`
@@ -167,6 +181,14 @@ The pipeline's name is captured when MLX compiles it. A kernel compiled before t
 ### Many launches are flagged ⚠ in a decode step
 
 Expected for small inputs: an element-wise operation on one token's vector forms a handful of threadgroups, so it cannot use every GPU core. On a Qwen3.5 decode step about 7 in 10 launches are like this. Look for the expensive ones: the hot path, cost colours, or a large kernel such as a matrix multiply that forms only a few threadgroups.
+
+### "Wired outside MLX" jumps after a release, or drops while nothing happens
+
+Both are macOS, not the profiler. Memory MLX releases stays wired for a fraction of a second, so "outside MLX" rises by the released amount until macOS un-wires it; the wired memory lane marks those samples. Memory MLX still holds is un-wired after about a second without GPU use, so "outside MLX" falls, and it rises again when the GPU next uses that memory. See [Wired memory](wired-memory.md).
+
+### A release lag is `null`
+
+macOS had not un-wired the released memory before sampling stopped (3 s after a procedure's observed run; the end of the serial pass for a report). The lag is longer than the profiler waited, or something else wired memory at the same moment. Run `mlx_perf_measure_wire_release_lag` on a quiet machine to measure it alone.
 
 ### A field is `null` in the JSON
 

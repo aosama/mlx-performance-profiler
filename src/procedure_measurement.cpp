@@ -5,6 +5,7 @@
 #include "metal_host_clock.h"
 #include "metal_submission_recorder.h"
 #include "progress_reporter.h"
+#include "wired_memory_sampler.h"
 #include "text_format.h"
 
 #include "mlx/transforms.h"
@@ -44,29 +45,16 @@ double find_run_finished_seconds(double run_returned_seconds, const std::vector<
   return run_finished_seconds;
 }
 
-// prepare() and its work finished, untimed; then run() timed until every
-// command buffer it committed has completed. The profiler's own wait for
-// those buffers is not counted as one of the procedure's blocking waits.
-ProcedureRun run_procedure_once(ProcedureJob& procedure_job, std::vector<KernelDispatch>* recorded_launches) {
-  procedure_job.prepare();
-  mlx::core::synchronize();
+// What the observed run records beside its timing; the judged rounds
+// record neither, so their timing carries no observer's cost.
+struct ObservedRunRecords {
+  std::vector<KernelDispatch> kernel_launches;
+  std::vector<WiredMemorySample> wired_memory_samples;
+};
+
+ProcedureRun summarize_run(const SubmissionRecord& submission_record, double started_seconds,
+                           double finished_seconds) {
   ProcedureRun procedure_run;
-  // Whole-process: run() may hand its MLX work to a worker thread, and only
-  // one procedure runs at a time, so everything submitted meanwhile is its
-  // work (#44).
-  std::unique_ptr<DispatchRecordingScope> dispatch_scope =
-      recorded_launches == nullptr ? nullptr
-                                   : std::make_unique<DispatchRecordingScope>(RecordingReach::whole_process);
-  SubmissionRecordingScope submission_scope(RecordingReach::whole_process);
-  const double started_seconds = current_metal_host_seconds();
-  procedure_job.run();
-  const double run_returned_seconds = current_metal_host_seconds();
-  const SubmissionRecord submission_record = submission_scope.finish_and_take_record();
-  const double finished_seconds =
-      find_run_finished_seconds(run_returned_seconds, submission_record.command_buffer_windows);
-  if (dispatch_scope != nullptr) {
-    *recorded_launches = dispatch_scope->take_recorded_dispatches();
-  }
   procedure_run.duration_microseconds = (finished_seconds - started_seconds) * 1e6;
   procedure_run.gpu_busy_microseconds = measure_gpu_busy_microseconds(
       submission_record.command_buffer_windows, started_seconds, finished_seconds);
@@ -76,6 +64,39 @@ ProcedureRun run_procedure_once(ProcedureJob& procedure_job, std::vector<KernelD
   procedure_run.blocking_wait_count = submission_record.blocking_wait_count;
   procedure_run.blocking_wait_microseconds = submission_record.blocking_wait_microseconds;
   return procedure_run;
+}
+
+// prepare() and its work finished, untimed; then run() timed until every
+// command buffer it committed has completed. The profiler's own wait for
+// those buffers is not counted as one of the procedure's blocking waits.
+// Whole-process recording: run() may hand its MLX work to a worker thread,
+// and only one procedure runs at a time, so everything submitted meanwhile
+// is its work (#44).
+ProcedureRun run_procedure_once(ProcedureJob& procedure_job, ObservedRunRecords* observed_run_records) {
+  procedure_job.prepare();
+  mlx::core::synchronize();
+  const bool is_observed = observed_run_records != nullptr;
+  std::unique_ptr<DispatchRecordingScope> dispatch_scope =
+      is_observed ? std::make_unique<DispatchRecordingScope>(RecordingReach::whole_process) : nullptr;
+  std::unique_ptr<WiredMemorySampler> wired_memory_sampler =
+      is_observed ? std::make_unique<WiredMemorySampler>() : nullptr;
+  SubmissionRecordingScope submission_scope(RecordingReach::whole_process);
+  if (is_observed) {
+    submission_scope.set_evaluation_boundary_listener(wired_memory_sampler.get());
+    wired_memory_sampler->start();
+  }
+  const double started_seconds = current_metal_host_seconds();
+  procedure_job.run();
+  const double run_returned_seconds = current_metal_host_seconds();
+  const SubmissionRecord submission_record = submission_scope.finish_and_take_record();
+  const double finished_seconds =
+      find_run_finished_seconds(run_returned_seconds, submission_record.command_buffer_windows);
+  if (is_observed) {
+    submission_scope.set_evaluation_boundary_listener(nullptr);
+    observed_run_records->kernel_launches = dispatch_scope->take_recorded_dispatches();
+    observed_run_records->wired_memory_samples = wired_memory_sampler->finish();
+  }
+  return summarize_run(submission_record, started_seconds, finished_seconds);
 }
 
 struct PairProgress {
@@ -92,13 +113,16 @@ void run_warm_ups_and_observed_runs(const ComparedProcedure& baseline, const Com
     run_procedure_once(compared_procedure->procedure_job, nullptr);
     pair_progress.advance();
   }
-  print_progress_line("[procedures] observed run of each: kernel launches\n");
-  paired_measurement.baseline.observed_run =
-      run_procedure_once(baseline.procedure_job, &paired_measurement.baseline.observed_launches);
-  pair_progress.advance();
-  paired_measurement.candidate.observed_run =
-      run_procedure_once(candidate.procedure_job, &paired_measurement.candidate.observed_launches);
-  pair_progress.advance();
+  print_progress_line("[procedures] observed run of each: kernel launches and wired memory\n");
+  for (ProcedureMeasurement* procedure_measurement : {&paired_measurement.baseline, &paired_measurement.candidate}) {
+    const ComparedProcedure& compared_procedure =
+        procedure_measurement == &paired_measurement.baseline ? baseline : candidate;
+    ObservedRunRecords observed_run_records;
+    procedure_measurement->observed_run = run_procedure_once(compared_procedure.procedure_job, &observed_run_records);
+    procedure_measurement->observed_launches = std::move(observed_run_records.kernel_launches);
+    procedure_measurement->observed_wired_memory = std::move(observed_run_records.wired_memory_samples);
+    pair_progress.advance();
+  }
 }
 
 } // namespace

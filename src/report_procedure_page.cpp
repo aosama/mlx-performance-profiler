@@ -4,6 +4,7 @@
 #include "report_assets.h"
 #include "report_launch_comparison_section.h"
 #include "report_verdict_section.h"
+#include "report_wired_memory_section.h"
 #include "text_format.h"
 
 #include <sstream>
@@ -77,6 +78,16 @@ std::string render_handoffs(const PairedProcedureMeasurement& paired_measurement
   return section_html.str();
 }
 
+std::string render_procedure_wired_memory(const std::string& section_id,
+                                          const ProcedureMeasurement& procedure_measurement) {
+  return render_wired_memory_section(
+      {section_id, "Wired memory: " + procedure_measurement.procedure_name,
+       "Sampled in " + procedure_measurement.procedure_name + "'s observed run (not one of the judged rounds):"
+       " as it began, after every blocking wait for the GPU on any thread, every millisecond in between, as"
+       " its GPU work completed, and then until macOS had un-wired what it released (at most 3 s)."},
+      procedure_measurement.observed_wired_memory);
+}
+
 } // namespace
 
 std::string build_procedure_comparison_document(const std::string& page_title,
@@ -91,6 +102,8 @@ std::string build_procedure_comparison_document(const std::string& page_title,
             << "Two procedures, each run whole: " << escape_html_text(paired_measurement.baseline.procedure_name)
             << " vs " << escape_html_text(paired_measurement.candidate.procedure_name) << "</p></header>"
             << render_verdict(paired_measurement, procedure_comparisons) << render_handoffs(paired_measurement)
+            << render_procedure_wired_memory("wired-memory-baseline", paired_measurement.baseline)
+            << render_procedure_wired_memory("wired-memory-candidate", paired_measurement.candidate)
             << render_launch_comparison_section(
                    paired_measurement.baseline.procedure_name,
                    summarize_launches_by_function(paired_measurement.baseline.observed_launches, gpu_core_count),

@@ -61,6 +61,24 @@ void should_wait_for_unwaited_async_work_without_counting_that_wait() {
               submission_record.committed_command_buffer_count);
 }
 
+class CountingBoundaryListener final : public mlx_perf::EvaluationBoundaryListener {
+ public:
+  void on_evaluation_boundary() override { ++boundary_count; }
+  int boundary_count = 0;
+};
+
+void should_tell_the_listener_about_every_blocking_wait() {
+  mlx_perf::install_submission_recorder();
+  run_blocking_steps(1);
+  CountingBoundaryListener counting_listener;
+  SubmissionRecordingScope recording_scope;
+  recording_scope.set_evaluation_boundary_listener(&counting_listener);
+  run_blocking_steps(3);
+  const SubmissionRecord submission_record = recording_scope.finish_and_take_record();
+  EXPECT_TRUE(counting_listener.boundary_count == submission_record.blocking_wait_count);
+  EXPECT_TRUE(counting_listener.boundary_count >= 3);
+}
+
 // --- edge / boundary ---
 
 void should_record_nothing_for_a_scope_without_mlx_work() {
@@ -115,6 +133,17 @@ void should_record_nothing_after_a_whole_process_scope_closes() {
   EXPECT_TRUE(thread_scope.finish_and_take_record().committed_command_buffer_count == 0);
 }
 
+void should_not_call_a_detached_listener() {
+  mlx_perf::install_submission_recorder();
+  CountingBoundaryListener counting_listener;
+  SubmissionRecordingScope recording_scope;
+  recording_scope.set_evaluation_boundary_listener(&counting_listener);
+  recording_scope.set_evaluation_boundary_listener(nullptr);
+  run_blocking_steps(2);
+  EXPECT_TRUE(counting_listener.boundary_count == 0);
+  EXPECT_TRUE(recording_scope.finish_and_take_record().blocking_wait_count >= 2);
+}
+
 void should_record_nothing_from_another_thread() {
   mlx_perf::install_submission_recorder();
   SubmissionRecordingScope recording_scope;
@@ -137,6 +166,8 @@ int main() {
       TEST_CASE(should_record_another_threads_commits_and_waits_in_a_whole_process_scope),
       TEST_CASE(should_record_two_threads_at_once_in_a_whole_process_scope),
       TEST_CASE(should_record_nothing_after_a_whole_process_scope_closes),
+      TEST_CASE(should_tell_the_listener_about_every_blocking_wait),
+      TEST_CASE(should_not_call_a_detached_listener),
       TEST_CASE(should_record_nothing_from_another_thread),
   });
 }

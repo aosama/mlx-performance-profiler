@@ -1,6 +1,7 @@
 #include "telemetry.h"
 
 #include "metal_dispatch_recorder.h"
+#include "wired_memory_sampler.h"
 
 #include "console_output.h"
 #include "mlx/memory.h"
@@ -98,6 +99,7 @@ RunTelemetry run_attributed_pass(
   // (other graphs a caller keeps alive, e.g. the other variant of a pair),
   // so two variants' figures compare like for like.
   const size_t active_bytes_at_pass_start = mlx::core::get_active_memory();
+  run_telemetry.wired_memory_samples.push_back(take_wired_memory_sample(WiredSamplePoint::run_start));
 
   for (const std::size_t node_index : captured_graph.topological) {
     const GraphNode& captured_node = captured_graph.nodes[node_index];
@@ -107,6 +109,10 @@ RunTelemetry run_attributed_pass(
     run_telemetry.attributed_nodes.push_back(node_telemetry);
     run_telemetry.attributed_total_microseconds +=
         node_telemetry.duration_microseconds;
+    // Outside the node's timed window: each node's synchronize is an
+    // evaluation boundary, where an engine would read its state.
+    run_telemetry.wired_memory_samples.push_back(
+        take_wired_memory_sample(WiredSamplePoint::evaluation_boundary));
     const size_t node_peak_bytes = mlx::core::get_peak_memory();
     run_telemetry.run_peak_memory_bytes = std::max(
         run_telemetry.run_peak_memory_bytes,

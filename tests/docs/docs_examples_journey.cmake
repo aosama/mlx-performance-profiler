@@ -15,7 +15,8 @@ execute_process(
   COMMAND_ERROR_IS_FATAL ANY)
 execute_process(COMMAND "${CMAKE_COMMAND}" --build "${EXAMPLES_BUILD}" COMMAND_ERROR_IS_FATAL ANY)
 
-foreach(example_program profile_one_job compare_two_implementations compare_two_procedures measure_quietly)
+foreach(example_program profile_one_job compare_two_implementations compare_two_procedures measure_quietly
+                        measure_wired_memory)
   execute_process(COMMAND "${EXAMPLES_BUILD}/${example_program}" "${EXAMPLES_BUILD}"
                   COMMAND_ERROR_IS_FATAL ANY)
 endforeach()

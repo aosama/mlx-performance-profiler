@@ -3,6 +3,7 @@
 // views and their invariants.
 
 #include "report_fixture.h"
+#include "wired_memory_fixture.h"
 #include "report_writer.h"
 #include "test_harness.h"
 
@@ -72,7 +73,25 @@ void should_draw_stall_and_dependency_arrow_for_the_join() {
   EXPECT_TRUE(document.find("wait_on_dependency") != std::string::npos);
 }
 
+void should_draw_the_wired_memory_lane_under_the_timeline() {
+  SyntheticRun synthetic_run;
+  report_fixture::populate_two_stream_run(synthetic_run);
+  synthetic_run.serial_telemetry.wired_memory_samples = wired_memory_fixture::release_then_unwire();
+  const std::string document = render_synthetic_document(synthetic_run, "Run");
+  const std::size_t timeline_at = document.find("id=\"timeline\"");
+  const std::size_t wired_memory_at = document.find("id=\"wired-memory\"");
+  EXPECT_TRUE(wired_memory_at != std::string::npos && wired_memory_at > timeline_at);
+  EXPECT_TRUE(document.find("Sampled in the serial pass") != std::string::npos);
+}
+
 // --- edge / boundary ---
+
+void should_leave_the_wired_memory_lane_out_without_samples() {
+  SyntheticRun synthetic_run;
+  report_fixture::populate_two_stream_run(synthetic_run);
+  synthetic_run.serial_telemetry.wired_memory_samples.clear();
+  EXPECT_TRUE(render_synthetic_document(synthetic_run, "Run").find("id=\"wired-memory\"") == std::string::npos);
+}
 
 void should_render_empty_measurement_without_nan_or_infinity() {
   SyntheticRun empty_run;
@@ -142,6 +161,8 @@ int main() {
   return test_harness::run_all({
       TEST_CASE(should_render_every_spark_view),
       TEST_CASE(should_embed_one_graph_view_with_its_document_and_scripts_once),
+      TEST_CASE(should_draw_the_wired_memory_lane_under_the_timeline),
+      TEST_CASE(should_leave_the_wired_memory_lane_out_without_samples),
       TEST_CASE(should_render_one_task_row_per_node_with_a_stacked_bar),
       TEST_CASE(should_draw_stall_and_dependency_arrow_for_the_join),
       TEST_CASE(should_render_empty_measurement_without_nan_or_infinity),

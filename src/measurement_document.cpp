@@ -3,6 +3,7 @@
 #include "mlx_perf/mlx_perf_version.h"
 #include "timed_units.h"
 #include "timeline_dependencies.h"
+#include "wired_memory_record.h"
 
 #include "mlx/version.h"
 
@@ -292,7 +293,8 @@ JsonValue build_job_record(const VariantMeasurement& variant_measurement,
           {"timeline_pass_observed", json_number(gpu_timeline.observed_command_buffer_count)},
           {"is_lower_bound", JsonValue(gpu_timeline.is_command_buffer_count_lower_bound)}})},
       {"graph_build", build_graph_build_records(variant_measurement.graph_build_passes)},
-      {"gpu", build_gpu_record(variant_measurement.serial_telemetry.gpu_device_facts)}});
+      {"gpu", build_gpu_record(variant_measurement.serial_telemetry.gpu_device_facts)},
+      {"wired_memory", build_wired_memory_record(variant_measurement.serial_telemetry.wired_memory_samples)}});
 }
 
 } // namespace
