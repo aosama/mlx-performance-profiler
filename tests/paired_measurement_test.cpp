@@ -149,6 +149,30 @@ class StagedLoggingJobFactory final : public GraphFactory {
   bool uses_sin_;
 };
 
+// Collects what a live view's status line would show.
+class RecordingObserver final : public MeasurementObserver {
+ public:
+  void on_pass_started(const std::string& variant_name,
+                       const std::string& pass_description) override {
+    announced_passes.push_back(variant_name + ": " + pass_description);
+  }
+  std::vector<std::string> announced_passes;
+};
+
+void should_tell_an_observer_as_each_phase_begins() {
+  PairFixture fixture;
+  const LoggingJobFactory exp_job("exp", fixture.job_stream, false, fixture.build_log);
+  const LoggingJobFactory sin_job("sin", fixture.job_stream, true, fixture.build_log);
+  RecordingObserver recording_observer;
+  measure_pair({"exp", exp_job}, {"sin", sin_job}, fixture.stream_index_to_stream, {},
+               &recording_observer);
+  // warm-up, uninstrumented rounds, GPU-span rounds, timeline, serial.
+  EXPECT_TRUE(recording_observer.announced_passes.size() == 5);
+  if (!recording_observer.announced_passes.empty()) {
+    EXPECT_TRUE(recording_observer.announced_passes.front().rfind("exp vs sin: warm-up", 0) == 0);
+  }
+}
+
 // --- edge / boundary ---
 
 void should_time_both_variants_per_stage_when_asked() {
@@ -198,6 +222,7 @@ int main() {
       TEST_CASE(should_alternate_the_variants_and_flip_the_order_every_round),
       TEST_CASE(should_keep_every_rounds_numbers_and_one_illustrative_timeline),
       TEST_CASE(should_compare_the_pair_on_job_wall_gpu_span_and_host_submission),
+      TEST_CASE(should_tell_an_observer_as_each_phase_begins),
       TEST_CASE(should_time_both_variants_per_stage_when_asked),
       TEST_CASE(should_find_a_job_compared_with_itself_in_full_agreement),
       TEST_CASE(should_refuse_jobs_with_different_output_shapes_before_timing_anything),

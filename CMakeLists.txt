@@ -73,6 +73,7 @@ add_library(mlx_perf STATIC
     src/measurement_file.cpp
     src/json_value.cpp
     src/json_writer.cpp
+    src/console_output.cpp
     src/mlx_c_interop.cpp
     src/mlx_perf_c_api.cpp)
 add_library(mlx_perf::mlx_perf ALIAS mlx_perf)

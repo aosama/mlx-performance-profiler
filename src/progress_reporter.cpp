@@ -1,5 +1,6 @@
 #include "progress_reporter.h"
 
+#include "console_output.h"
 #include <cstdio>
 #include <utility>
 
@@ -43,7 +44,7 @@ void ProgressReporter::print_line(int completed_units) const {
       estimate_remaining_seconds(elapsed_seconds, completed_units, total_units_);
   const double percent_complete =
       total_units_ > 0 ? 100.0 * completed_units / total_units_ : 100.0;
-  std::printf(
+  print_progress_line(
       "  %s: %d/%d (%.0f%%)  elapsed %.2fs  eta %.2fs\n",
       phase_label_.c_str(),
       completed_units,
@@ -53,7 +54,6 @@ void ProgressReporter::print_line(int completed_units) const {
       eta_seconds);
   // stdout is fully buffered when piped (tee, CI, a Rust parent process);
   // without a flush, "live" progress would only appear at exit.
-  std::fflush(stdout);
 }
 
 } // namespace mlx_perf

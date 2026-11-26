@@ -10,6 +10,8 @@
 #include "live_view_routes.h"
 #include "live_view_store.h"
 #include "measurement_session.h"
+#include "paired_measurement.h"
+#include "report_verdict_section.h"
 #include "server_options.h"
 #include "text_format.h"
 
@@ -47,22 +49,20 @@ class StoreStatusObserver final : public MeasurementObserver {
   LiveViewStore& live_view_store_;
 };
 
+// Eager against compiled as an interleaved pair, the same way the static
+// comparison page measures them, so the live Job tab opens with the verdict.
 void measure_and_publish(LiveViewStore& live_view_store, const DemoStreams& demo_streams,
                          const GraphFactory& eager_factory,
                          const GraphFactory& compiled_factory) {
   StoreStatusObserver status_observer(live_view_store);
-  const VariantMeasurement eager_measurement = measure_variant(
-      "eager", eager_factory, demo_streams.stream_index_to_stream, &status_observer);
-  const VariantMeasurement compiled_measurement = measure_variant(
-      "compiled", compiled_factory, demo_streams.stream_index_to_stream,
-      &status_observer);
-  live_view_store.publish_views(
-      render_live_views(JOB_TITLE, {&eager_measurement, &compiled_measurement}));
+  const PairedMeasurement paired_measurement =
+      measure_pair({"eager", eager_factory}, {"compiled", compiled_factory},
+                   demo_streams.stream_index_to_stream, {}, &status_observer);
+  live_view_store.publish_views(render_live_views(JOB_TITLE, paired_measurement));
   live_view_store.set_status(
-      "idle — eager " + format_microseconds(eager_measurement.job_totals.job_wall_microseconds) +
-      ", compiled " +
-      format_microseconds(compiled_measurement.job_totals.job_wall_microseconds) +
-      " (median job duration). Re-run to measure again.");
+      "idle — " +
+      describe_verdict("eager", "compiled", compare_pair(paired_measurement).job_wall) +
+      " Re-run to measure again.");
 }
 
 void sample_memory(LiveViewStore& live_view_store, Clock::time_point server_started_at) {

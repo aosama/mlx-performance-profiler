@@ -1,6 +1,7 @@
 #include "live_view_renderer.h"
 
 #include "report_comparison_page.h"
+#include "report_verdict_section.h"
 #include "report_gantt_section.h"
 #include "report_memory_section.h"
 #include "report_summary_section.h"
@@ -52,6 +53,20 @@ RenderedViews render_live_views(
                 << render_memory_section(*variant_measurement) << "</section>";
   }
   return {job_html.str(), stages_html.str(), tasks_html.str(), memory_html.str()};
+}
+
+RenderedViews render_live_views(const std::string& job_title,
+                                const PairedMeasurement& paired_measurement) {
+  RenderedViews rendered_views = render_live_views(
+      job_title, {&paired_measurement.baseline, &paired_measurement.candidate});
+  rendered_views.job_html =
+      "<section><h2>Verdict</h2>" +
+      render_verdict_section(paired_measurement.baseline.variant_name,
+                             paired_measurement.candidate.variant_name,
+                             compare_pair(paired_measurement),
+                             paired_measurement.output_agreement) +
+      "</section>" + rendered_views.job_html;
+  return rendered_views;
 }
 
 } // namespace mlx_perf

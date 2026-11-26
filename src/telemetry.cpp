@@ -1,5 +1,6 @@
 #include "telemetry.h"
 
+#include "console_output.h"
 #include "mlx/memory.h"
 #include "mlx/transforms.h"
 
@@ -34,7 +35,7 @@ void print_node_progress(
       nodes_per_second > 0.0
           ? (node_count - node_position) / nodes_per_second
           : 0.0;
-  std::printf(
+  print_progress_line(
       "  node %d/%d (%s)  elapsed %.1fs  eta %.1fs\n",
       node_position,
       node_count,
@@ -82,7 +83,7 @@ RunTelemetry run_attributed_pass(
   run_telemetry.node_count =
       static_cast<int>(captured_graph.topological.size());
 
-  std::printf(
+  print_progress_line(
       "attributed pass: timing %d nodes individually\n", run_telemetry.node_count);
   const Clock::time_point pass_started_at = Clock::now();
   // Peaks are counted above what was already allocated when the pass began

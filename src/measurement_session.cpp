@@ -1,5 +1,6 @@
 #include "measurement_session.h"
 
+#include "console_output.h"
 #include "progress_reporter.h"
 #include "sample_statistics.h"
 #include "stage_timeline.h"
@@ -26,7 +27,7 @@ void sample_job_wall(const GraphFactory& graph_factory, JobTotals& job_totals) {
 
 CapturedGraph capture_fresh_graph(const GraphFactory& graph_factory) {
   CapturedGraph fresh_graph = capture_graph(graph_factory.build_fresh_graph());
-  std::printf(
+  print_progress_line(
       "    captured %zu nodes (%zu primitives), %zu edges, %d streams\n",
       fresh_graph.nodes.size(), fresh_graph.topological.size(),
       fresh_graph.edges.size(), fresh_graph.stream_count);
@@ -36,8 +37,7 @@ CapturedGraph capture_fresh_graph(const GraphFactory& graph_factory) {
 void announce_pass(MeasurementObserver* measurement_observer,
                    const std::string& variant_name,
                    const std::string& pass_description) {
-  std::printf("[%s] %s...\n", variant_name.c_str(), pass_description.c_str());
-  std::fflush(stdout);  // stay live when stdout is a pipe
+  print_progress_line("[%s] %s...\n", variant_name.c_str(), pass_description.c_str());
 
   if (measurement_observer != nullptr) {
     measurement_observer->on_pass_started(variant_name, pass_description);
@@ -98,7 +98,7 @@ TimelineCapture capture_timeline(
       ? std::string("whole job")
       : staged_graph.final_stage_name;
   staged_graph = {};
-  std::printf("    captured %zu nodes (%zu primitives), %d streams; timing %s"
+  print_progress_line("    captured %zu nodes (%zu primitives), %d streams; timing %s"
               " (%zu job-supplied stage cuts)\n",
               timeline_graph.nodes.size(), timeline_graph.topological.size(),
               timeline_graph.stream_count, granularity_name(granularity).data(),
