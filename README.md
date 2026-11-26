@@ -11,6 +11,7 @@ MLX is lazy: you describe a graph, and MLX decides what runs, on which stream, a
 ## Why you'll want it
 
 - 🔬 **An execution graph you can actually explore.** Every operation MLX ran, coloured by where its time went and brighter the more it cost. Hover for the full breakdown, click to light up everything upstream and downstream, search by op or kernel, and flip on the **hot path**: the most expensive dependency chain, highlighted end to end. Big models open as stages (a decoder's layers) that you drill into.
+- 🧩 **The why, not just the what.** Every kernel launch MLX makes is recorded with its Metal function, grid and threadgroup shape. A launch with fewer threadgroups than the GPU has cores is flagged ⚠: in one comparison, the same work took about 30× as long launched as 4 threadgroups as it did as 512 (8.96 ms against 0.30 ms), and the report shows why: 4 threadgroups can keep only 4 of 16 cores busy.
 - ⏱️ **GPU time measured, not guessed.** Compute comes from Metal's own command-buffer timestamps (`GPUStartTime` / `GPUEndTime`), for every node or stage.
 - ⚖️ **A verdict, not vibes.** Hand it two versions of a job, say a stock MLX primitive and your custom Metal kernel, and it says which is faster, by how much, and whether that beats run-to-run noise. Identical variants are called different under 4% of the time, and that guarantee is tested, not assumed.
 - 🧠 **Real models, proven correct first.** Ships a Qwen3.5 decode step rebuilt from MLX's own kernels, which refuses to profile until it greedily decodes " Paris" after "The capital of France is".

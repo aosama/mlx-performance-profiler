@@ -117,8 +117,8 @@ void should_flag_mixed_granularities_and_tally_stage_timed_primitives_from_seria
   report_fixture::populate_two_stage_run(stage_timed);
   stage_timed.variant_name = "compiled";
   stage_timed.serial_telemetry.attributed_nodes = {
-      {&stage_timed.timeline_graph.nodes[0], 33.0, 0, 64},
-      {&stage_timed.timeline_graph.nodes[1], 4.0, 0, 64}};
+      {&stage_timed.timeline_graph.nodes[0], 33.0, 0, 64, {}},
+      {&stage_timed.timeline_graph.nodes[1], 4.0, 0, 64, {}}};
   const std::string metrics_html = render_comparison_metrics(node_timed, stage_timed);
   EXPECT_TRUE(metrics_html.find("eager timed per-node, compiled timed per-stage") !=
               std::string::npos);

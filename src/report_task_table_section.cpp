@@ -1,9 +1,11 @@
 #include "report_task_table_section.h"
 
+#include "kernel_launch_summary.h"
 #include "latency_slices.h"
 #include "report_components.h"
 #include "text_format.h"
 
+#include <algorithm>
 #include <sstream>
 
 namespace mlx_perf {
@@ -26,9 +28,32 @@ std::string render_header_row() {
   header_html << "<th>Wall</th><th title=\"Same node timed alone in the serial"
               << " pass\">Serial</th><th title=\"Active memory added by this"
               << " node in the serial pass (approximate: buffers are reused)\">"
-              << "Mem added</th><th>Class</th><th>Latency breakdown</th>"
+              << "Mem added</th><th title=\"Kernel launches in the serial pass: threadgroups,"
+              << " and how many GPU cores they can give work to\">Launches</th>"
+              << "<th>Class</th><th>Latency breakdown</th>"
               << "</tr></thead>";
   return header_html.str();
+}
+
+// A node with a launch that cannot fill the GPU is marked, because that is
+// the reason a kernel can be slow that no timing shows: idle cores.
+std::string render_launches_cell(const NodeTelemetry* serial_node, int gpu_core_count) {
+  if (serial_node == nullptr || serial_node->kernel_dispatches.empty()) {
+    return "<td class=\"number\" data-sort-value=\"0\">—</td>";
+  }
+  std::uint64_t fewest_threadgroups = count_threadgroups(serial_node->kernel_dispatches.front());
+  for (const KernelDispatch& kernel_dispatch : serial_node->kernel_dispatches) {
+    fewest_threadgroups = std::min(fewest_threadgroups, count_threadgroups(kernel_dispatch));
+  }
+  const bool is_unable_to_fill_gpu =
+      gpu_core_count > 0 && !can_fill_gpu(fewest_threadgroups, gpu_core_count);
+  std::ostringstream cell_html;
+  cell_html << "<td class=\"number" << (is_unable_to_fill_gpu ? " underfills-gpu" : "")
+            << "\" data-sort-value=\"" << fewest_threadgroups << "\">"
+            << (is_unable_to_fill_gpu ? "⚠ " : "")
+            << escape_html_text(describe_node_launches(serial_node->kernel_dispatches, gpu_core_count))
+            << "</td>";
+  return cell_html.str();
 }
 
 std::string render_node_row(
@@ -62,6 +87,7 @@ std::string render_node_row(
     row_html << "<td class=\"number\" data-sort-value=\"0\">—</td>"
              << "<td class=\"number\" data-sort-value=\"0\">—</td>";
   }
+  row_html << render_launches_cell(serial_node, serial_telemetry.gpu_device_facts.gpu_core_count);
   row_html << "<td>" << render_class_badge(breakdown.classification)
            << "</td><td>" << render_stacked_bar(breakdown) << "</td></tr>";
   return row_html.str();
@@ -76,7 +102,10 @@ std::string render_task_table_section(const ReportInputs& report_inputs) {
                << "<p class=\"note\">Click a header to sort. Slices are in"
                << " causal order and sum to Wall. \"~\" marks compute that is"
                << " a host residual (no GPU window, e.g. CPU streams). Serial"
-               << " is the same node timed alone, for comparison.</p>"
+               << " is the same node timed alone, for comparison. Launches are"
+               << " its kernel launches in that pass; ⚠ marks a launch with"
+               << " fewer threadgroups than the GPU has cores, which leaves"
+               << " cores idle.</p>"
                << "<div class=\"table-wrap\"><table class=\"sortable\">"
                << render_header_row() << "<tbody>";
   const auto& node_timelines = report_inputs.gpu_timeline.nodes;

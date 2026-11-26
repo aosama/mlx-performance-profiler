@@ -6,6 +6,7 @@
 
 #include "mlx/version.h"
 
+#include <algorithm>
 #include <map>
 #include <string>
 #include <vector>
@@ -111,11 +112,59 @@ Object build_node_identity(const NodeTimeline& node_timeline, std::size_t positi
   return node_record;
 }
 
+JsonValue count_or_null(std::uint64_t count) {
+  return count == 0 ? JsonValue() : json_number(static_cast<double>(count));
+}
+
+JsonValue grid_array(const GridSize& grid) {
+  return JsonValue(Array{json_number(static_cast<double>(grid.width)),
+                         json_number(static_cast<double>(grid.height)),
+                         json_number(static_cast<double>(grid.depth))});
+}
+
+// One kernel launch: its shape as Metal received it, the threadgroups it
+// formed, its pipeline's limits, and the share of GPU cores it could use.
+// Unknown limits and an unknown core count are null, never 0.
+JsonValue build_dispatch_record(const KernelDispatch& kernel_dispatch, int gpu_core_count) {
+  const std::uint64_t threadgroup_count = count_threadgroups(kernel_dispatch);
+  const bool is_core_count_known = gpu_core_count > 0;
+  return JsonValue(Object{
+      {"metal_function_name", kernel_dispatch.metal_function_name.empty()
+                                  ? JsonValue() : json_text(kernel_dispatch.metal_function_name)},
+      {"grid_unit", json_text(dispatch_grid_unit_name(kernel_dispatch.grid_unit))},
+      {"grid", grid_array(kernel_dispatch.grid)},
+      {"threads_per_threadgroup", grid_array(kernel_dispatch.threads_per_threadgroup)},
+      {"threadgroup_count", json_number(static_cast<double>(threadgroup_count))},
+      {"threadgroup_thread_count",
+       json_number(static_cast<double>(grid_volume(kernel_dispatch.threads_per_threadgroup)))},
+      {"max_threads_per_threadgroup", count_or_null(kernel_dispatch.max_threads_per_threadgroup)},
+      {"thread_execution_width", count_or_null(kernel_dispatch.thread_execution_width)},
+      {"threadgroup_memory_bytes", json_number(static_cast<double>(kernel_dispatch.threadgroup_memory_bytes))},
+      {"gpu_core_coverage", number_or_null(is_core_count_known,
+                                           gpu_core_coverage(threadgroup_count, gpu_core_count))},
+      {"can_fill_gpu", is_core_count_known ? JsonValue(can_fill_gpu(threadgroup_count, gpu_core_count))
+                                           : JsonValue()}});
+}
+
+JsonValue build_dispatch_records(const NodeTelemetry* serial_node, int gpu_core_count) {
+  if (serial_node == nullptr) {
+    return JsonValue();
+  }
+  Array dispatch_records;
+  for (const KernelDispatch& kernel_dispatch : serial_node->kernel_dispatches) {
+    dispatch_records.push_back(build_dispatch_record(kernel_dispatch, gpu_core_count));
+  }
+  return JsonValue(std::move(dispatch_records));
+}
+
 // The serial pass ran an identical graph; a position whose op does not match
 // gets nulls rather than a number borrowed from another node.
 void add_serial_measurement(const RunTelemetry& serial_telemetry, std::size_t position,
-                            const std::string& op_name, Object& node_record) {
+                            const std::string& op_name, int gpu_core_count, Object& node_record) {
   const NodeTelemetry* serial_node = find_attributed_node(serial_telemetry, position, op_name);
+  // [] when the node launched no kernel (a view such as a reshape); null
+  // when the serial pass did not match this node.
+  node_record["kernel_dispatches"] = build_dispatch_records(serial_node, gpu_core_count);
   node_record["serial_duration_us"] =
       number_or_null(serial_node != nullptr,
                      serial_node != nullptr ? serial_node->duration_microseconds : 0.0);
@@ -152,7 +201,8 @@ JsonValue build_node_records(const VariantMeasurement& variant_measurement,
       add_untimed_node_fields(node_record);
     }
     add_serial_measurement(variant_measurement.serial_telemetry, position,
-                           node_timeline.node->op_name, node_record);
+                           node_timeline.node->op_name,
+                           variant_measurement.serial_telemetry.gpu_device_facts.gpu_core_count, node_record);
     node_records.push_back(JsonValue(std::move(node_record)));
   }
   return JsonValue(std::move(node_records));
@@ -212,6 +262,12 @@ JsonValue build_graph_build_records(const std::vector<GraphBuildPass>& graph_bui
   return JsonValue(std::move(pass_records));
 }
 
+JsonValue build_gpu_record(const GpuDeviceFacts& gpu_device_facts) {
+  return JsonValue(Object{
+      {"name", gpu_device_facts.gpu_name.empty() ? JsonValue() : json_text(gpu_device_facts.gpu_name)},
+      {"core_count", count_or_null(static_cast<std::uint64_t>(std::max(0, gpu_device_facts.gpu_core_count)))}});
+}
+
 JsonValue build_job_record(const VariantMeasurement& variant_measurement,
                            std::size_t timed_unit_count) {
   const JobTotals& job_totals = variant_measurement.job_totals;
@@ -235,7 +291,8 @@ JsonValue build_job_record(const VariantMeasurement& variant_measurement,
       {"command_buffers", JsonValue(Object{
           {"timeline_pass_observed", json_number(gpu_timeline.observed_command_buffer_count)},
           {"is_lower_bound", JsonValue(gpu_timeline.is_command_buffer_count_lower_bound)}})},
-      {"graph_build", build_graph_build_records(variant_measurement.graph_build_passes)}});
+      {"graph_build", build_graph_build_records(variant_measurement.graph_build_passes)},
+      {"gpu", build_gpu_record(variant_measurement.serial_telemetry.gpu_device_facts)}});
 }
 
 } // namespace

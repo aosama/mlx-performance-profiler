@@ -53,6 +53,7 @@
         "command_buffers",
         "cross_stream_stall_us",
         "executed_node_count",
+        "gpu",
         "gpu_measured_node_count",
         "graph_build",
         "job_wall_us",
@@ -176,6 +177,30 @@
               }
             }
           }
+        },
+        "gpu": {
+          "type": "object",
+          "description": "The GPU the job ran on.",
+          "required": [
+            "core_count",
+            "name"
+          ],
+          "properties": {
+            "name": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "e.g. \"Apple M5 Pro\"."
+            },
+            "core_count": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "description": "GPU cores, from the IO registry's gpu-core-count; null when unknown."
+            }
+          }
         }
       }
     },
@@ -248,6 +273,7 @@
           "is_compute_gpu_measured",
           "issue_finished_us",
           "issue_started_us",
+          "kernel_dispatches",
           "kernel_name",
           "label",
           "memory_added_bytes",
@@ -458,6 +484,100 @@
               "null"
             ],
             "description": "Active memory the node added in the serial pass; null when unmatched."
+          },
+          "kernel_dispatches": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "object",
+              "description": "One kernel launch the node's evaluation encoded, observed in the serial pass.",
+              "properties": {
+                "metal_function_name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "The Metal function the pipeline was compiled from, e.g. \"gemv_t_bfloat16_...\" or \"custom_kernel_<name>\"; null when MLX compiled the pipeline before the profiler was installed."
+                },
+                "grid_unit": {
+                  "enum": [
+                    "threadgroups",
+                    "threads"
+                  ],
+                  "description": "What grid counts: threadgroups (dispatchThreadgroups) or threads (dispatchThreads)."
+                },
+                "grid": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer"
+                  },
+                  "description": "The grid as passed to Metal, in grid_unit."
+                },
+                "threads_per_threadgroup": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer"
+                  },
+                  "description": "The threadgroup size."
+                },
+                "threadgroup_count": {
+                  "type": "integer",
+                  "description": "Threadgroups the launch formed; for a thread grid, rounded up per dimension."
+                },
+                "threadgroup_thread_count": {
+                  "type": "integer",
+                  "description": "Threads in each threadgroup."
+                },
+                "max_threads_per_threadgroup": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "description": "The pipeline's limit; null when unknown."
+                },
+                "thread_execution_width": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "description": "The pipeline's SIMD group width; null when unknown."
+                },
+                "threadgroup_memory_bytes": {
+                  "type": "integer",
+                  "description": "Static plus dynamically set threadgroup memory."
+                },
+                "gpu_core_coverage": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "description": "threadgroup_count / GPU cores, at most 1: the share of cores the launch can give work to. null when the core count is unknown."
+                },
+                "can_fill_gpu": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ],
+                  "description": "true when there is at least one threadgroup per GPU core; null when the core count is unknown."
+                }
+              },
+              "required": [
+                "can_fill_gpu",
+                "gpu_core_coverage",
+                "grid",
+                "grid_unit",
+                "max_threads_per_threadgroup",
+                "metal_function_name",
+                "thread_execution_width",
+                "threadgroup_count",
+                "threadgroup_memory_bytes",
+                "threadgroup_thread_count",
+                "threads_per_threadgroup"
+              ]
+            },
+            "description": "Every kernel launch the node's evaluation encoded, in order, from the serial pass. [] when it launched none (a view such as a reshape); null when the serial pass did not match the node."
           }
         }
       }

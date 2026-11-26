@@ -142,6 +142,16 @@ int mlx_perf_compare_to_report(const mlx_perf_variant* baseline,
  * codes and mlx_perf_last_error(). Process-wide and thread-safe. */
 void mlx_perf_set_console_output(int is_enabled);
 
+/* Optional: starts observing the kernel launches MLX encodes, so that every
+ * kernel MLX compiles from now on is named in the launch records
+ * (`kernel_dispatches[].metal_function_name` in the measurement file). Call
+ * it before your program's first MLX evaluation. Without it the first
+ * profile starts the observer, and kernels compiled earlier are recorded
+ * unnamed (their shapes are still recorded). It never changes what MLX
+ * computes. Returns 1 when observing, 0 when this GPU's Metal classes could
+ * not be observed (launch records are then empty). Safe to call repeatedly. */
+int mlx_perf_install_launch_recorder(void);
+
 /* The library version, "MAJOR.MINOR.PATCH" (MLX_PERF_VERSION_STRING of the
  * build that produced the library). Compare it with the header's macro to
  * catch a header and an archive from different releases. Static storage. */

@@ -40,6 +40,12 @@ test("should_build_a_stylesheet_with_node_edge_and_highlight_rules", () => {
   }
 });
 
+test("should_colour_coverage_from_stalled_red_to_compute_green", () => {
+  assert.equal(graphView.coverageColour(THEME, 0), THEME.wait_on_other_stream);
+  assert.equal(graphView.coverageColour(THEME, 1), THEME.compute);
+  assert.equal(graphView.nodeColour(THEME, "coverage", { kind: "node", lowestCoverage: 1 }), THEME.compute);
+});
+
 // --- edge / boundary ---
 
 test("should_fall_back_to_cost_for_a_node_timed_only_as_part_of_its_stage", () => {
@@ -54,6 +60,11 @@ test("should_wrap_stream_colours_past_the_palette", () => {
 });
 
 // --- negative ---
+
+test("should_colour_a_node_without_launches_muted_in_coverage_mode", () => {
+  assert.equal(graphView.coverageColour(THEME, -1), THEME.muted);
+  assert.equal(graphView.coverageColour(THEME, undefined), THEME.muted);
+});
 
 test("should_clamp_a_cost_share_outside_zero_to_one", () => {
   assert.equal(graphView.heatColour(-3), graphView.HEAT_COLOURS[0]);

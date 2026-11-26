@@ -109,7 +109,52 @@ test("should_lay_a_chain_out_as_a_snake", () => {
                    [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 50 }, { x: 0, y: 50 }, { x: 0, y: 100 }]);
 });
 
+function launchRecord(threadgroupCount, metalFunctionName) {
+  return { metal_function_name: metalFunctionName || "custom_kernel_attention", threadgroup_count: threadgroupCount,
+           threadgroup_thread_count: 32 };
+}
+
+test("should_mark_a_node_whose_launch_leaves_gpu_cores_idle", () => {
+  const graphModel = graphView.buildGraphModel({ job: { gpu: { core_count: 16 } },
+    nodes: [nodeRecord(0, { kernel_dispatches: [launchRecord(4)] })] });
+  const node = graphView.buildNodeElements(graphModel, null)[0];
+  assert.equal(node.data.cannotFillGpu, true);
+  assert.equal(node.data.lowestCoverage, 0.25);
+  assert.match(node.data.caption, /\n⚠ 4 of 16 cores$/);
+  assert.equal(node.data.height, 56);
+});
+
+test("should_count_a_stages_launches_that_leave_cores_idle", () => {
+  const document = threeStageDocument();
+  document.job = { gpu: { core_count: 16 } };
+  document.nodes[1].kernel_dispatches = [launchRecord(4), launchRecord(8)];
+  document.nodes[2].kernel_dispatches = [launchRecord(512)];
+  const stage = graphView.buildStageElements(graphView.buildGraphModel(document)).find((element) => element.data.id === "s1");
+  assert.match(stage.data.caption, /⚠ 2 launches leave cores idle/);
+  assert.equal(stage.data.lowestCoverage, 0.25);
+});
+
+test("should_find_a_node_by_the_metal_function_it_launched", () => {
+  const graphModel = graphView.buildGraphModel({ nodes: [nodeRecord(0, {
+    kernel_dispatches: [launchRecord(64, "gemv_t_bfloat16_bm8")] })] });
+  assert.match(graphView.buildNodeElements(graphModel, null)[0].data.searchText, /gemv_t_bfloat16_bm8/);
+});
+
 // --- edge / boundary ---
+
+test("should_fill_the_gpu_with_one_threadgroup_per_core", () => {
+  const launches = graphView.describeNodeLaunches(nodeRecord(0, { kernel_dispatches: [launchRecord(16)] }), 16);
+  assert.equal(launches.underfillingLaunchCount, 0);
+  assert.equal(launches.lowestCoverage, 1);
+});
+
+test("should_describe_no_launches_for_a_view_or_an_old_file", () => {
+  assert.equal(graphView.describeNodeLaunches(nodeRecord(0, { kernel_dispatches: [] }), 16), null);
+  assert.equal(graphView.describeNodeLaunches(nodeRecord(0), 16), null);
+  const graphModel = graphView.buildGraphModel({ nodes: [nodeRecord(0)] });
+  assert.equal(graphModel.gpuCoreCount, 0);
+  assert.equal(graphView.buildNodeElements(graphModel, null)[0].data.height, 42);
+});
 
 test("should_draw_nothing_for_an_empty_document", () => {
   const graphModel = graphView.buildGraphModel({});
@@ -141,6 +186,14 @@ test("should_shorten_a_long_fused_kernel_name", () => {
 });
 
 // --- negative ---
+
+test("should_claim_no_idle_cores_when_the_core_count_is_unknown", () => {
+  const graphModel = graphView.buildGraphModel({ nodes: [nodeRecord(0, { kernel_dispatches: [launchRecord(4)] })] });
+  const node = graphView.buildNodeElements(graphModel, null)[0];
+  assert.equal(node.data.cannotFillGpu, false);
+  assert.equal(node.data.lowestCoverage, -1);
+  assert.doesNotMatch(node.data.caption, /⚠/);
+});
 
 test("should_not_call_a_branching_stage_graph_a_chain", () => {
   const stageElements = [

@@ -65,7 +65,8 @@ by the test suite:
 | `peak_memory_bytes` | the highest per-node peak during the serial pass, above the memory already allocated when that pass began |
 | `command_buffers.timeline_pass_observed` | MLX command buffers seen to complete during the timeline pass |
 | `command_buffers.is_lower_bound` | `true` when MLX may have committed buffers the probe never held (stage-timed runs) |
-| `graph_build[]` | per pass (`stream_discovery`, `warm_up`, `job_wall`, `timeline`, `serial`): `calls_us`, the time each call spent inside the job's own graph-building code, and `total_us` |
+| `graph_build[]` | per pass (`stream_discovery`, `warm_up`, `job_wall`, `timeline`, `serial`, and `gpu_span` in a comparison): `calls_us`, the time each call spent inside the job's own graph-building code, and `total_us` |
+| `gpu.name`, `gpu.core_count` | the GPU the job ran on, e.g. `"Apple M5 Pro"` with 16 cores; `null` when unknown |
 
 Graph building happens between the passes' clocks: no other number includes
 it. `job_wall_us` is evaluation only. Add the `job_wall` calls to it to get
@@ -110,6 +111,22 @@ Serial pass, from an identical graph where each node is run alone:
 |---|---|
 | `serial_duration_us` | the node synchronised alone |
 | `memory_added_bytes` | active memory added by that node |
+| `kernel_dispatches[]` | every kernel launch the node's evaluation encoded, in order (below). `[]` when it launched none, such as a reshape or a broadcast that only describes a view; `null` when the serial pass did not match the node |
+
+Each kernel launch (`kernel_dispatches[]`):
+
+| Field | Meaning |
+|---|---|
+| `metal_function_name` | the Metal function the pipeline was compiled from, such as `"gemv_t_bfloat16_bm8_bn32_sm1_sn32_tm4_tn4"` or `"custom_kernel_<name>"`; `null` when MLX compiled it before the profiler was installed in the process |
+| `grid_unit`, `grid` | the grid as Metal received it, `[width, height, depth]`: in `"threadgroups"` (`dispatchThreadgroups`) or `"threads"` (`dispatchThreads`, which custom kernels use) |
+| `threads_per_threadgroup`, `threadgroup_thread_count` | the threadgroup size, and the threads in each |
+| `threadgroup_count` | the threadgroups the launch formed (a thread grid is rounded up per dimension) |
+| `max_threads_per_threadgroup`, `thread_execution_width` | the pipeline's limit and its SIMD group width |
+| `threadgroup_memory_bytes` | static plus dynamically set threadgroup memory |
+| `gpu_core_coverage` | `threadgroup_count` / `job.gpu.core_count`, at most 1: the share of GPU cores the launch can give work to |
+| `can_fill_gpu` | `false` when the launch has fewer threadgroups than the GPU has cores, so some cores have nothing to do |
+
+**Reading `gpu_core_coverage`.** A threadgroup runs on one GPU core, so a launch with fewer threadgroups than cores leaves cores idle, whatever else is true: on a 16-core GPU, 4 threadgroups can use at most a quarter of it. The converse does not hold. A launch that covers every core can still be limited by threads per core or threadgroup memory, which Apple does not document per core, so the profiler does not estimate them. The launches are recorded in the serial pass, where each node runs alone, so they belong to the node exactly in per-node and per-stage runs alike.
 
 **Reading `gpu_idle_before_us`.** The timeline pass submits each node
 separately so that it can time each one, and the gaps include that

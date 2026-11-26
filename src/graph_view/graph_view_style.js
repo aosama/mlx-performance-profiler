@@ -57,11 +57,21 @@
     return theme;
   };
 
-  // colourMode: "time" (where the time went), "heat" (cost) or "stream".
+  // The share of GPU cores the node's launches can keep busy, from red (few)
+  // to green (every core). Grey when the node launched nothing or the core
+  // count is unknown: nothing is claimed then.
+  graphView.coverageColour = function (theme, lowestCoverage) {
+    if (typeof lowestCoverage !== "number" || lowestCoverage < 0) { return theme.muted; }
+    return mixColours(theme.wait_on_other_stream, theme.compute, Math.max(0, Math.min(1, lowestCoverage)));
+  };
+
+  // colourMode: "time" (where the time went), "heat" (cost), "stream", or
+  // "coverage" (share of GPU cores the node's launches can keep busy).
   // Nodes without a classification (a stage-timed job's nodes) fall back to
   // heat, since they have a cost but were not classified one by one.
   graphView.nodeColour = function (theme, colourMode, elementData) {
     if (elementData.kind === "ghost") { return theme.muted; }
+    if (colourMode === "coverage") { return graphView.coverageColour(theme, elementData.lowestCoverage); }
     if (colourMode === "stream") {
       return graphView.STREAM_COLOURS[(elementData.streamIndex || 0) % graphView.STREAM_COLOURS.length];
     }
@@ -74,7 +84,7 @@
   function nodeStyles(theme, colourOf) {
     return [
       { selector: "node", style: {
-        "shape": "round-rectangle", "width": "data(width)", "height": 42,
+        "shape": "round-rectangle", "width": "data(width)", "height": "data(height)",
         // Cost as fill strength: the expensive nodes are vivid and the
         // cheap ones faint, so the eye finds where the time went first.
         // (Cytoscape's underlay has no blur, so a "glow" drew as a box.)
@@ -87,9 +97,9 @@
         "font-family": FONT_FAMILY, "min-zoomed-font-size": 6,
         "text-outline-color": theme.page, "text-outline-width": 0.6, "text-outline-opacity": 0.55,
         "transition-property": "opacity, border-width", "transition-duration": "160ms" } },
-      { selector: "node[kind = 'stage']", style: { "height": 50, "font-size": 12.5 } },
+      { selector: "node[kind = 'stage']", style: { "font-size": 12.5 } },
       { selector: "node[kind = 'ghost']", style: { "border-style": "dashed", "background-opacity": 0.04,
-        "color": theme.muted, "font-weight": 500, "height": 28 } },
+        "color": theme.muted, "font-weight": 500 } },
       { selector: "node.focus", style: { "border-width": 3.5 } },
       { selector: "node.match", style: { "border-width": 3.5, "border-color": theme.ink } },
       { selector: "node.hot", style: { "border-width": 3, "border-color": HOT_PATH_COLOUR } }

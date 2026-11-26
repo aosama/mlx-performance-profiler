@@ -77,6 +77,10 @@ add_library(mlx_perf STATIC
     src/latency_breakdown.cpp
     src/progress_reporter.cpp
     src/metal_command_buffer_probe.cpp
+    src/dispatch_occupancy.cpp
+    src/gpu_device_facts.cpp
+    src/metal_dispatch_recorder.cpp
+    src/kernel_launch_summary.cpp
     src/gpu_timeline.cpp
     src/timeline_dependencies.cpp
     src/timed_units.cpp
@@ -95,6 +99,7 @@ add_library(mlx_perf STATIC
     src/report_stage_table_section.cpp
     src/report_gantt_section.cpp
     src/report_comparison_page.cpp
+    src/report_launch_comparison_section.cpp
     src/report_verdict_section.cpp
     src/comparison_record.cpp
     src/report_writer.cpp

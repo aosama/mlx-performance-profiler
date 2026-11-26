@@ -21,6 +21,9 @@ endfunction()
 
 # Unit and component: pure arithmetic, text and HTML, no GPU needed.
 mlx_perf_add_test(latency_breakdown_test)
+mlx_perf_add_test(dispatch_occupancy_test)
+mlx_perf_add_test(kernel_launch_summary_test)
+mlx_perf_add_test(report_launch_comparison_section_test)
 mlx_perf_add_test(sample_statistics_test)
 mlx_perf_add_test(text_format_test)
 mlx_perf_add_test(latency_slices_test)
@@ -65,6 +68,8 @@ endif()
 mlx_perf_add_test(graph_model_test)
 mlx_perf_add_test(telemetry_test)
 mlx_perf_add_test(metal_command_buffer_probe_test)
+mlx_perf_add_test(metal_dispatch_recorder_test)
+mlx_perf_add_test(gpu_device_facts_test)
 mlx_perf_add_test(demo_model_test mlx_perf_demo_model)
 mlx_perf_add_test(output_agreement_test)
 mlx_perf_add_test(measurement_session_test)
@@ -79,6 +84,7 @@ mlx_perf_add_test(qwen35_layer_stages_test mlx_perf_qwen35)
 
 # Acceptance: a whole behaviour end to end, on the Metal GPU.
 mlx_perf_add_test(paired_comparison_acceptance_test)
+mlx_perf_add_test(launch_occupancy_acceptance_test)
 
 # Documentation: the published docs against the code, and their examples
 # built and run as a reader would (see tests/docs/CMakeLists.txt).

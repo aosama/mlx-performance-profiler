@@ -47,6 +47,28 @@
                             (suffix || "") + "</p>" : "";
   }
 
+  // Each kernel launch: its Metal function, threadgroups, and how many GPU
+  // cores it can keep busy. Long fused-kernel names are cut; the full name
+  // is the row's tooltip.
+  var MAXIMUM_LAUNCHES_SHOWN = 6;
+  function renderLaunches(nodeRecord, gpuCoreCount) {
+    var launches = nodeRecord.kernel_dispatches;
+    if (!launches || launches.length === 0) { return ""; }
+    var rows = launches.slice(0, MAXIMUM_LAUNCHES_SHOWN).map(function (launch) {
+      var functionName = launch.metal_function_name || "(unnamed pipeline)";
+      var isUnderfilling = gpuCoreCount > 0 && launch.threadgroup_count < gpuCoreCount;
+      var coreText = gpuCoreCount > 0
+        ? (isUnderfilling ? "⚠ " : "") + Math.min(launch.threadgroup_count, gpuCoreCount) + " of " + gpuCoreCount + " cores"
+        : "";
+      return "<tr title=\"" + escapeHtml(functionName) + "\"><td>" + escapeHtml(graphView.shortenOpName(functionName)) +
+             "<br><small>" + launch.threadgroup_count + " × " + launch.threadgroup_thread_count + " threads</small></td>" +
+             "<td" + (isUnderfilling ? " class=\"gv-underfills\"" : "") + ">" + coreText + "</td></tr>";
+    }).join("");
+    var moreText = launches.length > MAXIMUM_LAUNCHES_SHOWN
+      ? "<p class=\"gv-note\">and " + (launches.length - MAXIMUM_LAUNCHES_SHOWN) + " more launches</p>" : "";
+    return "<p class=\"gv-section-title\">Kernel launches</p><table class=\"gv-facts gv-launches\">" + rows + "</table>" + moreText;
+  }
+
   function describeNodeHtml(graphModel, nodeRecord, theme) {
     var stagePosition = graphModel.nodeToStage[nodeRecord.position];
     var stageRecord = stagePosition === undefined ? null : graphModel.stageRecords[stagePosition];
@@ -62,6 +84,7 @@
            renderClassification(isTimedByStage ? stageRecord.classification : nodeRecord.classification,
                                 isTimedByStage ? " (its stage)" : "") +
            renderFacts(facts) + renderSliceBreakdown(isTimedByStage ? stageRecord : nodeRecord, theme) +
+           renderLaunches(nodeRecord, graphModel.gpuCoreCount) +
            (isTimedByStage ? "<p class=\"gv-note\">Timed as part of its stage: the bar is the stage's," +
                              " \"run alone\" is this node by itself.</p>" : "");
   }
@@ -84,6 +107,10 @@
   };
 
   function legendEntries(theme, colourMode, shownClassifications, streamIndices, isCostRunAlone) {
+    if (colourMode === "coverage") {
+      return [[graphView.coverageColour(theme, 0.25), "few GPU cores busy"],
+              [graphView.coverageColour(theme, 1), "every core busy"], [theme.muted, "no kernel launch"]];
+    }
     if (colourMode === "stream") {
       return streamIndices.map(function (streamIndex) {
         return [graphView.STREAM_COLOURS[streamIndex % graphView.STREAM_COLOURS.length], "stream " + streamIndex];
@@ -104,6 +131,7 @@
                          legendFacts.isCostRunAlone)
       .map(function (entry) {
         return "<span><i style=\"background:" + entry[0] + "\"></i>" + escapeHtml(entry[1]) + "</span>";
-      }).join("") + "<span class=\"gv-legend-note\">brighter = costlier · dashed red = read from another stream</span>";
+      }).join("") + "<span class=\"gv-legend-note\">brighter = costlier · dashed red = read from another stream" +
+      " · ⚠ = a launch leaves GPU cores idle</span>";
   };
 })(typeof window !== "undefined" ? window : globalThis);

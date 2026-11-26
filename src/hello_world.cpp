@@ -8,6 +8,7 @@
 #include "paired_measurement.h"
 #include "report_bundle.h"
 #include "timeline_console.h"
+#include "metal_dispatch_recorder.h"
 
 #include <cstdio>
 
@@ -25,6 +26,8 @@ void print_variant_console(const VariantMeasurement& variant_measurement) {
 } // namespace
 
 int main() {
+  // Before any MLX work, so every kernel launch the profile records is named.
+  mlx_perf::install_dispatch_recorder();
   const DemoStreams demo_streams = make_demo_streams();
   std::printf("materializing demo inputs...\n");
   const auto demo_inputs = make_materialized_demo_inputs(demo_streams);

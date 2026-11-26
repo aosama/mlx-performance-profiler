@@ -15,6 +15,7 @@
 #include "qwen35/token_text.h"
 #include "report_bundle.h"
 #include "timeline_console.h"
+#include "metal_dispatch_recorder.h"
 
 #include <chrono>
 #include <cstdio>
@@ -147,6 +148,9 @@ bool profile_decode_step(const Qwen35Weights& weights, const Qwen35TextConfig& c
 } // namespace
 
 int main(int argument_count, char** argument_values) {
+  // Before the correctness check compiles the model's kernels, so the
+  // profile names every kernel launch it records.
+  mlx_perf::install_dispatch_recorder();
   try {
     const ProfileOptions profile_options = parse_profile_options(argument_count, argument_values);
     const Qwen35TextConfig config = load_qwen35_text_config(profile_options.model_directory);

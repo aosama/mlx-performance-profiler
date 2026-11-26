@@ -18,6 +18,12 @@ sidecar: it observes, it never changes MLX semantics.
 - C++20, one job per file: graph capture, telemetry, DOT writing, the graph
   view section, and HTML report writing are separate modules with separate
   headers. `main`-level files only orchestrate.
+- Kernel launches are observed by `metal_dispatch_recorder`: Objective-C
+  runtime hooks on the concrete classes of MLX's Metal compute encoder and
+  device, which call the original first and record only inside a
+  `DispatchRecordingScope` on the calling thread. Keep them observation-only;
+  `dispatch_occupancy` holds the pure arithmetic, `gpu_device_facts` the
+  core count.
 - The interactive graph view is JavaScript in `src/graph_view/` (model,
   style, panels, mounting: one job per file), embedded into the library at
   build time with `third_party/`'s vendored libraries
