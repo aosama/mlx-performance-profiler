@@ -22,7 +22,7 @@ void should_state_which_is_faster_by_how_much_and_against_the_spread() {
   const std::string verdict = describe_verdict("stock", "custom", paired_comparison);
   EXPECT_TRUE(contains(verdict, "custom is 10.8% faster than stock"));
   EXPECT_TRUE(contains(verdict, "(11.0 µs of 102.0 µs)"));
-  EXPECT_TRUE(contains(verdict, "Spread (middle half of rounds): stock 2.0 µs, custom 1.5 µs."));
+  EXPECT_TRUE(contains(verdict, "Middle half of the per-round differences: −11.0 µs to −10.5 µs."));
   EXPECT_TRUE(contains(verdict, "The difference exceeds the spread."));
 }
 
@@ -34,9 +34,10 @@ void should_state_a_slower_candidate_as_slower() {
 
 void should_say_a_difference_inside_the_spread_is_not_a_result() {
   const std::string verdict = describe_verdict(
-      "stock", "custom", compare_paired_samples({100, 110, 120}, {95, 105, 115}));
+      "stock", "custom", compare_paired_samples({100, 110, 120}, {105, 100, 125}));
   EXPECT_TRUE(contains(verdict, "The 5.0 µs difference between custom and stock is inside"
-                                " the spread: not a result."));
+                                " the spread"));
+  EXPECT_TRUE(contains(verdict, "(−2.5 µs to +5.0 µs) includes zero. Not a result."));
 }
 
 void should_render_all_three_metrics_with_ranges_and_rounds() {

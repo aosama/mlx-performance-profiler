@@ -269,17 +269,24 @@ mlx_perf_compare_to_report(&stock, &custom, "My projection", "build", "projectio
   running both variants with the order flipped every round, so drift on a
   machine doing other work lands on both.
 - **Judges each difference against the spread** for job duration, GPU
-  execution and host submission (host time inside `async_eval`). A
-  difference counts only when the middle halves of the two variants'
-  rounds (25th to 75th percentile) do not overlap. One disturbed round
-  therefore cannot decide the verdict either way.
+  execution and host submission (host time inside `async_eval`), on the
+  per-round differences (candidate − baseline). Drift both variants share
+  within a round cancels in the difference. A difference counts only when
+  the middle half of those differences (25th to 75th percentile) lies
+  entirely on one side of zero, so one disturbed round cannot decide it.
 
-The comparison page opens with one sentence, e.g. *"quantized_matmul is
-56.6% faster than dequantize_matmul (252.9 µs of 447.0 µs). Spread (middle
-half of rounds): dequantize_matmul 270.4 µs, quantized_matmul 43.1 µs. The
-difference exceeds the spread."*, or says the difference is inside the
-spread and is not a result. It writes `<base>.html` and `<base>.json`, plus
-a report and a measurement file per variant. The test suite's acceptance
+Why pairing matters, measured on the Qwen3.5 decode step: job wall stepped
+up by about 1 ms part-way through each run. Measured one variant after the
+other, compiled read 4.2 ms against eager's 3.2 ms, because it ran later and
+absorbed the step. Interleaved, compiled was faster in 7 of 7 rounds.
+
+The comparison page opens with one sentence. For the Qwen3.5 decode step,
+eager against compiled: *"compiled is 5.7% faster than eager (178.6 µs of
+3.11 ms). Middle half of the per-round differences: −192.4 µs to −74.7 µs.
+The difference exceeds the spread."* When the differences straddle zero it
+says the difference is inside the spread and is not a result. It writes
+`<base>.html` and `<base>.json`, plus a report and a measurement file per
+variant. The test suite's acceptance
 test compares exactly that pair: one 4-bit quantized projection, computed
 by `quantized_matmul` against `dequantize` followed by `matmul`.
 

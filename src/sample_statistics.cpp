@@ -58,19 +58,19 @@ PairedComparison compare_paired_samples(const std::vector<double>& baseline_samp
   paired_comparison.baseline = summarize_samples(baseline_samples);
   paired_comparison.candidate = summarize_samples(candidate_samples);
   paired_comparison.round_count = static_cast<int>(baseline_samples.size());
-  paired_comparison.median_difference =
-      paired_comparison.candidate.median - paired_comparison.baseline.median;
+  std::vector<double> round_differences;
+  for (std::size_t round_index = 0; round_index < baseline_samples.size(); ++round_index) {
+    round_differences.push_back(candidate_samples[round_index] - baseline_samples[round_index]);
+    paired_comparison.rounds_candidate_faster += round_differences.back() < 0.0 ? 1 : 0;
+  }
+  paired_comparison.round_difference = summarize_samples(round_differences);
+  paired_comparison.median_difference = paired_comparison.round_difference.median;
   paired_comparison.relative_difference = paired_comparison.baseline.median == 0.0
       ? 0.0
       : paired_comparison.median_difference / paired_comparison.baseline.median;
-  for (std::size_t round_index = 0; round_index < baseline_samples.size(); ++round_index) {
-    paired_comparison.rounds_candidate_faster +=
-        candidate_samples[round_index] < baseline_samples[round_index] ? 1 : 0;
-  }
-  if (paired_comparison.candidate.upper_quartile < paired_comparison.baseline.lower_quartile) {
+  if (paired_comparison.round_difference.upper_quartile < 0.0) {
     paired_comparison.verdict = ComparisonVerdict::candidate_faster;
-  } else if (paired_comparison.candidate.lower_quartile >
-             paired_comparison.baseline.upper_quartile) {
+  } else if (paired_comparison.round_difference.lower_quartile > 0.0) {
     paired_comparison.verdict = ComparisonVerdict::candidate_slower;
   }
   return paired_comparison;

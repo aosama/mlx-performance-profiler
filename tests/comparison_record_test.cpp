@@ -42,6 +42,8 @@ void should_carry_each_metrics_samples_difference_and_verdict() {
   EXPECT_TRUE(gpu_execution.at("candidate").at("min").as_number() == 40);
   EXPECT_TRUE(gpu_execution.at("candidate").at("upper_quartile").as_number() == 41.5);
   EXPECT_TRUE(gpu_execution.at("baseline").at("lower_quartile").as_number() == 50.5);
+  // Round differences −10, −11, −9: the verdict's range.
+  EXPECT_TRUE(gpu_execution.at("round_difference_us").at("upper_quartile").as_number() == -9.5);
   const JsonValue& job_wall = record.at("metrics").at("job_wall_us");
   EXPECT_TRUE(job_wall.at("verdict").as_string() == "within_spread");
   EXPECT_TRUE(record.at("metrics").at("host_submission_us").at("round_count").as_number() == 3);

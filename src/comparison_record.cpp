@@ -34,6 +34,12 @@ JsonValue metric_record(const PairedComparison& paired_comparison,
   return JsonValue(Object{
       {"baseline", sample_record(paired_comparison.baseline, baseline_samples)},
       {"candidate", sample_record(paired_comparison.candidate, candidate_samples)},
+      {"round_difference_us", JsonValue(Object{
+          {"median", json_number(paired_comparison.round_difference.median)},
+          {"min", json_number(paired_comparison.round_difference.minimum)},
+          {"max", json_number(paired_comparison.round_difference.maximum)},
+          {"lower_quartile", json_number(paired_comparison.round_difference.lower_quartile)},
+          {"upper_quartile", json_number(paired_comparison.round_difference.upper_quartile)}})},
       {"median_difference_us", json_number(paired_comparison.median_difference)},
       {"relative_difference", json_number(paired_comparison.relative_difference)},
       {"verdict", json_text(std::string(comparison_verdict_name(paired_comparison.verdict)))},

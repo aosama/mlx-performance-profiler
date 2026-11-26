@@ -17,10 +17,11 @@ namespace mlx_perf {
 std::string describe_verdict(const std::string& baseline_name, const std::string& candidate_name,
                              const PairedComparison& paired_comparison);
 
-// The headline sentence (job duration), the per-metric table with each
-// median beside the middle half of its rounds (the range the verdict is
-// judged on), the rounds the candidate won, and how closely the two
-// variants' outputs agree.
+// The headline sentence (job duration), then per metric: each variant's
+// median beside the middle half of its own rounds, the median per-round
+// difference beside the middle half of those differences (what the verdict
+// is judged on), the verdict, the rounds the candidate won, and how closely
+// the two variants' outputs agree.
 std::string render_verdict_section(const std::string& baseline_name,
                                    const std::string& candidate_name,
                                    const PairComparisons& pair_comparisons,

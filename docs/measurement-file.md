@@ -144,9 +144,10 @@ Each metric record:
 | Field | Meaning |
 |---|---|
 | `baseline`, `candidate` | `median`, `min`, `max`, `lower_quartile`, `upper_quartile`, and every `samples` value in round order |
-| `median_difference_us` | candidate median − baseline median; negative means the candidate is faster |
+| `round_difference_us` | the per-round differences (candidate − baseline): `median`, `min`, `max`, `lower_quartile`, `upper_quartile` |
+| `median_difference_us` | the median per-round difference; negative means the candidate is faster |
 | `relative_difference` | `median_difference_us` / the baseline median (0 when that is 0) |
-| `verdict` | `candidate_faster` or `candidate_slower` when the two middle halves (lower to upper quartile) do not overlap; otherwise `within_spread` |
+| `verdict` | `candidate_faster` when the middle half of the per-round differences (lower to upper quartile) lies entirely below zero, `candidate_slower` when entirely above, otherwise `within_spread` |
 | `rounds_candidate_faster`, `round_count` | rounds, paired by index, in which the candidate's sample was lower |
 
 Job wall has 7 rounds; GPU execution and host submission come from 5

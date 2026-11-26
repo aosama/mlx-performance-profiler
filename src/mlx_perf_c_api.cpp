@@ -221,6 +221,10 @@ void fill_metric(const PairedComparison& paired_comparison,
   metric_comparison.candidate_lower_quartile_us = paired_comparison.candidate.lower_quartile;
   metric_comparison.candidate_upper_quartile_us = paired_comparison.candidate.upper_quartile;
   metric_comparison.median_difference_us = paired_comparison.median_difference;
+  metric_comparison.difference_lower_quartile_us =
+      paired_comparison.round_difference.lower_quartile;
+  metric_comparison.difference_upper_quartile_us =
+      paired_comparison.round_difference.upper_quartile;
   metric_comparison.relative_difference = paired_comparison.relative_difference;
   metric_comparison.verdict = to_c_verdict(paired_comparison.verdict);
   metric_comparison.rounds_candidate_faster = paired_comparison.rounds_candidate_faster;

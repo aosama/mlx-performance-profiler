@@ -34,25 +34,31 @@ std::string_view comparison_verdict_name(ComparisonVerdict verdict);
 struct PairedComparison {
   SampleSummary baseline;
   SampleSummary candidate;
-  double median_difference = 0.0;    // candidate − baseline; negative = faster
+  // candidate − baseline, round by round: what the verdict is judged on.
+  SampleSummary round_difference;
+  double median_difference = 0.0;    // round_difference.median; negative = faster
   double relative_difference = 0.0;  // median_difference / baseline median; 0 when that is 0
   ComparisonVerdict verdict = ComparisonVerdict::within_spread;
   int rounds_candidate_faster = 0;   // rounds where the candidate's sample was lower
   int round_count = 0;
 };
 
-// Lower is better. The candidate is faster only when the middle half of its
-// samples lies entirely below the middle half of the baseline's (its upper
-// quartile is below the baseline's lower quartile), slower in the mirror
-// case; otherwise the difference is inside the spread and not a result.
+// Lower is better. The verdict is judged on the per-round differences
+// (candidate − baseline, paired by index): the candidate is faster only when
+// the middle half of those differences (lower to upper quartile) lies
+// entirely below zero, slower when it lies entirely above, otherwise the
+// difference is inside the spread and not a result.
 //
-// Why the middle half and not the full range: on a machine doing other work
-// one round in five or seven can be disturbed (measured: a 34–39 µs kernel
-// reading 578 µs once). With full ranges, that single round vetoes a 6×
-// difference; the middle half ignores it while still refusing any
-// difference the bulk of the rounds do not support. Samples are paired by
-// round (index), which is what rounds_candidate_faster counts; both vectors
-// must have the same, non-zero length or std::invalid_argument is thrown.
+// Why differences, and why their middle half (both measured on the GPU):
+//  - Drift is shared within a round: on a decoder step, job wall stepped up
+//    by ~1 ms part-way through a run for BOTH variants. Each variant's own
+//    spread then swallowed a difference the candidate won in 7 of 7 rounds;
+//    the per-round difference cancels what both rounds share.
+//  - One round can be disturbed (a 34–39 µs kernel read 578 µs once). The
+//    middle half ignores a single outlier while still refusing any
+//    difference the bulk of the rounds do not support.
+// Both vectors must have the same, non-zero length or std::invalid_argument
+// is thrown.
 PairedComparison compare_paired_samples(const std::vector<double>& baseline_samples,
                                         const std::vector<double>& candidate_samples);
 

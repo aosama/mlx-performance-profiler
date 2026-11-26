@@ -18,9 +18,9 @@ Additive: the next release is a minor one (0.2.0) under `VERSIONING.md`.
 - Comparing two implementations of one job (#12): the C function
   `mlx_perf_compare_to_report` (and `measure_pair` in C++) checks the two
   outputs agree, interleaves the passes with the order flipped every round,
-  and judges job duration, GPU execution and host submission against the
-  spread (the middle halves of the rounds must not overlap). The comparison
-  page opens with the verdict; `<base>.json` records it.
+  and judges job duration, GPU execution and host submission on the
+  per-round differences (their middle half must lie on one side of zero).
+  The comparison page opens with the verdict; `<base>.json` records it.
 - `hello_world` and `qwen35_profile` measure eager vs compiled this way.
 
 ## 0.1.0 (2026-11-26)

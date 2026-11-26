@@ -99,7 +99,7 @@ void should_state_which_quantized_projection_is_faster_by_how_much_and_against_t
   const std::string verdict_sentence =
       comparison_page.substr(verdict_at, comparison_page.find("</p>", verdict_at) - verdict_at);
   EXPECT_TRUE(contains(verdict_sentence, "quantized_matmul"));
-  EXPECT_TRUE(contains(verdict_sentence, "Spread (middle half of rounds):"));
+  EXPECT_TRUE(contains(verdict_sentence, "per-round differences"));
   EXPECT_TRUE(contains(verdict_sentence, "% faster than") ||
               contains(verdict_sentence, "% slower than") ||
               contains(verdict_sentence, "inside the spread"));
