@@ -34,7 +34,8 @@
     "<input type=\"search\" class=\"gv-search\" placeholder=\"Search ops  /\" aria-label=\"Search nodes by op, kernel or label\">" +
     "<select class=\"gv-colour-mode\" aria-label=\"Colour nodes by\">" +
     "<option value=\"time\">Colour: where time went</option><option value=\"heat\">Colour: cost</option>" +
-    "<option value=\"stream\">Colour: stream</option></select>" +
+    "<option value=\"stream\">Colour: stream</option>" +
+    "<option value=\"coverage\">Colour: GPU coverage</option></select>" +
     "<button type=\"button\" data-action=\"hot-path\" aria-pressed=\"false\" title=\"Highlight the most expensive dependency chain\">Hot path</button>" +
     "<button type=\"button\" data-action=\"fit\" title=\"Fit the graph (f)\">Fit</button>" +
     "<button type=\"button\" data-action=\"fullscreen\" title=\"Full screen\">⤢</button>" +
@@ -222,7 +223,9 @@
                    graphView.isSimpleStageChain(stageElements) ? snakeLayoutFor(viewState, stageElements) : null);
     } else {
       showElements(viewState, graphView.buildNodeElements(graphModel, null),
-                   "<b>" + graphModel.nodeRecords.length.toLocaleString() + " nodes</b><span> · click a node to trace it</span>");
+                   "<b>" + graphModel.nodeRecords.length.toLocaleString() +
+                   (graphModel.nodeRecords.length === 1 ? " node" : " nodes") +
+                   "</b><span> · click a node to trace it</span>");
     }
   }
 

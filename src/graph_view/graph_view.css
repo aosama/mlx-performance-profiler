@@ -50,3 +50,7 @@
 .gv-legend-note { opacity: .8; }
 .gv-status { color: var(--ink); font-weight: 600; }
 .variant-grid .gv-stage { height: 520px; }
+.gv-section-title { margin: 10px 0 2px; font-weight: 600; font-size: 11.5px; }
+.gv-launches td:first-child { word-break: break-all; }
+.gv-launches small { color: var(--muted); font-weight: 400; }
+.gv-underfills { color: var(--slice-scheduling); font-weight: 600; }

@@ -15,6 +15,7 @@
 #include "server_options.h"
 
 #include "mlx/memory.h"
+#include "metal_dispatch_recorder.h"
 
 #include <atomic>
 #include <chrono>
@@ -77,6 +78,8 @@ void sample_memory(LiveViewStore& live_view_store, Clock::time_point server_star
 } // namespace
 
 int main(int argument_count, char** argument_values) {
+  // Before any MLX work, so every kernel launch the profiles record is named.
+  mlx_perf::install_dispatch_recorder();
   const ServerOptions server_options = parse_server_options(
       std::vector<std::string>(argument_values + 1, argument_values + argument_count));
   if (server_options.should_show_help || !server_options.error_message.empty()) {

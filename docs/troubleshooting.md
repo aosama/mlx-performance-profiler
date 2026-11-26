@@ -124,6 +124,14 @@ Expected: clocks, temperature and other work on the machine move every measureme
 
 Operations that only describe a view of existing memory, such as a broadcast or a squeeze, run no kernel and show 0.0 µs compute. Their wall time is waiting, which their classification shows.
 
+### A kernel launch has no `metal_function_name`
+
+The pipeline's name is captured when MLX compiles it. A kernel compiled before the profiler started observing (by MLX work your program did before its first profile) is recorded with its shape but `null` for its name. Call `mlx_perf_install_launch_recorder()` before your program's first MLX evaluation to name every launch. See the [C API reference](reference/c-api.md#mlx_perf_install_launch_recorder).
+
+### Many launches are flagged ⚠ in a decode step
+
+Expected for small inputs: an element-wise operation on one token's vector forms a handful of threadgroups, so it cannot use every GPU core. On a Qwen3.5 decode step about 7 in 10 launches are like this. Look for the expensive ones: the hot path, cost colours, or a large kernel such as a matrix multiply that forms only a few threadgroups.
+
 ### A field is `null` in the JSON
 
 `null` means not measured, never zero. A node on a CPU stream has no GPU window; a node in a stage-timed run is timed as part of its stage; a serial time is `null` when the serial pass ran a different operation at that position. See [The measurement file](measurement-file.md#conventions).

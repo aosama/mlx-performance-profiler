@@ -164,6 +164,28 @@ void should_read_mlx_c_handles_as_the_same_core_arrays() {
   EXPECT_TRUE(core_arrays[0].item<float>() == 3.0f);
 }
 
+// Installed before this process's first MLX evaluation (the first test), so
+// every kernel the jobs below compile is named in their launch records.
+void should_install_the_launch_recorder_and_name_every_launch_after_it() {
+  EXPECT_TRUE(mlx_perf_install_launch_recorder() == 1);
+  EXPECT_TRUE(mlx_perf_install_launch_recorder() == 1); // safe to repeat
+  ApiFixture fixture;
+  mlx_perf_job_summary summary{};
+  EXPECT_TRUE(mlx_perf_profile_to_measurements(build_ten_node_graph, &fixture.payload, "named", ".",
+                                               "c_api_named_launches", &summary) == 0);
+  const mlx_perf::JsonValue document = mlx_perf::parse_json_file("c_api_named_launches.json");
+  int launch_count = 0;
+  for (const mlx_perf::JsonValue& node_record : document.at("nodes").as_array()) {
+    for (const mlx_perf::JsonValue& launch : node_record.at("kernel_dispatches").as_array()) {
+      EXPECT_TRUE(!launch.at("metal_function_name").is_null());
+      EXPECT_TRUE(launch.at("threadgroup_count").as_number() > 0);
+      ++launch_count;
+    }
+  }
+  EXPECT_TRUE(launch_count > 0);
+  EXPECT_TRUE(document.at("job").at("gpu").at("core_count").as_number() > 0);
+}
+
 void should_report_the_library_version_the_header_names() {
   EXPECT_TRUE(std::string(mlx_perf_version()) == MLX_PERF_VERSION_STRING);
   EXPECT_TRUE(std::string(mlx_perf_version()) ==
@@ -444,6 +466,7 @@ void should_reject_a_null_mlx_c_vector() {
 
 int main() {
   return test_harness::run_all({
+      TEST_CASE(should_install_the_launch_recorder_and_name_every_launch_after_it),
       TEST_CASE(should_measure_an_mlx_c_job_and_write_its_report),
       TEST_CASE(should_read_mlx_c_handles_as_the_same_core_arrays),
       TEST_CASE(should_report_the_library_version_the_header_names),

@@ -84,21 +84,53 @@
       nodeRecords: nodeRecords,
       stageRecords: stageRecords,
       positionToNode: positionToNode,
-      nodeToStage: nodeToStage
+      nodeToStage: nodeToStage,
+      // 0 when unknown: occupancy is then never claimed.
+      gpuCoreCount: (measurementDocument.job && measurementDocument.job.gpu &&
+                     measurementDocument.job.gpu.core_count) || 0
     };
   };
 
-  function nodeElement(nodeRecord, maximumCost) {
+  // A node's kernel launches as the view shows them, or null when it launched
+  // none. A threadgroup runs on one GPU core, so the launch with the fewest
+  // threadgroups bounds how many cores the node can keep busy.
+  graphView.describeNodeLaunches = function (nodeRecord, gpuCoreCount) {
+    var launches = nodeRecord.kernel_dispatches || [];
+    if (launches.length === 0) { return null; }
+    var fewestThreadgroups = Math.min.apply(null, launches.map(function (launch) { return launch.threadgroup_count; }));
+    var isCoreCountKnown = gpuCoreCount > 0;
+    return {
+      launchCount: launches.length,
+      fewestThreadgroups: fewestThreadgroups,
+      lowestCoverage: isCoreCountKnown ? Math.min(1, fewestThreadgroups / gpuCoreCount) : -1,
+      coresWithWork: isCoreCountKnown ? Math.min(fewestThreadgroups, gpuCoreCount) : null,
+      underfillingLaunchCount: isCoreCountKnown ? launches.filter(function (launch) {
+        return launch.threadgroup_count < gpuCoreCount;
+      }).length : 0
+    };
+  };
+
+  function launchSearchText(nodeRecord) {
+    return (nodeRecord.kernel_dispatches || []).map(function (launch) { return launch.metal_function_name || ""; }).join(" ");
+  }
+
+  function nodeElement(nodeRecord, maximumCost, gpuCoreCount) {
     var cost = graphView.describeNodeCost(nodeRecord);
     var displayName = graphView.shortenOpName(nodeRecord.kernel_name || nodeRecord.op_name || nodeRecord.label);
+    var launches = graphView.describeNodeLaunches(nodeRecord, gpuCoreCount);
+    var cannotFillGpu = launches !== null && launches.underfillingLaunchCount > 0;
     return { group: "nodes", data: {
       id: "n" + nodeRecord.position, kind: "node", order: nodeRecord.position, position: nodeRecord.position,
       caption: displayName + "\n" + cost.prefix + graphView.formatMicroseconds(cost.microseconds) +
-               " · " + graphView.formatBytes(nodeRecord.output_bytes),
+               " · " + graphView.formatBytes(nodeRecord.output_bytes) +
+               (cannotFillGpu ? "\n⚠ " + launches.coresWithWork + " of " + gpuCoreCount + " cores" : ""),
       cost: cost.microseconds, costShare: maximumCost > 0 ? cost.microseconds / maximumCost : 0,
       classification: nodeRecord.classification, streamIndex: nodeRecord.stream_index,
-      searchText: [nodeRecord.op_name, nodeRecord.kernel_name, nodeRecord.label].join(" ").toLowerCase(),
-      width: Math.max(104, Math.min(240, 7.2 * Math.max(displayName.length, 17)))
+      lowestCoverage: launches === null ? -1 : launches.lowestCoverage, cannotFillGpu: cannotFillGpu,
+      searchText: [nodeRecord.op_name, nodeRecord.kernel_name, nodeRecord.label, launchSearchText(nodeRecord)]
+        .join(" ").toLowerCase(),
+      width: Math.max(104, Math.min(240, 7.2 * Math.max(displayName.length, 17))),
+      height: cannotFillGpu ? 56 : 42
     } };
   }
 
@@ -118,7 +150,9 @@
       return !memberSet || memberSet.has(nodeRecord.position);
     });
     var maximumCost = maximumNodeCost(shownRecords);
-    var elements = shownRecords.map(function (nodeRecord) { return nodeElement(nodeRecord, maximumCost); });
+    var elements = shownRecords.map(function (nodeRecord) {
+      return nodeElement(nodeRecord, maximumCost, graphModel.gpuCoreCount);
+    });
     shownRecords.forEach(function (nodeRecord) {
       var crossStreamPositions = new Set(nodeRecord.cross_stream_input_positions || []);
       new Set(nodeRecord.input_positions || []).forEach(function (producerPosition) {
@@ -133,17 +167,40 @@
     return elements;
   };
 
-  function stageElement(stageRecord, maximumCost) {
+  // A stage's members' launches: how many leave GPU cores idle, and the
+  // lowest coverage among them, so the overview points at the stages to open.
+  function summarizeStageLaunches(graphModel, stageRecord) {
+    var stageLaunches = { underfillingLaunchCount: 0, lowestCoverage: -1 };
+    stageRecord.node_positions.forEach(function (position) {
+      var nodeRecord = graphModel.positionToNode[position];
+      var launches = nodeRecord ? graphView.describeNodeLaunches(nodeRecord, graphModel.gpuCoreCount) : null;
+      if (launches === null) { return; }
+      stageLaunches.underfillingLaunchCount += launches.underfillingLaunchCount;
+      if (launches.lowestCoverage >= 0) {
+        stageLaunches.lowestCoverage = stageLaunches.lowestCoverage < 0
+          ? launches.lowestCoverage : Math.min(stageLaunches.lowestCoverage, launches.lowestCoverage);
+      }
+    });
+    return stageLaunches;
+  }
+
+  function stageElement(stageRecord, maximumCost, graphModel) {
     var computeMicroseconds = typeof stageRecord.compute_us === "number" ? stageRecord.compute_us : 0;
     var stageName = stageRecord.stage_name || "stage " + stageRecord.stage_position;
+    var stageLaunches = summarizeStageLaunches(graphModel, stageRecord);
+    var underfillingCount = stageLaunches.underfillingLaunchCount;
     return { group: "nodes", data: {
       id: "s" + stageRecord.stage_position, kind: "stage", order: stageRecord.stage_position,
       stagePosition: stageRecord.stage_position,
       caption: stageName + "\n" + stageRecord.node_positions.length + " nodes · gpu " +
-               graphView.formatMicroseconds(computeMicroseconds),
+               graphView.formatMicroseconds(computeMicroseconds) +
+               (underfillingCount > 0 ? "\n⚠ " + underfillingCount + (underfillingCount === 1 ? " launch" : " launches") +
+                " leave cores idle" : ""),
       cost: computeMicroseconds, costShare: maximumCost > 0 ? computeMicroseconds / maximumCost : 0,
       classification: stageRecord.classification, streamIndex: stageRecord.stream_index,
-      searchText: stageName.toLowerCase(), width: Math.max(160, 8 * stageName.length)
+      lowestCoverage: stageLaunches.lowestCoverage, cannotFillGpu: underfillingCount > 0,
+      searchText: stageName.toLowerCase(), width: Math.max(172, 8 * stageName.length),
+      height: underfillingCount > 0 ? 64 : 50
     } };
   }
 
@@ -164,7 +221,9 @@
     var maximumCost = graphModel.stageRecords.reduce(function (maximum, stageRecord) {
       return Math.max(maximum, typeof stageRecord.compute_us === "number" ? stageRecord.compute_us : 0);
     }, 0);
-    var elements = graphModel.stageRecords.map(function (stageRecord) { return stageElement(stageRecord, maximumCost); });
+    var elements = graphModel.stageRecords.map(function (stageRecord) {
+      return stageElement(stageRecord, maximumCost, graphModel);
+    });
     var stagePairToBytes = new Map();
     forEachDataEdge(graphModel, function (producerPosition, consumerPosition, byteCount) {
       var producerStage = graphModel.nodeToStage[producerPosition];
@@ -187,7 +246,7 @@
       id: (isUpstream ? "from" : "to") + neighbourStage, kind: "ghost", stagePosition: neighbourStage,
       order: isUpstream ? -1 : Number.MAX_SAFE_INTEGER,
       caption: (isUpstream ? "from " : "to ") + (stageRecord.stage_name || "stage " + neighbourStage),
-      cost: 0, costShare: 0, searchText: "", width: 128 } };
+      cost: 0, costShare: 0, lowestCoverage: -1, cannotFillGpu: false, searchText: "", width: 128, height: 28 } };
   }
 
   // A stage's own nodes, plus one ghost per neighbouring stage it reads from

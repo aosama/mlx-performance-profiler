@@ -65,6 +65,7 @@ table.sortable th { cursor: pointer; user-select: none; }
 table.sortable th[data-sort-direction="ascending"]::after { content: " ▲"; }
 table.sortable th[data-sort-direction="descending"]::after { content: " ▼"; }
 td.number { text-align: right; font-variant-numeric: tabular-nums; }
+td.underfills-gpu, .underfills-gpu { color: var(--slice-scheduling); font-weight: 600; }
 .class-badge { border-radius: 3px; padding: 1px 6px; font-size: 11px; color: #fff; }
 .gantt-wrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 6px; background: var(--panel); }
 .gantt text { fill: var(--ink); font-size: 11px; }

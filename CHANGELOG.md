@@ -13,6 +13,17 @@ MLX releases it was built and tested against.
   stages there.
 
 ### Added
+- **Kernel launch shapes and GPU coverage (#35).** Every kernel launch MLX
+  encodes is recorded in the serial pass: the Metal function, the grid and
+  threadgroup sizes, the threadgroups formed, the pipeline's limits and its
+  threadgroup memory, and the share of GPU cores it can give work to (from
+  the GPU's core count). A launch with fewer threadgroups than cores is
+  flagged. It appears in the measurement file (`nodes[].kernel_dispatches`,
+  `job.gpu`; additive, schema version 1), the task table, the graph view
+  (a warning line, a GPU coverage colour mode, hover details) and a new
+  "Kernel launches side by side" table on the comparison page. The hooks
+  observe MLX's Metal encoder without changing it, and record only while
+  the serial pass evaluates a node.
 - **Documentation for people and coding agents.** `docs/` holds task
   guides (getting started, profiling a job, comparing two implementations,
   measuring from code, the measurement file, reading the report, building

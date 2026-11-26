@@ -87,8 +87,24 @@ void should_show_dash_when_serial_pass_has_no_matching_node() {
   SyntheticRun synthetic_run;
   report_fixture::populate_two_stream_run(synthetic_run);
   const std::string document = render_synthetic_document(synthetic_run, "Run");
-  // Two nodes × (Serial, Mem added).
-  EXPECT_TRUE(count_occurrences(document, ">—</td>") == 4);
+  // Two nodes × (Serial, Mem added, Launches).
+  EXPECT_TRUE(count_occurrences(document, ">—</td>") == 6);
+}
+
+void should_flag_a_node_whose_launch_cannot_fill_the_gpu() {
+  SyntheticRun synthetic_run;
+  report_fixture::populate_two_stream_run(synthetic_run);
+  mlx_perf::KernelDispatch four_threadgroups;
+  four_threadgroups.grid_unit = mlx_perf::DispatchGridUnit::threads;
+  four_threadgroups.grid = {128, 1, 1};
+  four_threadgroups.threads_per_threadgroup = {32, 1, 1};
+  const auto& timeline_nodes = synthetic_run.timeline_graph.nodes;
+  synthetic_run.serial_telemetry.attributed_nodes = {
+      {&timeline_nodes[0], 40.0, 0, 64, {four_threadgroups}}, {&timeline_nodes[1], 9.0, 0, 64, {}}};
+  synthetic_run.serial_telemetry.gpu_device_facts = {"Apple M5 Pro", 16};
+  const std::string document = render_synthetic_document(synthetic_run, "Run");
+  EXPECT_TRUE(document.find("⚠ 4 threadgroups · 4 of 16 cores") != std::string::npos);
+  EXPECT_TRUE(count_occurrences(document, "underfills-gpu\"") == 1);
 }
 
 // --- negative ---
@@ -130,6 +146,7 @@ int main() {
       TEST_CASE(should_draw_stall_and_dependency_arrow_for_the_join),
       TEST_CASE(should_render_empty_measurement_without_nan_or_infinity),
       TEST_CASE(should_show_dash_when_serial_pass_has_no_matching_node),
+      TEST_CASE(should_flag_a_node_whose_launch_cannot_fill_the_gpu),
       TEST_CASE(should_escape_hostile_titles_and_node_labels),
       TEST_CASE(should_render_stage_rows_and_stage_bars_for_a_per_stage_timeline),
   });

@@ -4,6 +4,7 @@
 #include "progress_reporter.h"
 #include "sample_statistics.h"
 #include "stage_timeline.h"
+#include "metal_dispatch_recorder.h"
 
 #include <cstdio>
 #include <string>
@@ -47,6 +48,9 @@ void announce_pass(MeasurementObserver* measurement_observer,
 } // namespace
 
 std::vector<mlx::core::array> run_warm_up(const GraphFactory& graph_factory) {
+  // Before the warm-up compiles the job's kernels, so every pipeline it
+  // compiles is named; kernels compiled earlier in the process stay unnamed.
+  install_dispatch_recorder();
   std::vector<mlx::core::array> warm_up_outputs = graph_factory.build_fresh_graph();
   // The pass takes its own copy; copies share each array's data, so these
   // outputs are evaluated when it returns.

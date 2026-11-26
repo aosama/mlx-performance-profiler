@@ -1,5 +1,7 @@
 #include "telemetry.h"
 
+#include "metal_dispatch_recorder.h"
+
 #include "console_output.h"
 #include "mlx/memory.h"
 #include "mlx/transforms.h"
@@ -59,6 +61,10 @@ NodeTelemetry measure_node(
   const size_t active_bytes_before = mlx::core::get_active_memory();
   mlx::core::reset_peak_memory();
 
+  // The recording scope adds a list append per launch to this pass's
+  // timing, a fraction of a microsecond against nodes of tens of
+  // microseconds; the timed passes never record.
+  DispatchRecordingScope recording_scope;
   const Clock::time_point started_at = Clock::now();
   // An array copy shares the same underlying descriptor, so evaluating the
   // copy schedules this node's compute — array::eval() itself is non-const.
@@ -66,6 +72,7 @@ NodeTelemetry measure_node(
   node_handle.eval();
   mlx::core::synchronize(execution_stream);
   node_telemetry.duration_microseconds = elapsed_microseconds(started_at);
+  node_telemetry.kernel_dispatches = recording_scope.take_recorded_dispatches();
 
   // size_t subtraction would wrap to ~16 EiB when a node's eval frees more
   // than it allocates (buffer donation, cache release); "added" is then 0.
@@ -82,6 +89,7 @@ RunTelemetry run_attributed_pass(
   RunTelemetry run_telemetry;
   run_telemetry.node_count =
       static_cast<int>(captured_graph.topological.size());
+  run_telemetry.gpu_device_facts = read_gpu_device_facts();
 
   print_progress_line(
       "attributed pass: timing %d nodes individually\n", run_telemetry.node_count);

@@ -132,6 +132,20 @@ For each, `verdict` is `MLX_PERF_VERDICT_CANDIDATE_FASTER` (-1), `MLX_PERF_VERDI
 
 **The verdict judges time, not correctness.** `max_absolute_output_difference` (in the summary and in the JSON's `output_agreement`) is reported but not judged. Check it against your own tolerance. It is `NaN` in C (`null` in the JSON) when any difference is not finite.
 
+## Why the slower one is slower: kernel launches side by side
+
+Under the metrics, the comparison page lists each kernel either variant launched, matched by name (a custom kernel's name, otherwise the MLX operation). For each variant it shows the number of launches, the threadgroups they formed and how many GPU cores the smallest launch can give work to, with ⚠ when some cores have nothing to do. The two jobs below do the same work with one custom kernel, launched as 4 threadgroups in one variant and as 512 in the other:
+
+```text
+many_groups is 96.6% faster than four_groups (8.66 ms of 8.96 ms, faster in 12 of 12 rounds).
+
+Kernel                                         four_groups                     many_groups
+                                               Launches  Threadgroups  Cores   Launches  Threadgroups  Cores
+custom_kernel_grid_stride_double_float_float   1         4             ⚠ 4 of 16   1     512           16 of 16
+```
+
+The verdict says the 4-threadgroup launch is slower; the table says why: it can keep at most 4 of the GPU's 16 cores busy. The same numbers are in each variant's measurement file, under `nodes[].kernel_dispatches` ([format](measurement-file.md#nodes)).
+
 ## Comparing a custom Metal kernel
 
 Build the candidate with MLX-C's `mlx_fast_metal_kernel_*` functions (or `mlx::core::fast::metal_kernel` in C++) and the baseline with the stock operation. Every custom kernel's primitive is named `CustomKernel`, so the measurement file adds `kernel_name`: MLX's name for that kernel, `custom_kernel_` followed by the name you gave it. Two custom kernels in one job stay distinguishable in the report, the graph and the JSON.

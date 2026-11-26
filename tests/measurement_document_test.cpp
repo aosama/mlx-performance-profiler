@@ -37,6 +37,26 @@ double sum_of_slices(const JsonValue& unit_record) {
   return slice_total;
 }
 
+// A run whose first node launched one custom kernel as `thread_count`
+// threads in threadgroups of 32, on a GPU with `gpu_core_count` cores.
+VariantMeasurement run_with_one_launch(std::uint64_t thread_count, int gpu_core_count) {
+  VariantMeasurement variant_measurement;
+  report_fixture::populate_two_stream_run(variant_measurement);
+  mlx_perf::KernelDispatch kernel_dispatch;
+  kernel_dispatch.metal_function_name = "custom_kernel_four_groups";
+  kernel_dispatch.grid_unit = mlx_perf::DispatchGridUnit::threads;
+  kernel_dispatch.grid = {thread_count, 1, 1};
+  kernel_dispatch.threads_per_threadgroup = {32, 1, 1};
+  kernel_dispatch.max_threads_per_threadgroup = 1024;
+  kernel_dispatch.thread_execution_width = 32;
+  kernel_dispatch.threadgroup_memory_bytes = 256;
+  const auto& timeline_nodes = variant_measurement.timeline_graph.nodes;
+  variant_measurement.serial_telemetry.attributed_nodes = {
+      {&timeline_nodes[0], 140.0, 4096, 64, {kernel_dispatch}}, {&timeline_nodes[1], 9.0, 0, 64, {}}};
+  variant_measurement.serial_telemetry.gpu_device_facts = {"Apple M5 Pro", gpu_core_count};
+  return variant_measurement;
+}
+
 // --- positive ---
 
 void should_describe_every_node_with_its_identity_and_timing() {
@@ -101,7 +121,7 @@ void should_join_each_node_to_its_serial_measurement() {
   report_fixture::populate_two_stream_run(variant_measurement);
   const auto& timeline_nodes = variant_measurement.timeline_graph.nodes;
   variant_measurement.serial_telemetry.attributed_nodes = {
-      {&timeline_nodes[0], 140.0, 4096, 64}, {&timeline_nodes[1], 9.0, 0, 64}};
+      {&timeline_nodes[0], 140.0, 4096, 64, {}}, {&timeline_nodes[1], 9.0, 0, 64, {}}};
   const JsonValue document = written_and_parsed(variant_measurement);
   const auto& node_records = document.at("nodes").as_array();
   EXPECT_TRUE(node_records[0].at("serial_duration_us").as_number() == 140);
@@ -189,12 +209,60 @@ void should_null_serial_fields_when_the_serial_node_does_not_match() {
   mlx_perf::GraphNode other_node = report_fixture::make_graph_node("Z", "Sin", 1);
   variant_measurement.serial_graph.nodes = {other_node};
   variant_measurement.serial_telemetry.attributed_nodes = {
-      {&variant_measurement.serial_graph.nodes[0], 140.0, 4096, 64}};
+      {&variant_measurement.serial_graph.nodes[0], 140.0, 4096, 64, {}}};
   const JsonValue document = written_and_parsed(variant_measurement);
   const auto& node_records = document.at("nodes").as_array();
   EXPECT_TRUE(node_records[0].at("serial_duration_us").is_null());
   EXPECT_TRUE(node_records[0].at("memory_added_bytes").is_null());
   EXPECT_TRUE(node_records[1].at("serial_duration_us").is_null());
+}
+
+void should_describe_each_kernel_launch_and_the_share_of_the_gpu_it_can_use() {
+  const JsonValue document = written_and_parsed(run_with_one_launch(128, 16));
+  const auto& launch = document.at("nodes").as_array()[0].at("kernel_dispatches").as_array()[0];
+  EXPECT_TRUE(launch.at("metal_function_name").as_string() == "custom_kernel_four_groups");
+  EXPECT_TRUE(launch.at("grid_unit").as_string() == "threads");
+  EXPECT_TRUE(launch.at("grid").as_array()[0].as_number() == 128);
+  EXPECT_TRUE(launch.at("threadgroup_count").as_number() == 4);
+  EXPECT_TRUE(launch.at("threadgroup_thread_count").as_number() == 32);
+  EXPECT_TRUE(launch.at("max_threads_per_threadgroup").as_number() == 1024);
+  EXPECT_TRUE(launch.at("threadgroup_memory_bytes").as_number() == 256);
+  EXPECT_TRUE(launch.at("gpu_core_coverage").as_number() == 0.25);
+  EXPECT_TRUE(!launch.at("can_fill_gpu").as_bool());
+  const auto& gpu_record = document.at("job").at("gpu");
+  EXPECT_TRUE(gpu_record.at("name").as_string() == "Apple M5 Pro");
+  EXPECT_TRUE(gpu_record.at("core_count").as_number() == 16);
+}
+
+void should_list_no_launches_for_a_node_that_launched_none() {
+  const JsonValue document = written_and_parsed(run_with_one_launch(128, 16));
+  EXPECT_TRUE(document.at("nodes").as_array()[1].at("kernel_dispatches").as_array().empty());
+}
+
+void should_fill_the_gpu_with_one_threadgroup_per_core() {
+  const JsonValue document = written_and_parsed(run_with_one_launch(16 * 32, 16));
+  const auto& launch = document.at("nodes").as_array()[0].at("kernel_dispatches").as_array()[0];
+  EXPECT_TRUE(launch.at("gpu_core_coverage").as_number() == 1.0);
+  EXPECT_TRUE(launch.at("can_fill_gpu").as_bool());
+}
+
+void should_null_coverage_when_the_gpu_core_count_is_unknown() {
+  const JsonValue document = written_and_parsed(run_with_one_launch(128, 0));
+  const auto& launch = document.at("nodes").as_array()[0].at("kernel_dispatches").as_array()[0];
+  EXPECT_TRUE(launch.at("threadgroup_count").as_number() == 4);
+  EXPECT_TRUE(launch.at("gpu_core_coverage").is_null());
+  EXPECT_TRUE(launch.at("can_fill_gpu").is_null());
+  EXPECT_TRUE(document.at("job").at("gpu").at("core_count").is_null());
+}
+
+void should_null_launches_when_the_serial_node_does_not_match() {
+  VariantMeasurement variant_measurement = run_with_one_launch(128, 16);
+  mlx_perf::GraphNode other_node = report_fixture::make_graph_node("Z", "Sin", 1);
+  variant_measurement.serial_graph.nodes = {other_node};
+  variant_measurement.serial_telemetry.attributed_nodes = {
+      {&variant_measurement.serial_graph.nodes[0], 140.0, 4096, 64, {}}};
+  const JsonValue document = written_and_parsed(variant_measurement);
+  EXPECT_TRUE(document.at("nodes").as_array()[0].at("kernel_dispatches").is_null());
 }
 
 } // namespace
@@ -210,5 +278,10 @@ int main() {
       TEST_CASE(should_time_stage_tasks_and_null_member_node_timing),
       TEST_CASE(should_describe_an_empty_measurement_as_empty_lists),
       TEST_CASE(should_null_serial_fields_when_the_serial_node_does_not_match),
+      TEST_CASE(should_describe_each_kernel_launch_and_the_share_of_the_gpu_it_can_use),
+      TEST_CASE(should_list_no_launches_for_a_node_that_launched_none),
+      TEST_CASE(should_fill_the_gpu_with_one_threadgroup_per_core),
+      TEST_CASE(should_null_coverage_when_the_gpu_core_count_is_unknown),
+      TEST_CASE(should_null_launches_when_the_serial_node_does_not_match),
   });
 }

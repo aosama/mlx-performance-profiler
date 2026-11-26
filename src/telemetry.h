@@ -6,6 +6,8 @@
 // questions, as Spark separates stage durations from job duration. The
 // overlap-preserving per-node pass lives in gpu_timeline.
 
+#include "dispatch_occupancy.h"
+#include "gpu_device_facts.h"
 #include "graph_model.h"
 
 #include "mlx/stream.h"
@@ -24,6 +26,10 @@ struct NodeTelemetry {
   // the capture keeps every intermediate alive and Metal may reuse buffers.
   size_t memory_added_bytes = 0;
   size_t output_bytes = 0;
+  // Every kernel launch this node's evaluation encoded, in order. Recorded
+  // here because the serial pass evaluates each node alone, so the
+  // attribution is exact in per-node and per-stage runs alike.
+  std::vector<KernelDispatch> kernel_dispatches;
 };
 
 struct RunTelemetry {
@@ -37,6 +43,9 @@ struct RunTelemetry {
   // when the pass began.
   size_t run_peak_memory_bytes = 0;
   int node_count = 0;
+  // The GPU the pass ran on: its core count turns each recorded kernel
+  // launch's threadgroups into the share of the GPU the launch could use.
+  GpuDeviceFacts gpu_device_facts;
 };
 
 // `stream_index_to_stream` supplies the MLX Stream handles the graph was built

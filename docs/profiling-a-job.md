@@ -46,6 +46,8 @@ static int build_softmax_job(mlx_vector_array fresh_outputs, void* builder_paylo
 
 int main(int argument_count, char** arguments) {
   const char* output_directory = argument_count > 1 ? arguments[1] : ".";
+  /* Before any MLX work, so the report names every kernel launch it records. */
+  mlx_perf_install_launch_recorder();
   const int input_shape[] = {1024, 1024};
   softmax_job job = {mlx_array_new(), mlx_default_gpu_stream_new()};
   mlx_array random_key = mlx_array_new();

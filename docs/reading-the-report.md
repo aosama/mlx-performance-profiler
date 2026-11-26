@@ -38,6 +38,17 @@ A node's **classification** is its largest slice other than result: `compute`, `
 
 The graph reads the same measurement document as the `.json` file, so the picture and the data cannot disagree. A page script can drive it, as the release images are captured: `mlxPerfGraphView.mountedViews[0]` has `openStage(position)`, `showOverview("stages" | "nodes")`, `setColourMode("time" | "heat" | "stream")`, `showHotPath()` and `fit()`.
 
+## Why is a kernel slow? Its launch shape
+
+The profiler records every kernel launch MLX encodes for each node: the Metal function, the grid and threadgroup sizes, the threadgroups formed, the pipeline's limits and its threadgroup memory. A threadgroup runs on one GPU core, so a launch with fewer threadgroups than the GPU has cores leaves cores idle. That is a common reason a kernel is slow which no timing shows on its own.
+
+- The task table's **Launches** column gives each node's launches, for example `4 threadgroups · 4 of 16 cores`, with ⚠ when some cores have nothing to do.
+- In the execution graph, such a node carries a third line, `⚠ 4 of 16 cores`. A stage tile says how many of its launches leave cores idle, so you know which layer to open.
+- **Colour: GPU coverage** colours every node from red (few cores busy) to green (every core busy), and grey for nodes that launched no kernel.
+- The hover card lists the node's launches: function name, `threadgroups × threads`, and cores with work.
+
+Covering every core rules this reason out but does not prove the launch is efficient: per-core thread and memory limits are not documented, so the profiler does not estimate them. The launches come from the serial pass, where each node runs alone, so they belong to the node exactly, in stage-timed reports too.
+
 ## Stage-timed reports
 
 A large graph (from 256 nodes) whose job names its stages, such as a decoder's layers, is timed one stage at a time: one `async_eval` per stage rather than per node. One Metal command buffer per node would cost several times the job itself. On a Qwen3.5-0.8B (4-bit) decode step at context 1024, per-node timing read 24.19 ms for a 3.15 ms step, while per-stage timing read 3.61 ms.

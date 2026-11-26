@@ -1,6 +1,7 @@
 #include "report_comparison_page.h"
 
 #include "graph_view_section.h"
+#include "report_launch_comparison_section.h"
 #include "report_assets.h"
 #include "report_gantt_section.h"
 #include "report_components.h"
@@ -117,7 +118,7 @@ std::string render_variant_column(const ComparedVariant& compared_variant,
   std::ostringstream column_html;
   column_html << "<div class=\"variant\"><h3>" << escape_html_text(variant.variant_name)
               << " <small>(" << variant.gpu_timeline.nodes.size()
-              << " nodes) — <a href=\""
+              << (variant.gpu_timeline.nodes.size() == 1 ? " node" : " nodes") << ") — <a href=\""
               << escape_html_text(encode_url_path_segment(compared_variant.full_report_file))
               << "\">full report</a></small></h3>"
               << render_graph_view(view_name, compared_variant.measurement_document_json)
@@ -299,6 +300,8 @@ std::string build_comparison_document(
   }
   page_html << "<section id=\"compare\"><h2>Job metrics</h2>"
             << render_comparison_metrics(baseline, candidate) << "</section>"
+            << render_launch_comparison_section(baseline.variant_name, baseline.serial_telemetry,
+                                                candidate.variant_name, candidate.serial_telemetry)
             << "<section id=\"plans\"><h2>Execution graphs side by side</h2><div class=\"variant-grid\">"
             << render_variant_column(baseline_variant, "baseline")
             << render_variant_column(candidate_variant, "candidate") << "</div></section>"

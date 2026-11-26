@@ -13,6 +13,7 @@
 #include "measurement_session.h"
 #include "mlx_c_interop.h"
 #include "report_writer.h"
+#include "metal_dispatch_recorder.h"
 
 #include <exception>
 #include <initializer_list>
@@ -341,6 +342,10 @@ extern "C" int mlx_perf_compare_to_report(
 
 extern "C" void mlx_perf_set_console_output(int is_enabled) {
   set_console_output_enabled(is_enabled != 0);
+}
+
+extern "C" int mlx_perf_install_launch_recorder(void) {
+  return install_dispatch_recorder() ? 1 : 0;
 }
 
 extern "C" const char* mlx_perf_version(void) { return MLX_PERF_VERSION_STRING; }

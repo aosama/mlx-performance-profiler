@@ -34,8 +34,8 @@ void should_sum_serial_durations_over_the_stage_members() {
   SyntheticRun synthetic_run;
   report_fixture::populate_two_stage_run(synthetic_run);
   synthetic_run.serial_telemetry.attributed_nodes = {
-      {&synthetic_run.timeline_graph.nodes[0], 42.0, 128, 64},
-      {&synthetic_run.timeline_graph.nodes[1], 7.0, 0, 64}};
+      {&synthetic_run.timeline_graph.nodes[0], 42.0, 128, 64, {}},
+      {&synthetic_run.timeline_graph.nodes[1], 7.0, 0, 64, {}}};
   const std::string section = render_stage_table(synthetic_run);
   EXPECT_TRUE(section.find("data-sort-value=\"42\"") != std::string::npos);
   EXPECT_TRUE(section.find(">—</td>") == std::string::npos);

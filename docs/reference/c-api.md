@@ -58,6 +58,14 @@ void mlx_perf_set_console_output(int is_enabled);
 
 `0` silences everything the library prints (progress and file lines on stdout, error lines on stderr); non-zero, the default, restores it. Process-wide and thread-safe. Failures still come back as return codes and through `mlx_perf_last_error()`.
 
+### mlx_perf_install_launch_recorder
+
+```c
+int mlx_perf_install_launch_recorder(void);
+```
+
+Optional. Starts observing the kernel launches MLX encodes, so every kernel MLX compiles from then on is named in the launch records (`kernel_dispatches[].metal_function_name` in the [measurement file](../measurement-file.md#nodes)). Call it before your program's first MLX evaluation. Without it the first profile starts the observer, and kernels compiled earlier are recorded unnamed, though their shapes are still recorded. It never changes what MLX computes. Returns `1` when observing, `0` when this GPU's Metal classes cannot be observed (launch records are then empty). Safe to call repeatedly.
+
 ### mlx_perf_version
 
 ```c
