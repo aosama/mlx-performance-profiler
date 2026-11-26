@@ -347,7 +347,7 @@ code. `mlx_perf_profile_to_measurements` writes the file alone, without
 the report.
 
 ```sh
-jq '.nodes[] | {op_name, gpu_us: (.gpu_finished_us - .gpu_started_us), gpu_idle_before_us}' \
+jq '.nodes[] | {op_name, compute_us, gpu_idle_before_us}' \
    build/hello_world_eager.json
 ```
 

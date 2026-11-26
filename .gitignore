@@ -26,3 +26,6 @@ rust/**/target/
 /measurement_file_*
 /bundle_test*
 /acceptance_*
+
+# Python bytecode from running the release-notes skill script and its tests
+__pycache__/

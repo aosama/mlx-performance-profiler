@@ -37,6 +37,9 @@ sidecar: it observes, it never changes MLX semantics.
   reach tools and tests only through `mlx_perf_internal` (link it, or a
   support library, never `src/` directly). New sources go into the target
   whose job they do (`CMakeLists.txt`).
+- Releases: write `release-notes/vX.Y.Z.md` with the `release-notes` skill
+  (`.claude/skills/release-notes/`) in the release pull request; the
+  release workflow publishes it and refuses a tag without it.
 - Versions follow `VERSIONING.md`; the MLX releases a version is tested
   against live in `MLX_PERF_TESTED_MLX_VERSIONS`
   (`cmake/mlx_perf_mlx_prefix.cmake`).
