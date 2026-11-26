@@ -66,7 +66,11 @@ sidecar: it observes, it never changes MLX semantics.
   request; the release workflow publishes it and refuses a tag without it.
   The same skill's step 6 makes sure `docs/` and `context7.json` cover every
   new capability and changed behaviour, and that Context7 serves them after
-  the merge.
+  the merge; step 7 runs the full suite on every MLX release in
+  `MLX_PERF_TESTED_MLX_VERSIONS` (one `build-mlx-<release>` directory each,
+  prefixes found with the skill's `find_mlx_prefix.py`). There is no CI, by
+  choice: MLX comes from `mlx-bridge`, and the two repositories' automation
+  stays apart.
 - Versions follow `VERSIONING.md`; the MLX releases a version is tested
   against live in `MLX_PERF_TESTED_MLX_VERSIONS`
   (`cmake/mlx_perf_mlx_prefix.cmake`).
