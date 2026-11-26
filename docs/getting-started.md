@@ -17,7 +17,7 @@ Alternatively, build [MLX](https://github.com/ml-explore/mlx) and [MLX-C](https:
 ## Step 2: build the profiler
 
 ```sh
-git clone --branch v0.3.0 https://github.com/aosama/mlx-performance-profiler.git
+git clone --branch v0.4.0 https://github.com/aosama/mlx-performance-profiler.git
 cd mlx-performance-profiler
 cmake -S . -B build -DMLX_PREFIX=/path/to/mlx/prefix
 cmake --build build
@@ -112,11 +112,10 @@ int main(int argument_count, char** arguments) {
 }
 ```
 
-Build it as part of your own CMake project with [`examples/CMakeLists.txt`](examples/CMakeLists.txt), which fetches this library at the release tag (see [Building and linking](building-and-linking.md)). The examples folder is on the `main` branch: it arrived after the 0.3.0 tag, and the library it fetches is 0.3.0.
+Build it as part of your own CMake project with [`examples/CMakeLists.txt`](examples/CMakeLists.txt), which fetches this library at the release tag (see [Building and linking](building-and-linking.md)). The examples folder is in the clone from step 2, at the same tag as the library it fetches. From that clone's root:
 
 ```sh
-git clone https://github.com/aosama/mlx-performance-profiler.git mlx-performance-profiler-main
-cd mlx-performance-profiler-main/docs/examples
+cd docs/examples
 cmake -S . -B build -DMLX_PREFIX=/path/to/mlx/prefix
 cmake --build build
 ./build/profile_one_job build

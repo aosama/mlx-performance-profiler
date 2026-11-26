@@ -92,7 +92,7 @@ cmake --install build --prefix /path/to/install
 
 ```cmake
 # In the consumer: cmake -DMLX_PREFIX=... -DCMAKE_PREFIX_PATH=/path/to/install
-find_package(mlx_perf 0.3 REQUIRED)
+find_package(mlx_perf 0.4 REQUIRED)
 target_link_libraries(my_test PRIVATE mlx_perf::mlx_perf)
 ```
 
@@ -107,7 +107,7 @@ report itself not found instead of stopping your configure.
 include(FetchContent)
 FetchContent_Declare(mlx_perf
   GIT_REPOSITORY https://github.com/aosama/mlx-performance-profiler.git
-  GIT_TAG v0.3.0)
+  GIT_TAG v0.4.0)
 FetchContent_MakeAvailable(mlx_perf)   # with -DMLX_PREFIX=... on your command line
 target_link_libraries(my_test PRIVATE mlx_perf::mlx_perf)
 ```
@@ -356,6 +356,10 @@ projection, computed by `quantized_matmul` against `dequantize` followed by
 `matmul`. The fused kernel wins beyond the spread.
 
 ## Comparing procedures: loops and pipelines
+
+![eval_once is 88.6% faster than read_every_step, faster in 12 of 12 rounds: reading a value back every step leaves the GPU idle for 4.75 ms of 5.63 ms, across 32 blocking waits against 1.](docs/images/procedures.png)
+
+*A 32-step loop written two ways, from the documented example: one run on one Mac.*
 
 A token loop, a sampler or a pipeline with host code between evaluations is
 not one graph. `mlx_perf_compare_procedures_to_report` compares two of them
