@@ -79,7 +79,41 @@ void should_start_a_fresh_record_after_each_take() {
   EXPECT_TRUE(recording_scope.finish_and_take_record().committed_command_buffer_count == 0);
 }
 
+// #44: an engine's owner thread evaluates while the calling thread waits.
+void should_record_another_threads_commits_and_waits_in_a_whole_process_scope() {
+  mlx_perf::install_submission_recorder();
+  SubmissionRecordingScope recording_scope(mlx_perf::RecordingReach::whole_process);
+  std::thread worker_thread([]() { run_blocking_steps(3); });
+  worker_thread.join();
+  const SubmissionRecord submission_record = recording_scope.finish_and_take_record();
+  EXPECT_TRUE(submission_record.committed_command_buffer_count >= 3);
+  EXPECT_TRUE(submission_record.blocking_wait_count >= 3);
+  EXPECT_TRUE(static_cast<int>(submission_record.command_buffer_windows.size()) ==
+              submission_record.committed_command_buffer_count);
+}
+
+void should_record_two_threads_at_once_in_a_whole_process_scope() {
+  mlx_perf::install_submission_recorder();
+  SubmissionRecordingScope recording_scope(mlx_perf::RecordingReach::whole_process);
+  std::thread first_worker([]() { run_blocking_steps(2); });
+  std::thread second_worker([]() { run_blocking_steps(2); });
+  first_worker.join();
+  second_worker.join();
+  EXPECT_TRUE(recording_scope.finish_and_take_record().blocking_wait_count >= 4);
+}
+
 // --- negative ---
+
+void should_record_nothing_after_a_whole_process_scope_closes() {
+  mlx_perf::install_submission_recorder();
+  {
+    SubmissionRecordingScope closed_scope(mlx_perf::RecordingReach::whole_process);
+  }
+  SubmissionRecordingScope thread_scope;
+  std::thread worker_thread([]() { run_blocking_steps(2); });
+  worker_thread.join();
+  EXPECT_TRUE(thread_scope.finish_and_take_record().committed_command_buffer_count == 0);
+}
 
 void should_record_nothing_from_another_thread() {
   mlx_perf::install_submission_recorder();
@@ -100,6 +134,9 @@ int main() {
       TEST_CASE(should_wait_for_unwaited_async_work_without_counting_that_wait),
       TEST_CASE(should_record_nothing_for_a_scope_without_mlx_work),
       TEST_CASE(should_start_a_fresh_record_after_each_take),
+      TEST_CASE(should_record_another_threads_commits_and_waits_in_a_whole_process_scope),
+      TEST_CASE(should_record_two_threads_at_once_in_a_whole_process_scope),
+      TEST_CASE(should_record_nothing_after_a_whole_process_scope_closes),
       TEST_CASE(should_record_nothing_from_another_thread),
   });
 }

@@ -11,10 +11,12 @@
 // waitUntilCompleted. Hooking those on the concrete classes MLX uses shows a
 // procedure's hand-offs between host and GPU, however many evaluations it
 // makes, as metal_dispatch_recorder shows its kernel launches. Each hook
-// calls the original first and records only inside a scope open on the
-// calling thread (MLX submits and waits on the thread that evaluates).
+// calls the original first and records only inside an open scope: on the
+// calling thread (MLX submits and waits on the thread that evaluates), or on
+// every thread, for a procedure that evaluates on a worker thread (#44).
 
 #include "gpu_busy_time.h"
+#include "recording_slots.h"
 
 #include <memory>
 #include <vector>
@@ -34,11 +36,12 @@ struct SubmissionRecord {
   double blocking_wait_microseconds = 0.0;
 };
 
-// Records this thread's command buffer commits and blocking waits while
-// alive. Scopes nest like DispatchRecordingScope.
+// Records command buffer commits and blocking waits while alive: this
+// thread's (the default), or every thread's. Scopes nest like
+// DispatchRecordingScope.
 class SubmissionRecordingScope {
  public:
-  SubmissionRecordingScope();
+  explicit SubmissionRecordingScope(RecordingReach recording_reach = RecordingReach::calling_thread);
   ~SubmissionRecordingScope();
   SubmissionRecordingScope(const SubmissionRecordingScope&) = delete;
   SubmissionRecordingScope& operator=(const SubmissionRecordingScope&) = delete;
@@ -52,6 +55,7 @@ class SubmissionRecordingScope {
 
  private:
   std::unique_ptr<RecordingState> recording_state_;
+  RecordingReach recording_reach_;
   RecordingState* enclosing_recording_state_ = nullptr;
 };
 

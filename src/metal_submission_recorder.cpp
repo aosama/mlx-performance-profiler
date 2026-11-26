@@ -3,6 +3,7 @@
 #include "metal_host_clock.h"
 #include "metal_object_classes.h"
 #include "objc_method_hooks.h"
+#include "recording_slots.h"
 
 #include "mlx/backend/metal/device.h"
 
@@ -22,7 +23,8 @@ namespace {
 
 using RecordingState = SubmissionRecordingScope::RecordingState;
 
-thread_local RecordingState* active_recording_state = nullptr;
+using SubmissionSlots = RecordingSlots<RecordingState>;
+using ActiveRecording = SubmissionSlots::ActiveRecording;
 
 using CommitImp = void (*)(id, SEL);
 using WaitUntilCompletedImp = void (*)(id, SEL);
@@ -32,26 +34,32 @@ CommitImp original_commit = nullptr;
 WaitUntilCompletedImp original_wait_until_completed = nullptr;
 WaitUntilSignaledValueImp original_wait_until_signaled_value = nullptr;
 
+// Looked up after the wait, never held across it: a process-wide recording's
+// lock must not be held while a thread blocks on the GPU. A wait counts when
+// a recording is open as it ends.
 void count_blocking_wait(double wait_started_seconds) {
-  ++active_recording_state->blocking_wait_count;
-  active_recording_state->blocking_wait_microseconds +=
-      (current_metal_host_seconds() - wait_started_seconds) * 1e6;
+  const double wait_finished_seconds = current_metal_host_seconds();
+  const ActiveRecording active_recording;
+  if (active_recording.recording_state() != nullptr) {
+    ++active_recording.recording_state()->blocking_wait_count;
+    active_recording.recording_state()->blocking_wait_microseconds +=
+        (wait_finished_seconds - wait_started_seconds) * 1e6;
+  }
 }
 
 void commit_hook(id command_buffer_object, SEL selector) {
   original_commit(command_buffer_object, selector);
-  if (active_recording_state != nullptr) {
+  const ActiveRecording active_recording;
+  if (active_recording.recording_state() != nullptr) {
     auto* command_buffer = reinterpret_cast<MTL::CommandBuffer*>(command_buffer_object);
     command_buffer->retain();
-    active_recording_state->committed_buffers.push_back(command_buffer);
+    active_recording.recording_state()->committed_buffers.push_back(command_buffer);
   }
 }
 
+// The clock is read around every wait, recording or not: two reads of
+// mach_absolute_time, negligible beside a wait for the GPU.
 void wait_until_completed_hook(id command_buffer_object, SEL selector) {
-  if (active_recording_state == nullptr) {
-    original_wait_until_completed(command_buffer_object, selector);
-    return;
-  }
   const double wait_started_seconds = current_metal_host_seconds();
   original_wait_until_completed(command_buffer_object, selector);
   count_blocking_wait(wait_started_seconds);
@@ -59,9 +67,6 @@ void wait_until_completed_hook(id command_buffer_object, SEL selector) {
 
 bool wait_until_signaled_value_hook(id shared_event_object, SEL selector, std::uint64_t awaited_value,
                                     std::uint64_t timeout_milliseconds) {
-  if (active_recording_state == nullptr) {
-    return original_wait_until_signaled_value(shared_event_object, selector, awaited_value, timeout_milliseconds);
-  }
   const double wait_started_seconds = current_metal_host_seconds();
   const bool is_signaled =
       original_wait_until_signaled_value(shared_event_object, selector, awaited_value, timeout_milliseconds);
@@ -104,24 +109,24 @@ bool install_submission_recorder() {
   return is_installed;
 }
 
-SubmissionRecordingScope::SubmissionRecordingScope()
-    : recording_state_(std::make_unique<RecordingState>()),
-      enclosing_recording_state_(active_recording_state) {
-  active_recording_state = recording_state_.get();
+SubmissionRecordingScope::SubmissionRecordingScope(RecordingReach recording_reach)
+    : recording_state_(std::make_unique<RecordingState>()), recording_reach_(recording_reach) {
+  enclosing_recording_state_ = SubmissionSlots::swap_open_recording(recording_reach_, recording_state_.get());
 }
 
+// Closed first, so no hook on another thread can add a buffer while the
+// retained ones are released.
 SubmissionRecordingScope::~SubmissionRecordingScope() {
+  SubmissionSlots::swap_open_recording(recording_reach_, enclosing_recording_state_);
   for (MTL::CommandBuffer* committed_buffer : recording_state_->committed_buffers) {
     committed_buffer->release();
   }
-  active_recording_state = enclosing_recording_state_;
 }
 
 SubmissionRecord SubmissionRecordingScope::finish_and_take_record() {
   // The profiler's own waits below are not the procedure's: recording
-  // pauses while they run.
-  RecordingState* paused_recording_state = active_recording_state;
-  active_recording_state = nullptr;
+  // pauses while they run (and, process-wide, while the record is read).
+  SubmissionSlots::swap_open_recording(recording_reach_, nullptr);
   SubmissionRecord submission_record;
   submission_record.committed_command_buffer_count =
       static_cast<int>(recording_state_->committed_buffers.size());
@@ -133,7 +138,7 @@ SubmissionRecord SubmissionRecordingScope::finish_and_take_record() {
   submission_record.blocking_wait_count = recording_state_->blocking_wait_count;
   submission_record.blocking_wait_microseconds = recording_state_->blocking_wait_microseconds;
   *recording_state_ = RecordingState{};
-  active_recording_state = paused_recording_state;
+  SubmissionSlots::swap_open_recording(recording_reach_, recording_state_.get());
   return submission_record;
 }
 

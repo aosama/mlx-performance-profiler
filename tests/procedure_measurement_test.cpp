@@ -9,6 +9,7 @@
 
 #include <stdexcept>
 #include <string>
+#include <thread>
 
 namespace {
 
@@ -47,6 +48,20 @@ class SteppedProcedure final : public ProcedureJob {
   int step_count_;
   bool is_evaluating_every_step_;
   std::unique_ptr<array> step_input_;
+};
+
+// #44: run() sends the steps to an owner thread for MLX and waits for it,
+// as an engine with its own MLX thread is driven.
+class OwnerThreadProcedure final : public ProcedureJob {
+ public:
+  void prepare() override { steps_.prepare(); }
+  void run() override {
+    std::thread owner_thread([this]() { steps_.run(); });
+    owner_thread.join();
+  }
+
+ private:
+  SteppedProcedure steps_{6, true};
 };
 
 class HostOnlyProcedure final : public ProcedureJob {
@@ -108,6 +123,20 @@ void should_prepare_before_every_run_of_both_procedures() {
   EXPECT_TRUE(candidate_job.run_count == 2 + PROCEDURE_ROUND_COUNT);
 }
 
+void should_observe_a_procedure_whose_mlx_work_runs_on_another_thread() {
+  OwnerThreadProcedure owner_thread_job;
+  SteppedProcedure calling_thread_job(6, true);
+  const PairedProcedureMeasurement paired_measurement =
+      measure_procedure_pair({"calling_thread", calling_thread_job}, {"owner_thread", owner_thread_job});
+  for (const ProcedureRun& owner_thread_run : paired_measurement.candidate.rounds) {
+    EXPECT_TRUE(owner_thread_run.command_buffer_count >= 6);
+    EXPECT_TRUE(owner_thread_run.blocking_wait_count >= 6);
+    EXPECT_TRUE(owner_thread_run.gpu_busy_microseconds > 0.0);
+    EXPECT_TRUE(owner_thread_run.gpu_idle_microseconds < owner_thread_run.duration_microseconds);
+  }
+  EXPECT_TRUE(!paired_measurement.candidate.observed_launches.empty());
+}
+
 // --- edge / boundary ---
 
 void should_record_no_gpu_time_for_procedures_without_mlx_work() {
@@ -152,6 +181,7 @@ int main() {
   return test_harness::run_all({
       TEST_CASE(should_count_the_hand_offs_of_each_procedure_per_run),
       TEST_CASE(should_prepare_before_every_run_of_both_procedures),
+      TEST_CASE(should_observe_a_procedure_whose_mlx_work_runs_on_another_thread),
       TEST_CASE(should_record_no_gpu_time_for_procedures_without_mlx_work),
       TEST_CASE(should_refuse_unusable_names_before_running_anything),
       TEST_CASE(should_end_the_measurement_when_a_procedure_throws),

@@ -51,9 +51,13 @@ ProcedureRun run_procedure_once(ProcedureJob& procedure_job, std::vector<KernelD
   procedure_job.prepare();
   mlx::core::synchronize();
   ProcedureRun procedure_run;
+  // Whole-process: run() may hand its MLX work to a worker thread, and only
+  // one procedure runs at a time, so everything submitted meanwhile is its
+  // work (#44).
   std::unique_ptr<DispatchRecordingScope> dispatch_scope =
-      recorded_launches == nullptr ? nullptr : std::make_unique<DispatchRecordingScope>();
-  SubmissionRecordingScope submission_scope;
+      recorded_launches == nullptr ? nullptr
+                                   : std::make_unique<DispatchRecordingScope>(RecordingReach::whole_process);
+  SubmissionRecordingScope submission_scope(RecordingReach::whole_process);
   const double started_seconds = current_metal_host_seconds();
   procedure_job.run();
   const double run_returned_seconds = current_metal_host_seconds();
