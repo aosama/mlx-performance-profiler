@@ -3,6 +3,19 @@
 Versions follow [`VERSIONING.md`](VERSIONING.md). Each release lists the
 MLX releases it was built and tested against.
 
+## Unreleased
+
+Additive: the next release is a minor one (0.2.0) under `VERSIONING.md`.
+
+- Per-node measurements as JSON beside every report (schema version 1,
+  [`docs/measurement-file.md`](docs/measurement-file.md)), and the new C
+  function `mlx_perf_profile_to_measurements` that writes only that file
+  (#11).
+- The file records each job-wall sample, the time spent inside the job's
+  graph-building code per pass, and the command buffers the timeline pass
+  observed.
+- Custom Metal kernels are told apart by name (`kernel_name`).
+
 ## 0.1.0 (2026-11-26)
 
 Tested MLX releases: 0.32.4, 0.32.5 (Metal, macOS).

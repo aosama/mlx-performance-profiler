@@ -5,6 +5,7 @@
 // reports need alive together.
 
 #include "gpu_timeline.h"
+#include "graph_build_timer.h"
 #include "graph_factory.h"
 #include "graph_model.h"
 #include "job_totals.h"
@@ -28,6 +29,10 @@ struct VariantMeasurement {
   CapturedGraph serial_graph;
   RunTelemetry serial_telemetry;
   JobTotals job_totals;
+  // Time spent inside the job's own graph-building code, per pass
+  // ("warm_up", "job_wall", "timeline", "serial"), outside every pass clock.
+  // The C API puts its own "stream_discovery" build first.
+  std::vector<GraphBuildPass> graph_build_passes;
 
   VariantMeasurement() = default;
   VariantMeasurement(VariantMeasurement&&) = default;

@@ -72,6 +72,10 @@ void should_observe_every_node_complete_with_slices_summing_to_wall() {
         node_timeline.timestamps.gpu_finished_microseconds >=
         node_timeline.timestamps.gpu_started_microseconds);
   }
+  // One async_eval per GPU node commits one buffer each: an exact count.
+  EXPECT_TRUE(gpu_timeline.observed_command_buffer_count ==
+              static_cast<int>(gpu_timeline.nodes.size()));
+  EXPECT_TRUE(!gpu_timeline.is_command_buffer_count_lower_bound);
 }
 
 void should_flag_only_the_join_as_cross_stream_input() {
@@ -161,6 +165,8 @@ void should_report_cpu_stream_as_cpu_device() {
   for (const NodeTimeline& node_timeline : gpu_timeline.nodes) {
     EXPECT_TRUE(!node_timeline.timestamps.has_gpu_window);
   }
+  // CPU streams have no command buffers to count.
+  EXPECT_TRUE(gpu_timeline.observed_command_buffer_count == 0);
   EXPECT_TRUE(cpu_output.is_available());
 }
 
@@ -177,6 +183,7 @@ void should_return_empty_timeline_for_already_materialized_graph() {
   EXPECT_TRUE(gpu_timeline.nodes.empty());
   EXPECT_TRUE(gpu_timeline.streams.empty());
   EXPECT_TRUE(gpu_timeline.timeline_wall_microseconds == 0);
+  EXPECT_TRUE(gpu_timeline.observed_command_buffer_count == 0);
 }
 
 // Negative: a stream the caller did not supply is a caller error that must

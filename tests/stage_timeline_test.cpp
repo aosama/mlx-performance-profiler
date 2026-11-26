@@ -80,6 +80,11 @@ void should_time_one_task_per_stage_with_slices_summing_to_wall() {
   EXPECT_TRUE(gpu_timeline.timeline_wall_microseconds > 0);
   EXPECT_TRUE(gpu_timeline.gpu_measured_node_count ==
               static_cast<int>(job_graph.topological.size()));
+  // At least each stage task's first buffer; MLX may commit more mid-stage.
+  EXPECT_TRUE(gpu_timeline.observed_command_buffer_count >= 1);
+  EXPECT_TRUE(gpu_timeline.observed_command_buffer_count <=
+              static_cast<int>(gpu_timeline.stages.size()));
+  EXPECT_TRUE(gpu_timeline.is_command_buffer_count_lower_bound);
 }
 
 // Every node is evaluated, belongs to exactly one stage task, and carries no

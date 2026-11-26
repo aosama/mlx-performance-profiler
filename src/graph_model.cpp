@@ -1,13 +1,16 @@
 #include "graph_model.h"
 
+// fast_primitives.h declares CustomKernel, whose state names a custom kernel;
 // graph_utils.h supplies NodeNamer for the plan's variable names;
 // primitives.h completes the Primitive type for op/stream access; utils.h
 // declares the operator<< for Dtype/Shape that the label strings use.
+#include "mlx/fast_primitives.h"
 #include "mlx/graph_utils.h"
 #include "mlx/primitives.h"
 #include "mlx/utils.h"
 
 #include <sstream>
+#include <string_view>
 #include <unordered_set>
 
 namespace mlx_perf {
@@ -17,10 +20,30 @@ namespace {
 using mlx::core::array;
 using mlx::core::NodeNamer;
 
-std::string shape_to_string(const array& node) {
+constexpr std::string_view CUSTOM_KERNEL_PRIMITIVE_NAME = "CustomKernel";
+
+// Shape (as text and as integers), dtype and size: what a node's output is,
+// whether it is an operation or data.
+void describe_output(const array& node, GraphNode& captured_node) {
+  captured_node.output_bytes = node.nbytes();
   std::ostringstream shape_text;
   shape_text << node.shape();
-  return shape_text.str();
+  captured_node.shape_string = shape_text.str();
+  captured_node.shape_dimensions.assign(node.shape().begin(), node.shape().end());
+  std::ostringstream dtype_text;
+  dtype_text << node.dtype();
+  captured_node.dtype_string = dtype_text.str();
+}
+
+// The author's name for a custom Metal kernel lives in the primitive's
+// state, not in name(); matching on name() first keeps the cast safe.
+std::string read_kernel_name(const mlx::core::Primitive& node_primitive) {
+  if (CUSTOM_KERNEL_PRIMITIVE_NAME != node_primitive.name()) {
+    return "";
+  }
+  const auto& custom_kernel =
+      static_cast<const mlx::core::fast::CustomKernel&>(node_primitive);
+  return std::get<0>(custom_kernel.state());
 }
 
 GraphNode build_node(const array& node, NodeNamer& plan_namer) {
@@ -28,14 +51,11 @@ GraphNode build_node(const array& node, NodeNamer& plan_namer) {
   captured_node.array_id = node.id();
   captured_node.label = plan_namer.get_name(node);
   captured_node.has_primitive = node.has_primitive();
-  captured_node.output_bytes = node.nbytes();
-  captured_node.shape_string = shape_to_string(node);
-  std::ostringstream dtype_text;
-  dtype_text << node.dtype();
-  captured_node.dtype_string = dtype_text.str();
+  describe_output(node, captured_node);
   if (node.has_primitive()) {
     captured_node.op_name = node.primitive().name();
     captured_node.stream_index = node.primitive().stream().index;
+    captured_node.kernel_name = read_kernel_name(node.primitive());
   }
   return captured_node;
 }
@@ -76,13 +96,7 @@ GraphNode build_sibling_leaf_node(
   sibling_node.label = sibling_label;
   sibling_node.op_name = "(shared primitive output)";
   sibling_node.has_primitive = false;
-  sibling_node.output_bytes = sibling.nbytes();
-  std::ostringstream sibling_shape;
-  sibling_shape << sibling.shape();
-  sibling_node.shape_string = sibling_shape.str();
-  std::ostringstream sibling_dtype;
-  sibling_dtype << sibling.dtype();
-  sibling_node.dtype_string = sibling_dtype.str();
+  describe_output(sibling, sibling_node);
   return sibling_node;
 }
 

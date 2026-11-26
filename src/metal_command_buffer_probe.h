@@ -67,6 +67,12 @@ class MetalCommandBufferProbe {
   // Call only after every node is observed complete.
   std::vector<GpuExecutionWindow> read_windows() const;
 
+  // Distinct MLX command buffers held and seen to complete (end markers are
+  // this probe's own and are not counted). Exact when every unit fits one
+  // buffer; a lower bound when MLX commits mid-unit, since those middle
+  // buffers are never held. Call only after every unit is observed complete.
+  int count_completed_command_buffers() const;
+
  private:
   // Opaque MTL::CommandBuffer* so this header stays free of metal-cpp.
   std::vector<void*> position_to_command_buffer_;

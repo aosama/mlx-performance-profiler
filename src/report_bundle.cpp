@@ -1,5 +1,6 @@
 #include "report_bundle.h"
 
+#include "measurement_file.h"
 #include "report_comparison_page.h"
 #include "report_writer.h"
 
@@ -31,6 +32,22 @@ ReportPaths write_variant(const ReportBundleRequest& bundle_request,
   return report_paths;
 }
 
+// The same measurement as data, beside its report, for callers that assert
+// on or plot numbers rather than read a page.
+bool write_variant_measurements(const ReportBundleRequest& bundle_request,
+                                const VariantMeasurement& variant_measurement) {
+  const std::string measurement_path =
+      write_measurement_file(variant_measurement, bundle_request.output_directory,
+                             variant_file_base(bundle_request, variant_measurement));
+  if (measurement_path.empty()) {
+    std::fprintf(stderr, "error: could not write the measurements of %s\n",
+                 variant_measurement.variant_name.c_str());
+    return false;
+  }
+  std::printf("measurements: %s\n", measurement_path.c_str());
+  return true;
+}
+
 } // namespace
 
 bool write_report_bundle(const ReportBundleRequest& bundle_request,
@@ -38,6 +55,14 @@ bool write_report_bundle(const ReportBundleRequest& bundle_request,
                          const VariantMeasurement& candidate) {
   const ReportPaths baseline_paths = write_variant(bundle_request, baseline);
   const ReportPaths candidate_paths = write_variant(bundle_request, candidate);
+  // Both written before either result is read: one failed file must not
+  // stop the other from being attempted.
+  const bool is_baseline_measurement_written =
+      write_variant_measurements(bundle_request, baseline);
+  const bool is_candidate_measurement_written =
+      write_variant_measurements(bundle_request, candidate);
+  const bool are_measurements_written =
+      is_baseline_measurement_written && is_candidate_measurement_written;
   const ComparedVariant baseline_variant{
       baseline, baseline_paths.plan_svg, variant_file_base(bundle_request, baseline) + ".html"};
   const ComparedVariant candidate_variant{
@@ -56,7 +81,8 @@ bool write_report_bundle(const ReportBundleRequest& bundle_request,
     std::printf("report: %s (%s vs %s)\n", comparison_path.c_str(),
                 baseline.variant_name.c_str(), candidate.variant_name.c_str());
   }
-  return baseline_paths.is_written && candidate_paths.is_written && is_comparison_written;
+  return baseline_paths.is_written && candidate_paths.is_written && is_comparison_written &&
+         are_measurements_written;
 }
 
 } // namespace mlx_perf

@@ -262,10 +262,7 @@ std::vector<NodeTimeline> build_member_nodes(
     NodeTimeline node_timeline;
     node_timeline.node = &node_at(captured_graph, static_cast<int>(position));
     node_timeline.stage_position = layout.position_to_task[position];
-    node_timeline.cross_stream_producer_positions =
-        position_to_dependencies[position].cross_stream_input_positions;
-    node_timeline.has_cross_stream_input =
-        !node_timeline.cross_stream_producer_positions.empty();
+    record_structure(position_to_dependencies[position], node_timeline);
     node_timelines.push_back(std::move(node_timeline));
   }
   return node_timelines;
@@ -350,6 +347,9 @@ GpuTimeline capture_stage_timeline(
     finish_stage_task(stage_task, task_to_dependencies[task_position], gpu_timeline);
   }
   gpu_timeline.stages = std::move(layout.stage_tasks);
+  gpu_timeline.observed_command_buffer_count =
+      command_buffer_probe.count_completed_command_buffers();
+  gpu_timeline.is_command_buffer_count_lower_bound = true;
   gpu_timeline.streams = summarize_streams(
       collect_timed_units(gpu_timeline), stream_index_to_stream);
   return gpu_timeline;

@@ -158,10 +158,7 @@ GpuTimeline capture_gpu_timeline(
         position_to_ready_microseconds,
         position_to_gpu_window[position]);
     node_timeline.breakdown = decompose_node_latency(node_timeline.timestamps);
-    node_timeline.cross_stream_producer_positions =
-        position_to_dependencies[position].cross_stream_input_positions;
-    node_timeline.has_cross_stream_input =
-        !node_timeline.cross_stream_producer_positions.empty();
+    record_structure(position_to_dependencies[position], node_timeline);
     gpu_timeline.cross_stream_stall_microseconds +=
         node_timeline.breakdown.wait_on_dependency_microseconds;
     if (node_timeline.breakdown.is_compute_measured) {
@@ -174,6 +171,8 @@ GpuTimeline capture_gpu_timeline(
         node_timeline.timestamps.completed_microseconds);
     gpu_timeline.nodes.push_back(node_timeline);
   }
+  gpu_timeline.observed_command_buffer_count =
+      command_buffer_probe.count_completed_command_buffers();
   gpu_timeline.streams = summarize_streams(
       collect_timed_units(gpu_timeline), stream_index_to_stream);
   return gpu_timeline;

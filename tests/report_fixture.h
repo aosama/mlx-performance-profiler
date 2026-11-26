@@ -32,6 +32,7 @@ inline mlx_perf::GraphNode make_graph_node(
   graph_node.op_name = op_name;
   graph_node.stream_index = stream_index;
   graph_node.shape_string = "(4,4)";
+  graph_node.shape_dimensions = {4, 4};
   graph_node.dtype_string = "float32";
   graph_node.output_bytes = 64;
   graph_node.has_primitive = true;

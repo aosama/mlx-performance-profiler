@@ -117,6 +117,10 @@ latency breakdown per variant, and writes three reports:
 - `build/hello_world_eager.html` and `build/hello_world_compiled.html`: the
   full Spark-style report for each variant.
 
+Beside each variant's report it writes the same measurement as data,
+`build/hello_world_eager.json` and `build/hello_world_compiled.json` (see
+**Per-node measurements as data**).
+
 The four passes per variant:
 
 | Pass | What it measures |
@@ -181,7 +185,8 @@ Gated DeltaNet update.
 It **first proves the math**: greedy decoding of "The capital of France is"
 must continue with " Paris", or the tool refuses to profile. Then it measures
 one decode step at the given context length, eager vs compiled, and writes
-`build/qwen35_decode.html` plus a report per variant.
+`build/qwen35_decode.html` plus a report and a measurement file
+(`build/qwen35_decode_<variant>.json`) per variant.
 
 ### Stage granularity
 
@@ -230,13 +235,31 @@ builds a three-stream job with `mlx-bridge` and profiles it:
 ```sh
 cmake --build build                      # builds libmlx_perf.a
 cd rust/mlx_perf_rust_example
-cargo profile-job                        # writes build/rust_example.html
+cargo profile-job                        # writes build/rust_example.html and .json
 ```
 
 It expects the `mlx-bridge` checkout as a sibling directory and uses that
 crate's pinned nightly toolchain. The final binary links exactly one MLX: the
 static `libmlx_perf.a` contains only this repository's code, and it resolves
 MLX from the same prebuilt prefix the bridge links.
+
+## Per-node measurements as data
+
+Every profile also writes its measurements as JSON beside the report: one
+record per node in execution order, with each node's GPU execution window,
+the six slices, how long its stream's GPU sat idle before it, and its
+serial-pass time and memory. There is also a job record with every
+job-wall sample and the time spent inside the job's own graph-building
+code. `mlx_perf_profile_to_measurements` writes the file alone, without
+the report.
+
+```sh
+jq '.nodes[] | {op_name, gpu_us: (.gpu_finished_us - .gpu_started_us), gpu_idle_before_us}' \
+   build/hello_world_eager.json
+```
+
+Unmeasured values are `null`, never zero. Every field is described in
+[`docs/measurement-file.md`](docs/measurement-file.md).
 
 ## Reading the report
 

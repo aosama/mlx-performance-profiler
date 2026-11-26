@@ -23,9 +23,15 @@ struct GraphNode {
   std::string op_name;         // e.g. "MatMul"; empty for input leaves
   int stream_index = 0;        // the stream this primitive executes on
   std::string shape_string;    // "[512, 256]"
+  std::vector<int> shape_dimensions;  // the same shape as integers, for data consumers
   std::string dtype_string;    // "float32"
   size_t output_bytes = 0;     // materialization size of this node's output
   bool has_primitive = false;  // false only for input leaves
+  // A custom Metal kernel reports the primitive name "CustomKernel" whatever
+  // it computes; this is MLX's name for the kernel, "custom_kernel_" + the
+  // author's name (+ a template-argument hash), empty for other primitives,
+  // so two custom kernels in one job stay distinguishable.
+  std::string kernel_name;
 };
 
 // A data-dependency edge in the Spark "shuffle bytes" sense: the consumer

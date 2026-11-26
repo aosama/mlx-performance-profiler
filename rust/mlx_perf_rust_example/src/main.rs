@@ -1,6 +1,6 @@
 //! Profiles an MLX job built in Rust (mlx-bridge) with mlx-performance-profiler:
-//! the same four passes and the same Spark-style HTML report the C++ demo
-//! produces. Orchestration only.
+//! the same four passes, the same Spark-style HTML report the C++ demo
+//! produces, and the per-node measurement file beside it. Orchestration only.
 
 mod mlx_perf_ffi;
 mod summary_format;
@@ -33,9 +33,8 @@ fn main() -> ExitCode {
     match unsafe { profile_to_report(build_three_stream_graph, job_payload, &profile_request) } {
         Ok(job_summary) => {
             println!("{}", summary_format::describe_summary(&job_summary));
-            let report_path = std::path::Path::new(report_directory).join("rust_example.html");
-            let shown_path = report_path.canonicalize().unwrap_or(report_path);
-            println!("report: {}", shown_path.display());
+            print_written_file("report", report_directory, "rust_example.html");
+            print_written_file("measurements", report_directory, "rust_example.json");
             ExitCode::SUCCESS
         }
         Err(failure) => {
@@ -43,4 +42,11 @@ fn main() -> ExitCode {
             ExitCode::FAILURE
         }
     }
+}
+
+/// Prints where the library wrote a file, as an absolute path when it exists.
+fn print_written_file(file_role: &str, directory: &str, file_name: &str) {
+    let written_path = std::path::Path::new(directory).join(file_name);
+    let shown_path = written_path.canonicalize().unwrap_or(written_path);
+    println!("{file_role}: {}", shown_path.display());
 }

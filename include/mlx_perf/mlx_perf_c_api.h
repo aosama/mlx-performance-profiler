@@ -5,7 +5,12 @@
  * The caller describes its job as a callback that appends a FRESH, unevaluated
  * graph's outputs to a vector it is handed; the library calls it once per
  * pass (warm-up, 7 job-wall samples, timeline, serial), exactly as the C++
- * demo does, and writes `<output_directory>/<report_file_base>.html`.
+ * demo does, and writes `<output_directory>/<report_file_base>.html` plus the
+ * same measurement as data in `<report_file_base>.json` (one record per node,
+ * in execution order; schema in docs/measurement-file.md). Callers that only
+ * want the data use mlx_perf_profile_to_measurements. Results come back as
+ * files plus the plain summary struct, so no result arrays and no ownership
+ * cross the boundary.
  *
  * Ownership never crosses the boundary: the library creates and frees the
  * vector; the callback only appends (MLX-C copies array handles on append).
@@ -44,7 +49,8 @@ typedef struct mlx_perf_job_summary {
   int stream_count;
 } mlx_perf_job_summary;
 
-/* Measures the job and writes its HTML report. `summary` may be NULL. */
+/* Measures the job and writes its HTML report and its measurement file
+ * (`<report_file_base>.json`). `summary` may be NULL. */
 int mlx_perf_profile_to_report(mlx_perf_build_graph_fn build_graph,
                                void* builder_payload,
                                const char* variant_name,
@@ -52,6 +58,16 @@ int mlx_perf_profile_to_report(mlx_perf_build_graph_fn build_graph,
                                const char* output_directory,
                                const char* report_file_base,
                                mlx_perf_job_summary* summary);
+
+/* Measures the job and writes only its measurement file,
+ * `<output_directory>/<measurements_file_base>.json`: no DOT, SVG or HTML.
+ * `summary` may be NULL. */
+int mlx_perf_profile_to_measurements(mlx_perf_build_graph_fn build_graph,
+                                     void* builder_payload,
+                                     const char* variant_name,
+                                     const char* output_directory,
+                                     const char* measurements_file_base,
+                                     mlx_perf_job_summary* summary);
 
 /* The library version, "MAJOR.MINOR.PATCH" (MLX_PERF_VERSION_STRING of the
  * build that produced the library). Compare it with the header's macro to

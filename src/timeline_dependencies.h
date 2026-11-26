@@ -5,6 +5,7 @@
 // producer-readiness arithmetic they share after it. Snapshotted up front
 // because MLX detaches a node's inputs once it is evaluated.
 
+#include "gpu_timeline.h"
 #include "graph_model.h"
 #include "metal_command_buffer_probe.h"
 
@@ -44,6 +45,11 @@ std::vector<NodeDependencies> snapshot_dependencies(
 // Same- and cross-stream inputs together: what stage planning walks.
 std::vector<std::vector<int>> merge_input_positions(
     const std::vector<NodeDependencies>& position_to_dependencies);
+
+// Copies one node's dependency facts onto its timeline entry: producers on
+// other streams (the Gantt's arrows), all producers in position order, and
+// the previous node on its stream. Shared by both timeline passes.
+void record_structure(const NodeDependencies& dependencies, NodeTimeline& node_timeline);
 
 // Checked before dispatch, so a caller error fails fast and leaves the graph
 // unevaluated instead of throwing after it has been consumed.
