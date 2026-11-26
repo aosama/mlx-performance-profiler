@@ -42,5 +42,5 @@ write_basic_package_version_file(
 install(FILES
           "${PROJECT_BINARY_DIR}/generated/mlx_perfConfig.cmake"
           "${PROJECT_BINARY_DIR}/generated/mlx_perfConfigVersion.cmake"
-          cmake/mlx_perf_mlx_link.cmake
+          cmake/mlx_perf_mlx_prefix.cmake
         DESTINATION "${MLX_PERF_PACKAGE_DIRECTORY}")

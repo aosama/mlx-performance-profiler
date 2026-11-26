@@ -13,7 +13,7 @@
 
 set(MLX_PERF_BUILT_AGAINST_MLX_VERSION "@MLX_PERF_BUILT_AGAINST_MLX_VERSION@")
 
-include("${CMAKE_CURRENT_LIST_DIR}/mlx_perf_mlx_link.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/mlx_perf_mlx_prefix.cmake")
 
 set(MLX_PREFIX "${MLX_PREFIX}" CACHE PATH "Prefix of the prebuilt MLX installation mlx_perf links against.")
 mlx_perf_require_mlx_prefix("${MLX_PREFIX}")

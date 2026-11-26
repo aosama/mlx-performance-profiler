@@ -33,7 +33,7 @@ sidecar: it observes, it never changes MLX semantics.
   New sources go into the target whose job they do (`CMakeLists.txt`).
 - Versions follow `VERSIONING.md`; the MLX releases a version is tested
   against live in `MLX_PERF_TESTED_MLX_VERSIONS`
-  (`cmake/mlx_perf_mlx_link.cmake`).
+  (`cmake/mlx_perf_mlx_prefix.cmake`).
 - Tests live in `tests/`, one file per production module
   (`<module>_test.cpp`), cases named `should_...`, each module covering
   positive, edge/boundary and negative cases. Run after building:

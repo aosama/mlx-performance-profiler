@@ -33,7 +33,7 @@ jobs:
         run: |
           archive_name="mlx-performance-profiler-${GITHUB_REF_NAME#v}.tar.gz"
           git archive --format=tar.gz --prefix="mlx-performance-profiler-${GITHUB_REF_NAME#v}/" \
-            -o "${archive_name}" "${GITHUB_REF_NAME}"
+            -o "${archive_name}" HEAD
           sha256sum "${archive_name}" > "${archive_name}.sha256"
 
       - uses: softprops/action-gh-release@v2

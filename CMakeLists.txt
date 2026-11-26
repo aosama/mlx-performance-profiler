@@ -17,9 +17,10 @@ endif()
 option(MLX_PERF_BUILD_TOOLS
        "Build hello_world, mlx_perf_server and qwen35_profile" ${PROJECT_IS_TOP_LEVEL})
 option(MLX_PERF_BUILD_TESTS "Build the test suite" ${PROJECT_IS_TOP_LEVEL})
+option(MLX_PERF_INSTALL "Generate install rules and the mlx_perf package" ${PROJECT_IS_TOP_LEVEL})
 
 include(GNUInstallDirs)
-include(cmake/mlx_perf_mlx_link.cmake)
+include(cmake/mlx_perf_mlx_prefix.cmake)
 include(cmake/mlx_perf_project_settings.cmake)
 
 # The prebuilt MLX static library is the only native dependency. MLX_PREFIX
@@ -128,7 +129,11 @@ if(MLX_PERF_BUILD_TOOLS)
   mlx_perf_apply_project_settings(mlx_perf_server)
 endif()
 
-include(cmake/mlx_perf_install.cmake)
+# Install rules only for a top-level build by default: a project that pulls
+# this repository in with FetchContent decides for itself what it installs.
+if(MLX_PERF_INSTALL)
+  include(cmake/mlx_perf_install.cmake)
+endif()
 
 if(MLX_PERF_BUILD_TESTS)
   enable_testing()

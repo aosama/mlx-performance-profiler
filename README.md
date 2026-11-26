@@ -27,14 +27,15 @@ cmake -S . -B build -DMLX_PREFIX=/path/to/mlx/prefix
 cmake --build build
 ```
 
-The build type defaults to Release, matching the prebuilt MLX. Two options
-choose what is built; both default to on for this repository and off when
-another project includes it:
+The build type defaults to Release, matching the prebuilt MLX. Three options
+choose what is built and installed; all default to on for this repository
+and off when another project includes it:
 
 | Option | Builds |
 |---|---|
 | `MLX_PERF_BUILD_TOOLS` | `hello_world`, `mlx_perf_server`, `qwen35_profile` |
 | `MLX_PERF_BUILD_TESTS` | the test suite |
+| `MLX_PERF_INSTALL` | install rules and the `mlx_perf` package (needed by the packaging tests) |
 
 `-DMLX_PERF_BUILD_TOOLS=OFF -DMLX_PERF_BUILD_TESTS=OFF` builds the library
 alone, in seconds.

@@ -21,7 +21,7 @@ set(expected_files
     lib/cmake/mlx_perf/mlx_perfConfigVersion.cmake
     lib/cmake/mlx_perf/mlx_perfTargets-<configuration>.cmake
     lib/cmake/mlx_perf/mlx_perfTargets.cmake
-    lib/cmake/mlx_perf/mlx_perf_mlx_link.cmake
+    lib/cmake/mlx_perf/mlx_perf_mlx_prefix.cmake
     lib/libmlx_perf.a)
 if(NOT installed_files STREQUAL expected_files)
   message(FATAL_ERROR "installed files differ from the public surface.\n"

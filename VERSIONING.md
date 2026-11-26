@@ -65,7 +65,7 @@ and an archive from different releases.
 ## How this reconciles with MLX
 
 - **Tested set.** `MLX_PERF_TESTED_MLX_VERSIONS` in
-  `cmake/mlx_perf_mlx_link.cmake` is the single source of truth for the MLX
+  `cmake/mlx_perf_mlx_prefix.cmake` is the single source of truth for the MLX
   releases a version has been built and tested against. The README's
   compatibility table and each release's notes are copied from it.
 - **Support window.** A release supports the MLX minor series that was

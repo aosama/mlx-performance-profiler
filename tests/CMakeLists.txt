@@ -54,4 +54,7 @@ mlx_perf_add_test(timeline_dependencies_test)
 mlx_perf_add_test(qwen35_layer_stages_test mlx_perf_qwen35)
 
 # Packaging: the installed library as another repository's build sees it.
-add_subdirectory(packaging)
+# Needs the install rules, so it follows MLX_PERF_INSTALL.
+if(MLX_PERF_INSTALL)
+  add_subdirectory(packaging)
+endif()

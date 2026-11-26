@@ -14,6 +14,7 @@ set(next_minor_version "${PROJECT_VERSION_MAJOR}.${next_minor_number}")
 # mismatch check. Written at configure time; it holds no library.
 set(other_mlx_release_prefix "${packaging_scratch_directory}/other_mlx_release_prefix")
 file(WRITE "${other_mlx_release_prefix}/include/mlx/mlx.h" "")
+file(MAKE_DIRECTORY "${other_mlx_release_prefix}/include/metal_cpp")
 file(WRITE "${other_mlx_release_prefix}/include/mlx/version.h"
      "#define MLX_VERSION_MAJOR 0\n#define MLX_VERSION_MINOR 0\n#define MLX_VERSION_PATCH 1\n")
 
@@ -87,3 +88,32 @@ add_test(NAME should_refuse_a_consumer_asking_for_another_minor_version
 set_tests_properties(should_refuse_a_consumer_asking_for_another_minor_version PROPERTIES
   FIXTURES_REQUIRED mlx_perf_installed
   PASS_REGULAR_EXPRESSION "compatible with requested version \"${next_minor_version}\"")
+
+# A prefix that exists but holds no MLX at all.
+set(prefix_without_mlx "${packaging_scratch_directory}/prefix_without_mlx")
+file(MAKE_DIRECTORY "${prefix_without_mlx}")
+
+add_test(NAME should_refuse_an_mlx_prefix_without_mlx
+  COMMAND "${CMAKE_COMMAND}" --fresh
+          -S "${CMAKE_CURRENT_SOURCE_DIR}/subdirectory_consumer"
+          -B "${packaging_scratch_directory}/subdirectory_consumer_without_mlx"
+          -G "${CMAKE_GENERATOR}"
+          "-DMLX_PERF_SOURCE_DIRECTORY=${PROJECT_SOURCE_DIR}"
+          "-DMLX_PREFIX=${prefix_without_mlx}")
+set_tests_properties(should_refuse_an_mlx_prefix_without_mlx PROPERTIES
+  PASS_REGULAR_EXPRESSION "does not contain include/mlx/mlx.h")
+
+# --- edge: an MLX release outside the tested set warns but does not stop a
+# source build (a locally patched or newer MLX can still be tried). The
+# warning must appear, then the configure and generate must both finish
+# (CMake wraps long warnings, hence the whitespace class).
+
+add_test(NAME should_warn_but_continue_on_an_untested_mlx_release
+  COMMAND "${CMAKE_COMMAND}" --fresh
+          -S "${CMAKE_CURRENT_SOURCE_DIR}/subdirectory_consumer"
+          -B "${packaging_scratch_directory}/subdirectory_consumer_untested_mlx"
+          -G "${CMAKE_GENERATOR}"
+          "-DMLX_PERF_SOURCE_DIRECTORY=${PROJECT_SOURCE_DIR}"
+          "-DMLX_PREFIX=${other_mlx_release_prefix}")
+set_tests_properties(should_warn_but_continue_on_an_untested_mlx_release PROPERTIES
+  PASS_REGULAR_EXPRESSION "not a tested[ \n]+release.*subdirectory consumer: library only.*Generating done")
