@@ -42,7 +42,8 @@ The script lists everything that shipped, read from git and GitHub:
 - the changelog entry, the release assets with their SHA-256 (checked
   against a fresh download of the archive), and the open roadmap.
 
-Its parsers are unit-tested; after changing the script, run
+Its parsers, and the capture script's, are unit-tested; after changing
+either script, run
 `python3 -m unittest discover -s .claude/skills/release-notes/scripts -p "*_test.py"`.
 
 Treat its output as the checklist: every shipped issue appears in the notes,
@@ -87,15 +88,67 @@ theme and the first sentence. One release, one theme: if it has two big
 things, name both in the title. Name things by what they do for a reader,
 not by internal names.
 
-### 4. Write `release-notes/vX.Y.Z.md`
+### 4. Capture the opening visual
+
+Every release page opens with one picture, directly under the title, that
+the profiler itself drew. Most readers decide in the first screen whether
+to read on, and a real report showing the headline outcome convinces faster
+than any sentence. It is also what people share.
+
+- **Real, from this release.** Build the release's code, run the tool whose
+  report shows the headline (`hello_world`, `qwen35_profile`, or the C API
+  example), and capture that report. Never a mock-up, never an edited
+  screenshot, never an image from an older build.
+- **One idea, readable at a glance.** Pick the section that shows the
+  headline: the verdict for a comparison feature, the execution graph for a
+  graph feature, the timeline for a timing feature. Hide dense notes
+  (`--hide`). If the image needs a paragraph to decode, pick another view.
+- **Capture it** with
+  [`scripts/capture_report_visual.py`](scripts/capture_report_visual.py):
+
+  ```bash
+  python3 .claude/skills/release-notes/scripts/capture_report_visual.py \
+      build/qwen35_decode.html release-notes/media/vX.Y.Z-verdict.png \
+      --sections verdict --hide "nav,#verdict .note" --colours 256
+  # a graph view, driven first, at 16:9 for social posts:
+  #   --sections dag --page-script "mlxPerfGraphView.mountedViews[0].setColourMode('heat')" \
+  #   --width 1600 --height 900 --no-trim
+  ```
+
+  It renders the report in headless Chrome, keeps only the sections named,
+  and trims the empty background. `--colours 256` keeps a UI screenshot
+  sharp at about a third of the bytes. Look at the PNG before using it.
+- **Commit it** as `release-notes/media/vX.Y.Z-<what>.png` in the release
+  pull request. A release body does not resolve relative paths, so link
+  the committed file by its raw URL at the tag:
+  `https://raw.githubusercontent.com/<owner>/<repo>/vX.Y.Z/release-notes/media/vX.Y.Z-<what>.png`.
+  For a release already published, use `main` in place of the tag. That
+  path lives on `main` but not at the old tag.
+- **Alt text states the result**, not the picture ("compiled is 5.8%
+  faster than eager, 12 of 12 rounds", not "a screenshot"). Under the
+  image, one italic line says what it shows, that the profiler drew it,
+  which job and size, and "one run on one Mac", since numbers vary run to
+  run. If the picture's numbers differ from a number quoted in the text,
+  the caption says they come from different runs.
+- **Privacy:** check the image as you would the text. A report title or
+  path in the picture must not show a workstation path or a private model
+  location.
+
+The same image can open the README section for the feature. For a social
+post, capture a 16:9 version (`--width 1600 --height 900 --no-trim`).
+
+### 5. Write `release-notes/vX.Y.Z.md`
 
 Follow [`references/template.md`](references/template.md). It gives the
 sections in order and what each must contain. Every section earns its
 place; drop one that would be empty, except "Upgrading" (write "Nothing to
 change" when that's true, because readers look for it) and "For agents".
 
-### 5. Check before publishing
+### 6. Check before publishing
 
+- **The opening visual** renders on the page (open it after publishing),
+  comes from this release's build, and agrees with the text or says why
+  not.
 - **Links:** every `#N` points at the issue or PR meant (`gh issue view N`).
   Docs links point at the tag, not `main`, so they keep matching this
   release.
@@ -111,10 +164,11 @@ change" when that's true, because readers look for it) and "For agents".
 - **Honesty:** limitations and open issues are stated plainly, and nothing
   is promised for a future release.
 
-### 6. Publish
+### 7. Publish
 
-- **A new release:** commit `release-notes/vX.Y.Z.md` in the release pull
-  request, beside the version bump and the `CHANGELOG.md` entry. The release
+- **A new release:** commit `release-notes/vX.Y.Z.md` and its image in
+  `release-notes/media/` in the release pull request, beside the version
+  bump and the `CHANGELOG.md` entry. The release
   workflow refuses a tag without its notes file and publishes the file as
   the release body.
 - **A release already published:** commit the file through a pull request,

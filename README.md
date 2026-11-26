@@ -1,19 +1,44 @@
 # mlx-performance-profiler
 
-A feasibility experiment: give Apple [MLX](https://github.com/ml-explore/mlx)
-computations the Apache Spark Web UI experience. It captures MLX's lazy
-computational graph, measures what each node spent **computing** versus
-**waiting** (on the host, on its own GPU stream, or on another stream's data),
-and reports it the way Spark's StagePage does.
+**X-ray vision for Apple MLX. See what the GPU actually did, and prove which version is faster.**
 
-It is an observer: it never changes MLX semantics.
+![One Qwen3.5 decode step, profiled: 24 decoder layers in one view, coloured by cost. The LM head glows gold, costing as much as about eight layers.](docs/images/graph-stages.png)
 
-Formerly named `mlx-visual-plan`; the project is a profiler, and the name now
-says so. In code it uses the short prefix `mlx_perf`.
+*One decode step of Qwen3.5-0.8B (4-bit), profiled. Each tile is a decoder layer timed on the GPU, and the brighter the tile, the more it cost. The LM head at the end (gold) costs as much as about eight layers. Click any layer in the report to open its operations (up to 59 of them).*
 
-See [`PHASED_PLAN.md`](PHASED_PLAN.md) for the roadmap,
-[`AGENTS.md`](AGENTS.md) for contributor conventions and
-[`VERSIONING.md`](VERSIONING.md) for how versions relate to MLX's.
+MLX is lazy: you describe a graph, and MLX decides what runs, on which stream, and when. This profiler shows you what it actually did, the way Apache Spark's Web UI shows a query. Every operation, every stream, and every microsecond is split into **computing** and **waiting**. The waiting is broken down further: on the host, behind earlier work on the same GPU stream, or on another stream's data.
+
+## Why you'll want it
+
+- 🔬 **An execution graph you can actually explore.** Every operation MLX ran, coloured by where its time went and brighter the more it cost. Hover for the full breakdown, click to light up everything upstream and downstream, search by op or kernel, and flip on the **hot path**: the most expensive dependency chain, highlighted end to end. Big models open as stages (a decoder's layers) that you drill into.
+- ⏱️ **GPU time measured, not guessed.** Compute comes from Metal's own command-buffer timestamps (`GPUStartTime` / `GPUEndTime`), for every node or stage.
+- ⚖️ **A verdict, not vibes.** Hand it two versions of a job, say a stock MLX primitive and your custom Metal kernel, and it says which is faster, by how much, and whether that beats run-to-run noise. Identical variants are called different under 4% of the time, and that guarantee is tested, not assumed.
+- 🧠 **Real models, proven correct first.** Ships a Qwen3.5 decode step rebuilt from MLX's own kernels, which refuses to profile until it greedily decodes " Paris" after "The capital of France is".
+- 📦 **One file, nothing to install to read it.** Each report is a single HTML file that opens offline in any browser. Every number is also written as JSON for scripts, CI and agents, and the whole thing is reachable from C, C++ and Rust through a small C API.
+
+![The verdict panel: compiled is 5.8% faster than eager on a Qwen3.5 decode step, faster in 12 of 12 rounds, with the interval for the per-round difference.](docs/images/verdict.png)
+
+*The verdict that opens every comparison: 12 interleaved, uninstrumented rounds, judged on the per-round differences, so drift the two variants share cancels out.*
+
+<table>
+<tr>
+<td width="50%"><img src="docs/images/graph-layer.png" alt="Inside decoder layer 3: the attention block's operations, coloured by cost, with the hot path traced in amber."><br><sub><b>Drill into a layer.</b> The hot path (amber) traces the most expensive chain through attention, from RMSNorm through QuantizedMatmul and RoPE into ScaledDotProductAttention.</sub></td>
+<td width="50%"><img src="docs/images/graph-compare.png" alt="Eager and compiled graphs of the demo job side by side: 18 nodes against 9."><br><sub><b>See what compile changed.</b> The same job, eager (18 nodes) beside <code>mlx::core::compile</code> (9 nodes), with the fused kernels in plain view.</sub></td>
+</tr>
+<tr>
+<td colspan="2"><img src="docs/images/timeline.png" alt="Job summary cards and a per-stream timeline in which stream 0 sits stalled, in red, waiting for stream 2's data."><br><sub><b>Find the stall.</b> The per-stream timeline: stream 0 sits stalled (red) until stream 2's data lands, and the arrow shows which producer it was waiting for.</sub></td>
+</tr>
+</table>
+
+## Try it in two minutes
+
+```sh
+cmake -S . -B build -DMLX_PREFIX=/path/to/mlx/prefix   # a prebuilt MLX, see "MLX compatibility"
+cmake --build build
+./build/hello_world                                    # then open build/hello_world.html
+```
+
+It is an observer: it never changes MLX semantics. Formerly named `mlx-visual-plan`; in code it uses the short prefix `mlx_perf`. See [`PHASED_PLAN.md`](PHASED_PLAN.md) for the roadmap, [`AGENTS.md`](AGENTS.md) for contributor conventions and [`VERSIONING.md`](VERSIONING.md) for how versions relate to MLX's. The images above are the profiler's own reports, captured with [`capture_report_visual.py`](.claude/skills/release-notes/scripts/capture_report_visual.py); the numbers are from single runs on one Apple-silicon Mac and vary from run to run.
 
 ## Build
 
@@ -40,8 +65,10 @@ and off when another project includes it:
 `-DMLX_PERF_BUILD_TOOLS=OFF -DMLX_PERF_BUILD_TESTS=OFF` builds the library
 alone, in seconds.
 
-Graphviz (`dot`) is optional: with it the HTML report embeds an SVG of the
-plan, without it the report shows the raw DOT source.
+Nothing else is needed: the interactive graph view's libraries
+([Cytoscape.js](https://js.cytoscape.org/) and its dagre layout, both MIT,
+vendored in [`third_party/`](third_party/README.md)) are compiled into the
+library, so every report is one HTML file that works offline.
 
 ## Use it from another build
 
@@ -134,7 +161,7 @@ latency breakdown per variant, and writes three reports:
 
 - `build/hello_world.html`: **eager vs compiled** side by side, opening with
   the verdict (which is faster, by how much, and whether that exceeds the
-  spread), then metric deltas, both DAGs, both timelines on one time scale,
+  spread), then metric deltas, both execution graphs, both timelines on one time scale,
   and which primitives compile fused.
 - `build/hello_world_eager.html` and `build/hello_world_compiled.html`: the
   full Spark-style report for each variant.
@@ -374,9 +401,16 @@ light/dark theme. A variant report reads top to bottom like a Spark StagePage:
    node timed alone ("Serial"), its class, and a stacked latency bar. In a
    stage-timed report, one row per stage and stream instead, with the ops
    inside it and the members' serial times summed.
-4. **DAG.** The plan graph: fill = stream, red outline = node stalled on
-   another stream, edges labeled with bytes. Stage-timed reports box each
-   stage as a dashed cluster, as Spark's DAG view does.
+4. **Execution graph.** Every operation MLX executed, drawn from the same
+   measurement document the JSON file holds. Each node is coloured by where
+   its time went (the timeline's colours) and is brighter the more it cost;
+   a dashed red edge is a read from another stream. Hover a node for its
+   six-slice breakdown; click it to light up everything upstream and
+   downstream. Search by op or kernel name, highlight the **hot path** (the
+   most expensive dependency chain), switch colours to cost or stream, go
+   full screen, or download the whole graph as a PNG. A stage-timed report
+   opens on its stages (a decoder's layers); click one to open its nodes.
+   The `.dot` file beside the report still holds the plan for Graphviz.
 
 The six slices, in causal order, always sum to a node's wall:
 

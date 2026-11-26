@@ -9,6 +9,14 @@ in a release body as a visible break.
 ````markdown
 # mlx-performance-profiler X.Y.Z: <the theme, in a few words>
 
+![<alt text that states the result the picture shows>](https://raw.githubusercontent.com/<owner>/<repo>/vX.Y.Z/release-notes/media/vX.Y.Z-<what>.png)
+
+*<One line: what the picture shows, that the profiler drew it, on which job and size, and "one run on one Mac".>*
+
+<!-- The opening visual (SKILL.md step 4): a real report from this
+release's build, showing the headline outcome. Captured with
+scripts/capture_report_visual.py and committed under release-notes/media/. -->
+
 <!-- One paragraph, three or four sentences. Who this release is for, what
 they can do now that they couldn't before, and the one measured result
 that best shows it. A reader who stops here knows whether to read on. -->
@@ -109,6 +117,7 @@ file_formats:
   measurement_file_schema_version: <n>
   comparison_record_schema_version: <n>
 shipped_issues: [<numbers>]
+opening_visual: <the raw URL of the image above>
 docs:
   readme: https://github.com/<repo>/blob/vX.Y.Z/README.md
   changelog: https://github.com/<repo>/blob/vX.Y.Z/CHANGELOG.md
