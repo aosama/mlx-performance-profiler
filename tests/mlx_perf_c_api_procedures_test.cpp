@@ -12,6 +12,7 @@
 
 #include <fstream>
 #include <string>
+#include <thread>
 
 namespace {
 
@@ -59,6 +60,23 @@ int run_stepped(void* procedure_payload) {
   return status;
 }
 
+// #44: the run callback hands the steps to an owner thread and waits. MLX
+// streams belong to the thread that made them, so the owner thread runs the
+// steps on its own default GPU stream, as an engine's owner thread would.
+int run_stepped_on_owner_thread(void* procedure_payload) {
+  int owner_thread_status = 0;
+  std::thread owner_thread([&owner_thread_status, procedure_payload]() {
+    auto* payload = static_cast<SteppedPayload*>(procedure_payload);
+    const mlx_stream calling_thread_stream = payload->gpu_stream;
+    payload->gpu_stream = mlx_default_gpu_stream_new();
+    owner_thread_status = run_stepped(procedure_payload);
+    mlx_stream_free(payload->gpu_stream);
+    payload->gpu_stream = calling_thread_stream;
+  });
+  owner_thread.join();
+  return owner_thread_status;
+}
+
 struct ProcedureFixture {
   SteppedPayload chatty_payload;
   SteppedPayload batched_payload;
@@ -98,6 +116,17 @@ void should_compare_two_mlx_c_procedures_and_write_the_page_and_record() {
   // One warm-up, one observed run, 12 rounds: prepare before every run.
   EXPECT_TRUE(fixture.chatty_payload.run_count == 14);
   EXPECT_TRUE(fixture.chatty_payload.prepare_count == 14);
+}
+
+void should_report_gpu_work_a_procedure_runs_on_its_owner_thread() {
+  ProcedureFixture fixture;
+  fixture.batched.run = run_stepped_on_owner_thread;
+  mlx_perf_procedure_comparison_summary summary{};
+  EXPECT_TRUE(compare(fixture, "c_api_procedures_owner_thread", &summary) == 0);
+  EXPECT_TRUE(summary.candidate.median_command_buffer_count >= 1);
+  EXPECT_TRUE(summary.candidate.median_blocking_wait_count >= 1);
+  EXPECT_TRUE(summary.candidate.kernel_launch_count >= 8);
+  EXPECT_TRUE(summary.gpu_busy.candidate_median_us > 0.0);
 }
 
 // --- edge / boundary ---
@@ -171,6 +200,7 @@ void should_report_an_unwritable_directory() {
 int main() {
   return test_harness::run_all({
       TEST_CASE(should_compare_two_mlx_c_procedures_and_write_the_page_and_record),
+      TEST_CASE(should_report_gpu_work_a_procedure_runs_on_its_owner_thread),
       TEST_CASE(should_run_a_procedure_without_a_prepare_callback),
       TEST_CASE(should_keep_the_procedure_struct_sizes_stable),
       TEST_CASE(should_surface_a_failing_run_by_procedure_name_writing_nothing),

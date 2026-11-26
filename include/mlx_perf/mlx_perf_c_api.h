@@ -147,7 +147,10 @@ typedef int (*mlx_perf_procedure_step_fn)(void* procedure_payload);
  * buffer it committed has completed. `prepare` (may be NULL) runs before
  * every run, untimed: put setup there (fresh inputs, a reset cache), and
  * evaluate what it creates before returning, so that work is not left to the
- * timed run. Both run on the calling thread. The name
+ * timed run. Both are called on the calling thread; `run` may hand its MLX
+ * work to other threads (an engine's owner thread), because every command
+ * buffer, wait and launch anywhere in the process while it runs is counted
+ * as its own, so use MLX for nothing else meanwhile. The name
  * follows the rules of mlx_perf_variant.variant_name. */
 typedef struct mlx_perf_procedure {
   const char* procedure_name;

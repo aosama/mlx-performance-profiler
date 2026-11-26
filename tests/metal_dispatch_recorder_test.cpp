@@ -89,6 +89,38 @@ void should_record_into_the_innermost_scope_then_resume_the_outer() {
   EXPECT_TRUE(outer_dispatches.front().metal_function_name.find("outer_launch") != std::string::npos);
 }
 
+// #44: a procedure that evaluates on a worker thread, recorded process-wide.
+void should_record_another_threads_launches_in_a_whole_process_scope() {
+  mlx_perf::install_dispatch_recorder();
+  const array input_values = ones({64});
+  eval(input_values);
+  DispatchRecordingScope recording_scope(mlx_perf::RecordingReach::whole_process);
+  std::thread worker_thread([&input_values]() {
+    eval(double_with_custom_kernel("worker_thread", input_values, 64, 32));
+    synchronize();
+  });
+  worker_thread.join();
+  const std::vector<KernelDispatch> recorded_dispatches = recording_scope.take_recorded_dispatches();
+  EXPECT_TRUE(recorded_dispatches.size() == 1);
+  EXPECT_TRUE(!recorded_dispatches.empty() &&
+              recorded_dispatches[0].metal_function_name.find("worker_thread") != std::string::npos);
+}
+
+// --- edge / boundary ---
+
+// The serial pass's per-thread scope keeps its node's launches to itself
+// even while a whole-process scope is open.
+void should_let_a_threads_own_scope_win_over_a_whole_process_one() {
+  mlx_perf::install_dispatch_recorder();
+  const array input_values = ones({64});
+  eval(input_values);
+  DispatchRecordingScope process_scope(mlx_perf::RecordingReach::whole_process);
+  const std::vector<KernelDispatch> thread_dispatches =
+      record_evaluation(double_with_custom_kernel("thread_scope_wins", input_values, 64, 32));
+  EXPECT_TRUE(thread_dispatches.size() == 1);
+  EXPECT_TRUE(process_scope.take_recorded_dispatches().empty());
+}
+
 // --- negative ---
 
 void should_record_nothing_outside_a_scope_or_on_another_thread() {
@@ -114,6 +146,8 @@ int main() {
       TEST_CASE(should_record_a_custom_kernel_launch_with_its_exact_shape),
       TEST_CASE(should_record_and_name_a_stock_mlx_kernel),
       TEST_CASE(should_record_into_the_innermost_scope_then_resume_the_outer),
+      TEST_CASE(should_record_another_threads_launches_in_a_whole_process_scope),
+      TEST_CASE(should_let_a_threads_own_scope_win_over_a_whole_process_one),
       TEST_CASE(should_record_nothing_outside_a_scope_or_on_another_thread),
   });
 }

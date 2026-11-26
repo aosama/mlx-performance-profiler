@@ -18,8 +18,9 @@ class ProcedureJob {
   // up before returning, so that work is not left to the timed run.
   virtual void prepare() {}
   // The procedure itself: timed whole, including any GPU work it leaves in
-  // flight. Called on the thread that measures; MLX work it issues on that
-  // thread is attributed to it.
+  // flight. Called on the thread that measures. It may hand its MLX work to
+  // other threads: everything the process submits to the GPU while it runs
+  // is attributed to it, so nothing else should use MLX meanwhile.
   virtual void run() = 0;
 };
 

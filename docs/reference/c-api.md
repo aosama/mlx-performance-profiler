@@ -208,7 +208,7 @@ typedef struct mlx_perf_procedure {
 } mlx_perf_procedure;
 ```
 
-One procedure in a procedure comparison. `run` is measured from its start until every command buffer it committed has completed. `prepare` (may be `NULL`) runs before every run, untimed; evaluate what it creates before returning, so that work is not left to the timed run. Both run on the calling thread with `procedure_payload`. `procedure_name` follows the rules of `variant_name`. 32 bytes.
+One procedure in a procedure comparison. `run` is measured from its start until every command buffer it committed has completed. `prepare` (may be `NULL`) runs before every run, untimed; evaluate what it creates before returning, so that work is not left to the timed run. Both are called on the calling thread with `procedure_payload`; `run` may hand its MLX work to other threads, since everything the process submits to the GPU while it runs is counted as its own. `procedure_name` follows the rules of `variant_name`. 32 bytes.
 
 ### mlx_perf_procedure_summary
 

@@ -126,7 +126,7 @@ Both loops do the same 32 matrix products. The one that reads back every step ta
 
 - **`run` is measured whole**: from the moment it starts until every command buffer it committed has completed on the GPU. Work it leaves in flight (an `async_eval` it never waits for) is still counted, because the measurement waits for it.
 - **`prepare` runs before every run, untimed.** Put setup there: fresh inputs, a reset KV cache, a new random seed. Evaluate what it creates before returning (`mlx_array_eval`), so that work is not left to the timed run. It may be `NULL`.
-- **Both run on the calling thread.** MLX submits and waits on the thread that evaluates, and that is the thread the profiler observes.
+- **Both are called on the calling thread, but the work may run anywhere.** An engine with an owner thread for MLX can have `run` send a request and wait for the reply. Everything the process submits to the GPU while `run` runs (command buffers, blocking waits, kernel launches) is counted as the procedure's, on whichever thread it happens, so use MLX for nothing else while a comparison runs.
 - **Return `0` from each.** Any other value stops the comparison, writing nothing, with `procedure <name>: run returned <n>` (or `prepare returned <n>`) in `mlx_perf_last_error()`.
 - **The procedure may evaluate as often as it likes**: `mlx_array_eval`, `mlx_eval`, reading an item, `mlx_synchronize`. Each blocking one is counted.
 

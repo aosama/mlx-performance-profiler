@@ -3,6 +3,17 @@
 Versions follow [`VERSIONING.md`](VERSIONING.md). Each release lists the
 MLX releases it was built and tested against.
 
+## Unreleased
+
+### Fixed
+- **Procedures that evaluate on another thread (#44).** A procedure whose
+  `run` hands its MLX work to a worker thread (an engine with an owner
+  thread for MLX) was reported with no command buffers, no GPU busy time
+  and the whole run as GPU idle. Every command buffer, blocking wait and
+  kernel launch anywhere in the process while `run` runs is now counted as
+  the procedure's: procedures run one at a time, so it is theirs. Graph
+  jobs' serial pass still records only the evaluating thread.
+
 ## 0.4.0 (2026-11-26)
 
 Tested MLX releases: 0.32.4, 0.32.5 (Metal, macOS).

@@ -2,6 +2,7 @@
 
 #include "metal_object_classes.h"
 #include "objc_method_hooks.h"
+#include "recording_slots.h"
 
 #include "mlx/backend/metal/device.h"
 
@@ -31,8 +32,8 @@ namespace {
 
 using RecordingState = DispatchRecordingScope::RecordingState;
 
-// The open scope on this thread, or nullptr: the hooks' only fast-path check.
-thread_local RecordingState* active_recording_state = nullptr;
+using DispatchSlots = RecordingSlots<RecordingState>;
+using ActiveRecording = DispatchSlots::ActiveRecording;
 
 using DispatchImp = void (*)(id, SEL, MTL::Size, MTL::Size);
 using SetPipelineImp = void (*)(id, SEL, id);
@@ -76,14 +77,14 @@ GridSize to_grid_size(const MTL::Size& metal_size) {
   return GridSize{metal_size.width, metal_size.height, metal_size.depth};
 }
 
-void record_dispatch(id encoder, DispatchGridUnit grid_unit, const MTL::Size& grid,
-                     const MTL::Size& threads_per_threadgroup) {
+void record_dispatch(RecordingState& recording_state, id encoder, DispatchGridUnit grid_unit,
+                     const MTL::Size& grid, const MTL::Size& threads_per_threadgroup) {
   KernelDispatch kernel_dispatch;
   kernel_dispatch.grid_unit = grid_unit;
   kernel_dispatch.grid = to_grid_size(grid);
   kernel_dispatch.threads_per_threadgroup = to_grid_size(threads_per_threadgroup);
-  const auto pipeline_entry = active_recording_state->encoder_to_pipeline.find(encoder);
-  if (pipeline_entry != active_recording_state->encoder_to_pipeline.end()) {
+  const auto pipeline_entry = recording_state.encoder_to_pipeline.find(encoder);
+  if (pipeline_entry != recording_state.encoder_to_pipeline.end()) {
     const RecordingState::EncoderPipeline& encoder_pipeline = pipeline_entry->second;
     kernel_dispatch.metal_function_name = encoder_pipeline.metal_function_name;
     kernel_dispatch.max_threads_per_threadgroup = encoder_pipeline.max_threads_per_threadgroup;
@@ -93,20 +94,22 @@ void record_dispatch(id encoder, DispatchGridUnit grid_unit, const MTL::Size& gr
       kernel_dispatch.threadgroup_memory_bytes += dynamic_bytes;
     }
   }
-  active_recording_state->recorded_dispatches.push_back(std::move(kernel_dispatch));
+  recording_state.recorded_dispatches.push_back(std::move(kernel_dispatch));
 }
 
 void dispatch_threadgroups_hook(id encoder, SEL selector, MTL::Size grid, MTL::Size group) {
   original_dispatch_threadgroups(encoder, selector, grid, group);
-  if (active_recording_state != nullptr) {
-    record_dispatch(encoder, DispatchGridUnit::threadgroups, grid, group);
+  const ActiveRecording active_recording;
+  if (active_recording.recording_state() != nullptr) {
+    record_dispatch(*active_recording.recording_state(), encoder, DispatchGridUnit::threadgroups, grid, group);
   }
 }
 
 void dispatch_threads_hook(id encoder, SEL selector, MTL::Size grid, MTL::Size group) {
   original_dispatch_threads(encoder, selector, grid, group);
-  if (active_recording_state != nullptr) {
-    record_dispatch(encoder, DispatchGridUnit::threads, grid, group);
+  const ActiveRecording active_recording;
+  if (active_recording.recording_state() != nullptr) {
+    record_dispatch(*active_recording.recording_state(), encoder, DispatchGridUnit::threads, grid, group);
   }
 }
 
@@ -115,7 +118,8 @@ void dispatch_threads_hook(id encoder, SEL selector, MTL::Size grid, MTL::Size g
 // kernel that needs them, so only those count toward this kernel.
 void set_compute_pipeline_state_hook(id encoder, SEL selector, id pipeline_object) {
   original_set_compute_pipeline_state(encoder, selector, pipeline_object);
-  if (active_recording_state == nullptr || pipeline_object == nullptr) {
+  const ActiveRecording active_recording;
+  if (active_recording.recording_state() == nullptr || pipeline_object == nullptr) {
     return;
   }
   const auto* pipeline = reinterpret_cast<MTL::ComputePipelineState*>(pipeline_object);
@@ -124,14 +128,15 @@ void set_compute_pipeline_state_hook(id encoder, SEL selector, id pipeline_objec
   encoder_pipeline.max_threads_per_threadgroup = pipeline->maxTotalThreadsPerThreadgroup();
   encoder_pipeline.thread_execution_width = pipeline->threadExecutionWidth();
   encoder_pipeline.static_threadgroup_memory_bytes = pipeline->staticThreadgroupMemoryLength();
-  active_recording_state->encoder_to_pipeline[encoder] = std::move(encoder_pipeline);
+  active_recording.recording_state()->encoder_to_pipeline[encoder] = std::move(encoder_pipeline);
 }
 
 void set_threadgroup_memory_length_hook(id encoder, SEL selector, NS::UInteger length_bytes,
                                         NS::UInteger argument_index) {
   original_set_threadgroup_memory_length(encoder, selector, length_bytes, argument_index);
-  if (active_recording_state != nullptr) {
-    active_recording_state->encoder_to_pipeline[encoder]
+  const ActiveRecording active_recording;
+  if (active_recording.recording_state() != nullptr) {
+    active_recording.recording_state()->encoder_to_pipeline[encoder]
         .index_to_dynamic_memory_bytes[argument_index] = length_bytes;
   }
 }
@@ -187,19 +192,22 @@ bool install_dispatch_recorder() {
   return is_installed;
 }
 
-DispatchRecordingScope::DispatchRecordingScope()
-    : recording_state_(std::make_unique<RecordingState>()),
-      enclosing_recording_state_(active_recording_state) {
-  active_recording_state = recording_state_.get();
+DispatchRecordingScope::DispatchRecordingScope(RecordingReach recording_reach)
+    : recording_state_(std::make_unique<RecordingState>()), recording_reach_(recording_reach) {
+  enclosing_recording_state_ = DispatchSlots::swap_open_recording(recording_reach_, recording_state_.get());
 }
 
 DispatchRecordingScope::~DispatchRecordingScope() {
-  active_recording_state = enclosing_recording_state_;
+  DispatchSlots::swap_open_recording(recording_reach_, enclosing_recording_state_);
 }
 
+// Paused while the list is taken, so a process-wide hook on another thread
+// cannot write into it at the same moment.
 std::vector<KernelDispatch> DispatchRecordingScope::take_recorded_dispatches() {
+  DispatchSlots::swap_open_recording(recording_reach_, nullptr);
   std::vector<KernelDispatch> recorded_dispatches = std::move(recording_state_->recorded_dispatches);
   recording_state_->recorded_dispatches.clear();
+  DispatchSlots::swap_open_recording(recording_reach_, recording_state_.get());
   return recorded_dispatches;
 }
 
