@@ -106,27 +106,30 @@ things; a locally patched MLX that keeps them works:
 ./build/hello_world
 ```
 
-Measures one small three-stream job twice, **eager** and through
-`mlx::core::compile`. Each variant goes through four passes on freshly built,
+Measures one small three-stream job two ways, **eager** and through
+`mlx::core::compile`, as an interleaved pair (see **Comparing two
+implementations**). Each variant goes through four passes on freshly built,
 identical graphs. It prints a job summary, a per-stream table and a per-node
 latency breakdown per variant, and writes three reports:
 
-- `build/hello_world.html`: **eager vs compiled** side by side (metric
-  deltas, both DAGs, both timelines on one time scale, and which primitives
-  compile fused).
+- `build/hello_world.html`: **eager vs compiled** side by side, opening with
+  the verdict (which is faster, by how much, and whether that exceeds the
+  spread), then metric deltas, both DAGs, both timelines on one time scale,
+  and which primitives compile fused.
 - `build/hello_world_eager.html` and `build/hello_world_compiled.html`: the
   full Spark-style report for each variant.
 
 Beside each variant's report it writes the same measurement as data,
-`build/hello_world_eager.json` and `build/hello_world_compiled.json` (see
-**Per-node measurements as data**).
+`build/hello_world_eager.json` and `build/hello_world_compiled.json`, and
+the comparison as `build/hello_world.json` (see **Per-node measurements as
+data**).
 
 The four passes per variant:
 
 | Pass | What it measures |
 |---|---|
 | 0. warm-up | discarded — absorbs Metal kernel compilation |
-| 1. pipeline | **job wall**: median of 7 uninstrumented runs (one `async_eval`, streams overlap), with the min–max range |
+| 1. pipeline | **job wall**: median of 7 uninstrumented runs (one `async_eval`, streams overlap), with the spread |
 | 2. timeline | per-node issue and host-observed completion with overlap preserved, plus each node's **GPU execution window** read from its Metal command buffer (`GPUStartTime`/`GPUEndTime`) → `wait_on_cpu` / `wait_on_gpu` / `wait_on_dependency` / `scheduler_delay` / `compute` / result latency, and the cross-stream stall (Spark `fetchWaitTime` analog) |
 | 3. attributed | **sum-of-stages**: each node synchronized alone |
 
@@ -242,6 +245,43 @@ It expects the `mlx-bridge` checkout as a sibling directory and uses that
 crate's pinned nightly toolchain. The final binary links exactly one MLX: the
 static `libmlx_perf.a` contains only this repository's code, and it resolves
 MLX from the same prebuilt prefix the bridge links.
+
+## Comparing two implementations
+
+A kernel author's question is rarely "how long does this take" but "is my
+version faster than the stock one, and is the difference real". The C API
+answers it for two graphs that compute the same result:
+
+```c
+mlx_perf_variant stock  = {"stock",  build_stock_graph,  &stock_payload};
+mlx_perf_variant custom = {"custom", build_custom_graph, &custom_payload};
+mlx_perf_comparison_summary summary;
+mlx_perf_compare_to_report(&stock, &custom, "My projection", "build", "projection", &summary);
+```
+
+(From C++, `measure_pair` and `write_report_bundle` do the same with two
+`GraphFactory`s.) What it does:
+
+- **Checks the two outputs agree** in count, shape and dtype before timing
+  anything, and reports the largest value difference (never enforced: a
+  custom kernel may differ in the last bits).
+- **Interleaves the passes:** 7 job-wall rounds and 5 timeline rounds, each
+  running both variants with the order flipped every round, so drift on a
+  machine doing other work lands on both.
+- **Judges each difference against the spread** for job duration, GPU
+  execution and host submission (host time inside `async_eval`). A
+  difference counts only when the middle halves of the two variants'
+  rounds (25th to 75th percentile) do not overlap. One disturbed round
+  therefore cannot decide the verdict either way.
+
+The comparison page opens with one sentence, e.g. *"quantized_matmul is
+56.6% faster than dequantize_matmul (252.9 µs of 447.0 µs). Spread (middle
+half of rounds): dequantize_matmul 270.4 µs, quantized_matmul 43.1 µs. The
+difference exceeds the spread."*, or says the difference is inside the
+spread and is not a result. It writes `<base>.html` and `<base>.json`, plus
+a report and a measurement file per variant. The test suite's acceptance
+test compares exactly that pair: one 4-bit quantized projection, computed
+by `quantized_matmul` against `dequantize` followed by `matmul`.
 
 ## Per-node measurements as data
 
