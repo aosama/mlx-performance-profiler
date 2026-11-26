@@ -1,5 +1,5 @@
 // Integration tests for the C API on the Metal GPU, driven purely through
-// MLX-C the way a non-C++ caller (e.g. Rust via mlx-c-rust) would.
+// MLX-C the way a non-C++ caller (e.g. Rust via mlx-bridge) would.
 
 #include "mlx_c_interop.h"
 #include "mlx_perf_c_api.h"

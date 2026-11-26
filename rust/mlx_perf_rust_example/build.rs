@@ -20,6 +20,6 @@ fn main() {
         cmake_build_directory.canonicalize().expect("build directory").display()
     );
     // Only this repository's objects: every MLX / MLX-C symbol it needs is
-    // resolved from the libraries mlx-c-rust's build script already links.
+    // resolved from the libraries mlx-bridge's build script already links.
     println!("cargo:rustc-link-lib=static=mlx_perf");
 }

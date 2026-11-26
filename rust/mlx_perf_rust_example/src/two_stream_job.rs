@@ -1,17 +1,17 @@
-//! The job this example profiles, built with mlx-c-rust's safe API: two
+//! The job this example profiles, built with mlx-bridge's safe API: two
 //! independent branches on their own GPU streams, joined on the main stream
 //! (the cross-stream "shuffle" edge the report shows as a stall).
 
 use std::ffi::{c_int, c_void};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
-use mlx_c_rust::{MlxArray, MlxBindingsContext, MlxCError, MlxDeviceHandle, MlxDtype, MlxStream, raw};
+use mlx_bridge::{MlxArray, MlxBindingsContext, MlxCError, MlxDeviceHandle, MlxDtype, MlxStream, raw};
 
 const BATCH_ROWS: i32 = 256;
 const FEATURE_WIDTH: i32 = 1024;
 const REDUCTION_ROWS: i32 = 2048;
 
-/// One context per stream: mlx-c-rust submits every operation to its
+/// One context per stream: mlx-bridge submits every operation to its
 /// context's stream, which is how the branches land on different streams.
 pub struct TwoStreamJob {
     main_context: MlxBindingsContext,

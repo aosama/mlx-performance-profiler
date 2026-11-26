@@ -7,7 +7,7 @@ An experiment: reproduce the useful parts of Apache Spark's Web UI
 MLX's lazy computational graph and adding the telemetry Spark shows per stage.
 
 The engine API surface lives in the sibling project `../mlx-bridge`
-(the `mlx-c-rust` Rust bridge over MLX-C). This repo is the profiling
+(the `mlx-bridge` Rust crate over MLX-C). This repo is the profiling
 sidecar: it observes, it never changes MLX semantics.
 
 ## Conventions
@@ -33,7 +33,7 @@ sidecar: it observes, it never changes MLX semantics.
 - Model-specific code lives under `src/qwen35/` (config, weights, decode
   step, generation, token text). The generic profiler in `src/` never
   depends on it; `qwen35_profile.cpp` only orchestrates.
-- `rust/mlx_perf_rust_example` is the Rust (mlx-c-rust) entry point through
+- `rust/mlx_perf_rust_example` is the Rust (mlx-bridge) entry point through
   the C API in `src/mlx_perf_c_api.h`; see its `.cargo/config.toml` for how
   to run it. Build the CMake library first.
 - MLX source of truth for API questions: `../mlx-explore/mlx` (same version

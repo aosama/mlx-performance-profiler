@@ -1,4 +1,4 @@
-//! Profiles an MLX job built in Rust (mlx-c-rust) with mlx-performance-profiler:
+//! Profiles an MLX job built in Rust (mlx-bridge) with mlx-performance-profiler:
 //! the same four passes and the same Spark-style HTML report the C++ demo
 //! produces. Orchestration only.
 
@@ -23,7 +23,7 @@ fn main() -> ExitCode {
     let report_directory = concat!(env!("CARGO_MANIFEST_DIR"), "/../../build");
     let profile_request = ProfileRequest {
         variant_name: "rust",
-        report_title: "Rust (mlx-c-rust) two-stream job",
+        report_title: "Rust (mlx-bridge) two-stream job",
         output_directory: report_directory,
         report_file_base: "rust_example",
     };

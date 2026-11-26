@@ -2,7 +2,7 @@
 
 use std::ffi::{CStr, CString, c_char, c_int, c_void};
 
-use mlx_c_rust::raw;
+use mlx_bridge::raw;
 
 /// Appends a fresh, unevaluated graph's outputs; returns 0 on success.
 pub type BuildGraphCallback =

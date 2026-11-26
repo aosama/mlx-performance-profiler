@@ -1,6 +1,6 @@
 /*
  * mlx_perf C API: the measurement and Spark-style report of this repository,
- * callable from any language that speaks MLX-C (e.g. Rust via mlx-c-rust).
+ * callable from any language that speaks MLX-C (e.g. Rust via mlx-bridge).
  *
  * The caller describes its job as a callback that appends a FRESH, unevaluated
  * graph's outputs to a vector it is handed; the library calls it once per

@@ -149,11 +149,11 @@ observable in this mode; per-node detail stays the default for small graphs.
 A job supplies stages by overriding `GraphFactory::build_fresh_staged_graph`.
 The profiler itself knows nothing about Qwen.
 
-## From Rust (mlx-c-rust)
+## From Rust (mlx-bridge)
 
 The same measurement and report are available through a C API
 (`src/mlx_perf_c_api.h`). [`rust/mlx_perf_rust_example`](rust/mlx_perf_rust_example)
-builds a three-stream job with `mlx-c-rust` and profiles it:
+builds a three-stream job with `mlx-bridge` and profiles it:
 
 ```sh
 cmake --build build                      # builds libmlx_perf.a
