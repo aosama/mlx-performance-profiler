@@ -47,6 +47,13 @@ void should_serve_the_shell_with_all_four_tabs() {
   EXPECT_TRUE(contains(shell_page, "Test &lt;job&gt;"));
 }
 
+void should_title_the_shell_with_the_project_name() {
+  RunningLiveServer live_server;
+  const std::string shell_page = http_test_client::get(live_server.bound_port, "/");
+  EXPECT_TRUE(contains(shell_page, "<title>MLX performance profiler (live)</title>"));
+  EXPECT_TRUE(!contains(shell_page, "live plan"));
+}
+
 void should_serve_each_tab_fragment_from_the_store() {
   RunningLiveServer live_server;
   EXPECT_TRUE(contains(http_test_client::get(live_server.bound_port, "/view/tasks"),
@@ -104,6 +111,7 @@ void should_reject_unknown_paths_tabs_and_methods() {
 int main() {
   return test_harness::run_all({
       TEST_CASE(should_serve_the_shell_with_all_four_tabs),
+      TEST_CASE(should_title_the_shell_with_the_project_name),
       TEST_CASE(should_serve_each_tab_fragment_from_the_store),
       TEST_CASE(should_report_status_as_valid_escaped_json),
       TEST_CASE(should_accept_a_run_request_and_hand_it_to_the_main_thread),

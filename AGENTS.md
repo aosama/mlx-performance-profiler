@@ -36,6 +36,8 @@ sidecar: it observes, it never changes MLX semantics.
 - `rust/mlx_perf_rust_example` is the Rust (mlx-bridge) entry point through
   the C API in `src/mlx_perf_c_api.h`; see its `.cargo/config.toml` for how
   to run it. Build the CMake library first.
-- MLX source of truth for API questions: `../mlx-explore/mlx` (same version
-  0.32.4 as the prebuilt library; headers in the prefix and the source tree
-  are in sync).
+- MLX source of truth for API questions: `../mlx-explore/mlx`, checked out at
+  0.32.4. The prebuilt prefix may be 0.32.5 (the library builds and tests on
+  both), and some backend headers differ between the two (e.g.
+  `mlx/backend/metal/device.h`), so confirm a backend detail against the
+  prefix's own headers before relying on it.

@@ -16,8 +16,9 @@ See [`PHASED_PLAN.md`](PHASED_PLAN.md) for the roadmap and
 
 ## Build
 
-Requires CMake ≥ 3.24, a C++20 compiler, and a prebuilt MLX 0.32.4
-installation prefix (containing `include/` and `lib/`). `MLX_PREFIX` is a
+Requires CMake ≥ 3.24, a C++20 compiler, and a prebuilt MLX 0.32.4 or 0.32.5
+installation prefix (containing `include/` and `lib/`); both releases build
+and pass the tests. `MLX_PREFIX` is a
 required CMake cache variable; it is never read from the environment.
 
 ```sh
