@@ -35,6 +35,39 @@ configure_file(include/mlx_perf/mlx_perf_version.h.in
                "${PROJECT_BINARY_DIR}/generated/include/mlx_perf/mlx_perf_version.h"
                @ONLY)
 
+# The interactive graph view's JavaScript and CSS, embedded into the library
+# so every report stays one self-contained, offline HTML file. Regenerated
+# whenever one of the files changes. Function names and files pair by
+# position.
+set(MLX_PERF_GRAPH_VIEW_ASSET_FUNCTIONS
+    graph_view_cytoscape_script graph_view_dagre_layout_script
+    graph_view_model_script graph_view_style_script graph_view_panels_script
+    graph_view_viewer_script graph_view_stylesheet)
+set(MLX_PERF_GRAPH_VIEW_ASSET_FILES
+    "${PROJECT_SOURCE_DIR}/third_party/cytoscape/cytoscape.min.js"
+    "${PROJECT_SOURCE_DIR}/third_party/cytoscape-dagre/cytoscape-dagre.min.js"
+    "${PROJECT_SOURCE_DIR}/src/graph_view/graph_view_model.js"
+    "${PROJECT_SOURCE_DIR}/src/graph_view/graph_view_style.js"
+    "${PROJECT_SOURCE_DIR}/src/graph_view/graph_view_panels.js"
+    "${PROJECT_SOURCE_DIR}/src/graph_view/graph_view.js"
+    "${PROJECT_SOURCE_DIR}/src/graph_view/graph_view.css")
+set(MLX_PERF_GRAPH_VIEW_ASSETS_SOURCE "${PROJECT_BINARY_DIR}/generated/graph_view_assets.cpp")
+# A custom command splits arguments at ';', so the lists travel '|'-joined.
+string(REPLACE ";" "|" graph_view_asset_functions_joined "${MLX_PERF_GRAPH_VIEW_ASSET_FUNCTIONS}")
+string(REPLACE ";" "|" graph_view_asset_files_joined "${MLX_PERF_GRAPH_VIEW_ASSET_FILES}")
+add_custom_command(
+    OUTPUT "${MLX_PERF_GRAPH_VIEW_ASSETS_SOURCE}"
+    COMMAND "${CMAKE_COMMAND}"
+            "-DOUTPUT_FILE=${MLX_PERF_GRAPH_VIEW_ASSETS_SOURCE}"
+            "-DHEADER_NAME=graph_view_assets.h"
+            "-DASSET_FUNCTIONS=${graph_view_asset_functions_joined}"
+            "-DASSET_FILES=${graph_view_asset_files_joined}"
+            -P "${PROJECT_SOURCE_DIR}/cmake/mlx_perf_embed_text_assets.cmake"
+    DEPENDS ${MLX_PERF_GRAPH_VIEW_ASSET_FILES}
+            "${PROJECT_SOURCE_DIR}/cmake/mlx_perf_embed_text_assets.cmake"
+    COMMENT "Embedding the graph view's scripts and stylesheet"
+    VERBATIM)
+
 # The profiler: capture, timelines, reports and the C API. The only target
 # that is installed; it never depends on the demo, server or model code.
 add_library(mlx_perf STATIC
@@ -53,7 +86,8 @@ add_library(mlx_perf STATIC
     src/text_format.cpp
     src/latency_slices.cpp
     src/dot_writer.cpp
-    src/svg_renderer.cpp
+    src/graph_view_section.cpp
+    "${MLX_PERF_GRAPH_VIEW_ASSETS_SOURCE}"
     src/report_assets.cpp
     src/report_components.cpp
     src/report_summary_section.cpp

@@ -39,7 +39,7 @@ mlx_perf_add_test(progress_reporter_test)
 mlx_perf_add_test(stage_plan_test)
 mlx_perf_add_test(report_stage_table_section_test)
 mlx_perf_add_test(dot_writer_test)
-mlx_perf_add_test(svg_renderer_test)
+mlx_perf_add_test(graph_view_section_test)
 mlx_perf_add_test(timed_units_test)
 mlx_perf_add_test(server_options_test mlx_perf_live_view)
 mlx_perf_add_test(live_view_store_test mlx_perf_live_view)
@@ -49,6 +49,17 @@ mlx_perf_add_test(live_view_routes_test mlx_perf_live_view)
 mlx_perf_add_test(live_view_renderer_test mlx_perf_live_view)
 mlx_perf_add_test(qwen35_config_test mlx_perf_qwen35)
 mlx_perf_add_test(token_text_test mlx_perf_qwen35)
+
+# The graph view is JavaScript, so its model, style and panels are tested
+# under Node, where they run the same as in a browser: one *_test.js per
+# module in graph_view/. Skipped, with a note, where Node is absent.
+find_program(MLX_PERF_NODE_EXECUTABLE node)
+if(MLX_PERF_NODE_EXECUTABLE)
+  add_test(NAME graph_view_scripts_test
+           COMMAND "${MLX_PERF_NODE_EXECUTABLE}" --test "${CMAKE_CURRENT_SOURCE_DIR}/graph_view/")
+else()
+  message(STATUS "Node not found: graph_view_scripts_test (JavaScript) will not run")
+endif()
 
 # Integration: drives real MLX streams on the Metal GPU.
 mlx_perf_add_test(graph_model_test)

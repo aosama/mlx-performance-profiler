@@ -15,9 +15,16 @@ sidecar: it observes, it never changes MLX semantics.
 - Naming: the repository is `mlx-performance-profiler`; code uses the short
   prefix `mlx_perf` (C functions `mlx_perf_*`, the C++ namespace and
   `libmlx_perf.a`) so call sites stay readable.
-- C++20, one job per file: graph capture, telemetry, DOT writing, SVG
-  rendering, and HTML report writing are separate modules with separate
+- C++20, one job per file: graph capture, telemetry, DOT writing, the graph
+  view section, and HTML report writing are separate modules with separate
   headers. `main`-level files only orchestrate.
+- The interactive graph view is JavaScript in `src/graph_view/` (model,
+  style, panels, mounting: one job per file), embedded into the library at
+  build time with `third_party/`'s vendored libraries
+  (`cmake/mlx_perf_embed_text_assets.cmake`). It reads the measurement
+  document (schema version 1), never a format of its own. Its model, style and
+  panels are unit-tested under Node: `node --test tests/graph_view/`. To update a
+  vendored library, follow `third_party/README.md`.
 - A single function stays around 40 lines; split at natural seams when longer.
 - Comments carry rationale (why this design, what tradeoff), not narration.
 - Variable names describe domain meaning: `output_node_ids`,

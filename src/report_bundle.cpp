@@ -2,6 +2,8 @@
 
 #include "console_output.h"
 #include "comparison_record.h"
+#include "json_writer.h"
+#include "measurement_document.h"
 #include "measurement_file.h"
 #include "report_comparison_page.h"
 #include "report_verdict_section.h"
@@ -18,20 +20,26 @@ std::string variant_file_base(const ReportBundleRequest& bundle_request,
   return bundle_request.file_base + "_" + variant_measurement.variant_name;
 }
 
+// The measurement document as text, which both the variant's report and the
+// comparison page embed for their graph views. Built once per variant.
+std::string build_measurement_document_text(const VariantMeasurement& variant_measurement) {
+  return write_json(build_measurement_document(variant_measurement));
+}
+
 ReportPaths write_variant(const ReportBundleRequest& bundle_request,
-                          const VariantMeasurement& variant_measurement) {
+                          const VariantMeasurement& variant_measurement,
+                          const std::string& measurement_document_json) {
   const ReportInputs report_inputs{
       bundle_request.job_title + " (" + variant_measurement.variant_name + ")",
       variant_measurement.timeline_graph, variant_measurement.gpu_timeline,
       variant_measurement.serial_telemetry, variant_measurement.job_totals};
   const ReportPaths report_paths =
-      write_report(report_inputs, bundle_request.output_directory,
+      write_report(report_inputs, measurement_document_json, bundle_request.output_directory,
                    variant_file_base(bundle_request, variant_measurement));
   if (!report_paths.is_written) {
     print_error_line("error: could not write %s\n", report_paths.html_path.c_str());
   } else {
-    print_progress_line("report: %s%s\n", report_paths.html_path.c_str(),
-                report_paths.graphviz_available ? " (with SVG)" : " (no Graphviz)");
+    print_progress_line("report: %s\n", report_paths.html_path.c_str());
   }
   return report_paths;
 }
@@ -54,13 +62,14 @@ bool write_variant_measurements(const ReportBundleRequest& bundle_request,
 
 bool write_comparison_page(const ReportBundleRequest& bundle_request,
                            const PairedMeasurement& paired_measurement,
-                           const ReportPaths& baseline_paths, const ReportPaths& candidate_paths) {
+                           const std::string& baseline_document_json,
+                           const std::string& candidate_document_json) {
   const VariantMeasurement& baseline = paired_measurement.baseline;
   const VariantMeasurement& candidate = paired_measurement.candidate;
   const ComparedVariant baseline_variant{
-      baseline, baseline_paths.plan_svg, variant_file_base(bundle_request, baseline) + ".html"};
+      baseline, baseline_document_json, variant_file_base(bundle_request, baseline) + ".html"};
   const ComparedVariant candidate_variant{
-      candidate, candidate_paths.plan_svg,
+      candidate, candidate_document_json,
       variant_file_base(bundle_request, candidate) + ".html"};
   const ComparisonPageText page_text{
       "", render_verdict_section(baseline.variant_name, candidate.variant_name,
@@ -113,15 +122,20 @@ bool write_report_bundle(const ReportBundleRequest& bundle_request,
                  paired_measurement.candidate.variant_name.c_str());
     return false;
   }
-  const ReportPaths baseline_paths = write_variant(bundle_request, paired_measurement.baseline);
+  const std::string baseline_document_json =
+      build_measurement_document_text(paired_measurement.baseline);
+  const std::string candidate_document_json =
+      build_measurement_document_text(paired_measurement.candidate);
+  const ReportPaths baseline_paths =
+      write_variant(bundle_request, paired_measurement.baseline, baseline_document_json);
   const ReportPaths candidate_paths =
-      write_variant(bundle_request, paired_measurement.candidate);
+      write_variant(bundle_request, paired_measurement.candidate, candidate_document_json);
   const bool is_baseline_measurement_written =
       write_variant_measurements(bundle_request, paired_measurement.baseline);
   const bool is_candidate_measurement_written =
       write_variant_measurements(bundle_request, paired_measurement.candidate);
   const bool is_comparison_written = write_comparison_page(
-      bundle_request, paired_measurement, baseline_paths, candidate_paths);
+      bundle_request, paired_measurement, baseline_document_json, candidate_document_json);
   const bool is_record_written = write_comparison_record(bundle_request, paired_measurement);
   return baseline_paths.is_written && candidate_paths.is_written &&
          is_baseline_measurement_written && is_candidate_measurement_written &&

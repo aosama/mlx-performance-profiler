@@ -137,4 +137,19 @@ inline void populate_pair(mlx_perf::PairedMeasurement& paired_measurement) {
   paired_measurement.output_agreement = {1, 0.25};
 }
 
+// The page without its <script> elements. Pages embed the graph view's
+// libraries, whose code legitimately contains words such as "Infinity";
+// checks for leaked "nan" or "inf" values belong to the rendered text.
+inline std::string remove_script_elements(const std::string& document) {
+  std::string visible_page;
+  std::size_t copy_from = 0;
+  for (std::size_t script_at = document.find("<script", copy_from); script_at != std::string::npos;
+       script_at = document.find("<script", copy_from)) {
+    visible_page += document.substr(copy_from, script_at - copy_from);
+    const std::size_t script_end = document.find("</script>", script_at);
+    copy_from = script_end == std::string::npos ? document.size() : script_end + 9;
+  }
+  return visible_page + document.substr(copy_from);
+}
+
 } // namespace report_fixture
