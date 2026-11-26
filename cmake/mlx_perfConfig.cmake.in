@@ -1,0 +1,36 @@
+# mlx_perf package: the mlx-performance-profiler static library and its C API.
+#
+#   cmake -DMLX_PREFIX=/path/to/mlx/prefix -DCMAKE_PREFIX_PATH=/path/to/mlx_perf ...
+#   find_package(mlx_perf 0.1 REQUIRED)
+#   target_link_libraries(my_test PRIVATE mlx_perf::mlx_perf)
+#
+# MLX comes from the consumer's own MLX_PREFIX, so the final binary links
+# exactly one MLX. It must be the MLX release this archive was built
+# against: the library reads MLX backend objects whose layout can change
+# between releases.
+
+@PACKAGE_INIT@
+
+set(MLX_PERF_BUILT_AGAINST_MLX_VERSION "@MLX_PERF_BUILT_AGAINST_MLX_VERSION@")
+
+include("${CMAKE_CURRENT_LIST_DIR}/mlx_perf_mlx_prefix.cmake")
+
+set(MLX_PREFIX "${MLX_PREFIX}" CACHE PATH "Prefix of the prebuilt MLX installation mlx_perf links against.")
+mlx_perf_require_mlx_prefix("${MLX_PREFIX}")
+mlx_perf_read_mlx_version("${MLX_PREFIX}" mlx_perf_consumer_mlx_version)
+if(NOT mlx_perf_consumer_mlx_version VERSION_EQUAL MLX_PERF_BUILT_AGAINST_MLX_VERSION)
+  set(${CMAKE_FIND_PACKAGE_NAME}_FOUND FALSE)
+  set(${CMAKE_FIND_PACKAGE_NAME}_NOT_FOUND_MESSAGE
+      "this mlx_perf was built against MLX ${MLX_PERF_BUILT_AGAINST_MLX_VERSION}, but MLX_PREFIX holds MLX ${mlx_perf_consumer_mlx_version}. Build mlx_perf from source against that MLX, or point MLX_PREFIX at MLX ${MLX_PERF_BUILT_AGAINST_MLX_VERSION}.")
+  return()
+endif()
+
+if(NOT TARGET mlx_perf::mlx)
+  mlx_perf_add_mlx_prefix_target(mlx_perf::mlx "${MLX_PREFIX}")
+endif()
+include("${CMAKE_CURRENT_LIST_DIR}/mlx_perfTargets.cmake")
+# The archive's link interface stops at the project boundary; MLX is
+# attached here from the consumer's prefix, never from the build machine.
+target_link_libraries(mlx_perf::mlx_perf INTERFACE mlx_perf::mlx)
+
+check_required_components(mlx_perf)

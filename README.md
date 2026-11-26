@@ -11,23 +11,94 @@ It is an observer: it never changes MLX semantics.
 Formerly named `mlx-visual-plan`; the project is a profiler, and the name now
 says so. In code it uses the short prefix `mlx_perf`.
 
-See [`PHASED_PLAN.md`](PHASED_PLAN.md) for the roadmap and
-[`AGENTS.md`](AGENTS.md) for contributor conventions.
+See [`PHASED_PLAN.md`](PHASED_PLAN.md) for the roadmap,
+[`AGENTS.md`](AGENTS.md) for contributor conventions and
+[`VERSIONING.md`](VERSIONING.md) for how versions relate to MLX's.
 
 ## Build
 
-Requires CMake ≥ 3.24, a C++20 compiler, and a prebuilt MLX 0.32.4 or 0.32.5
-installation prefix (containing `include/` and `lib/`); both releases build
-and pass the tests. `MLX_PREFIX` is a
-required CMake cache variable; it is never read from the environment.
+Requires macOS on Apple silicon, CMake ≥ 3.24, a C++20 compiler, and a
+prebuilt MLX installation prefix (containing `include/` and `lib/`) of a
+tested release (see **MLX compatibility**). `MLX_PREFIX` is a required CMake
+cache variable; it is never read from the environment.
 
 ```sh
 cmake -S . -B build -DMLX_PREFIX=/path/to/mlx/prefix
 cmake --build build
 ```
 
+The build type defaults to Release, matching the prebuilt MLX. Three options
+choose what is built and installed; all default to on for this repository
+and off when another project includes it:
+
+| Option | Builds |
+|---|---|
+| `MLX_PERF_BUILD_TOOLS` | `hello_world`, `mlx_perf_server`, `qwen35_profile` |
+| `MLX_PERF_BUILD_TESTS` | the test suite |
+| `MLX_PERF_INSTALL` | install rules and the `mlx_perf` package (needed by the packaging tests) |
+
+`-DMLX_PERF_BUILD_TOOLS=OFF -DMLX_PERF_BUILD_TESTS=OFF` builds the library
+alone, in seconds.
+
 Graphviz (`dot`) is optional: with it the HTML report embeds an SVG of the
 plan, without it the report shows the raw DOT source.
+
+## Use it from another build
+
+The installed surface is the C API (`include/mlx_perf/mlx_perf_c_api.h`) and
+one archive, `libmlx_perf.a`. It holds only this repository's code: MLX
+comes from the consumer's own prefix, so the final binary links exactly one
+MLX.
+
+**Installed package (CMake):**
+
+```sh
+cmake -S . -B build -DMLX_PREFIX=/path/to/mlx/prefix \
+      -DMLX_PERF_BUILD_TOOLS=OFF -DMLX_PERF_BUILD_TESTS=OFF
+cmake --build build
+cmake --install build --prefix /path/to/install
+```
+
+```cmake
+# In the consumer: cmake -DMLX_PREFIX=... -DCMAKE_PREFIX_PATH=/path/to/install
+find_package(mlx_perf 0.1 REQUIRED)
+target_link_libraries(my_test PRIVATE mlx_perf::mlx_perf)
+```
+
+The package attaches MLX from the consumer's `MLX_PREFIX`. That MLX must be
+the release the archive was built against; the package names both releases
+if they differ.
+
+**From source (FetchContent or `add_subdirectory`):** the library alone is
+built, against the consumer's `MLX_PREFIX`, and `mlx_perf::mlx_perf` is
+available to link.
+
+**Cargo:** link `static=mlx_perf` from the installed `lib/` and let the MLX
+binding crate (e.g. `mlx-bridge`) link MLX, as
+[`rust/mlx_perf_rust_example`](rust/mlx_perf_rust_example) does from this
+repository's build directory.
+
+`tests/packaging/` holds a C program built exactly this way; the test suite
+installs the library into a scratch prefix and builds, links and runs it.
+
+## MLX compatibility
+
+| | |
+|---|---|
+| Tested MLX releases | 0.32.4, 0.32.5 |
+| Backend | Metal (macOS); Linux and CUDA are tracked in #15 |
+
+Configure prints the MLX release it found and warns, without failing, when
+it is not a tested one. Beyond MLX's public API, the library relies on four
+things; a locally patched MLX that keeps them works:
+
+1. `mlx/backend/metal/device.h`: `get_command_encoder(stream).get_command_buffer()`,
+   and every `async_eval` ending by committing the stream's current command
+   buffer.
+2. `array::is_available()` as a non-blocking completion check.
+3. `Primitive::name()` and `Primitive::stream()`.
+4. MLX-C's handle layout: an `mlx_array`'s context is a heap
+   `mlx::core::array` (pinned by a test in `mlx_perf_c_api_test`).
 
 ## Run
 
@@ -153,7 +224,7 @@ The profiler itself knows nothing about Qwen.
 ## From Rust (mlx-bridge)
 
 The same measurement and report are available through a C API
-(`src/mlx_perf_c_api.h`). [`rust/mlx_perf_rust_example`](rust/mlx_perf_rust_example)
+(`include/mlx_perf/mlx_perf_c_api.h`). [`rust/mlx_perf_rust_example`](rust/mlx_perf_rust_example)
 builds a three-stream job with `mlx-bridge` and profiles it:
 
 ```sh
@@ -211,6 +282,10 @@ ctest --test-dir build --output-on-failure
 `latency_breakdown_test` and `stage_plan_test` are GPU-free unit tests of
 the decomposition and the stage grouping; `gpu_timeline_test` and
 `stage_timeline_test` are integration tests that run on the Metal GPU.
+The `should_*` tests from `tests/packaging/` check the installed package:
+they install into a scratch prefix under `build/`, then build and run a C
+consumer against it, and check the refusals (no `MLX_PREFIX`, a different MLX
+release, a different minor version).
 
 ## License
 

@@ -26,15 +26,24 @@ sidecar: it observes, it never changes MLX semantics.
 - The prebuilt MLX the spike links against lives at
   `~/.cache/mlx-bridge/native/<identity>/prefix` and is passed as the CMake
   cache variable `MLX_PREFIX` — never as an environment variable.
+- Targets: `mlx_perf` (profiler, reports, C API) is the only installed
+  library and never depends on the demo, server or model code, which build
+  as `mlx_perf_demo_model`, `mlx_perf_live_view` and `mlx_perf_qwen35`. The
+  public surface is `include/mlx_perf/`; headers in `src/` are internal.
+  New sources go into the target whose job they do (`CMakeLists.txt`).
+- Versions follow `VERSIONING.md`; the MLX releases a version is tested
+  against live in `MLX_PERF_TESTED_MLX_VERSIONS`
+  (`cmake/mlx_perf_mlx_prefix.cmake`).
 - Tests live in `tests/`, one file per production module
   (`<module>_test.cpp`), cases named `should_...`, each module covering
   positive, edge/boundary and negative cases. Run after building:
-  `ctest --test-dir build --output-on-failure`.
+  `ctest --test-dir build --output-on-failure`. Register a test with
+  `mlx_perf_add_test` in `tests/CMakeLists.txt`.
 - Model-specific code lives under `src/qwen35/` (config, weights, decode
   step, generation, token text). The generic profiler in `src/` never
   depends on it; `qwen35_profile.cpp` only orchestrates.
 - `rust/mlx_perf_rust_example` is the Rust (mlx-bridge) entry point through
-  the C API in `src/mlx_perf_c_api.h`; see its `.cargo/config.toml` for how
+  the C API in `include/mlx_perf/mlx_perf_c_api.h`; see its `.cargo/config.toml` for how
   to run it. Build the CMake library first.
 - MLX source of truth for API questions: `../mlx-explore/mlx`, checked out at
   0.32.4. The prebuilt prefix may be 0.32.5 (the library builds and tests on

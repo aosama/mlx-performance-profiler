@@ -1,4 +1,4 @@
-#include "mlx_perf_c_api.h"
+#include "mlx_perf/mlx_perf_c_api.h"
 
 #include "graph_factory.h"
 #include "graph_model.h"
@@ -114,5 +114,7 @@ extern "C" int mlx_perf_profile_to_report(
   }
   return 1;
 }
+
+extern "C" const char* mlx_perf_version(void) { return MLX_PERF_VERSION_STRING; }
 
 extern "C" const char* mlx_perf_last_error(void) { return last_error_message.c_str(); }
