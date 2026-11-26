@@ -113,6 +113,15 @@ mlx_perf_add_test(procedure_handoffs_acceptance_test)
 mlx_perf_add_test(wired_memory_acceptance_test)
 mlx_perf_add_test(memory_comparison_acceptance_test)
 
+# Continuous integration's own scripts (.github/ci/): the MLX matrix and its
+# agreement with the tested releases, and the prefix check. Standard-library
+# Python, no build output needed.
+find_package(Python3 COMPONENTS Interpreter)
+if(Python3_Interpreter_FOUND)
+  add_test(NAME ci_scripts_test
+           COMMAND "${Python3_EXECUTABLE}" -m unittest discover -s "${CMAKE_CURRENT_SOURCE_DIR}/ci" -p "*_test.py")
+endif()
+
 # Documentation: the published docs against the code, and their examples
 # built and run as a reader would (see tests/docs/CMakeLists.txt).
 add_subdirectory(docs)

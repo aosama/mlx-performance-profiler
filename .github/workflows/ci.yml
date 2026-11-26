@@ -1,0 +1,126 @@
+# Builds and tests the library against every MLX release it promises to work
+# with (MLX_PERF_TESTED_MLX_VERSIONS, VERSIONING.md), on every pull request
+# and every push to main: one check per MLX release (#20).
+#
+# MLX comes from mlx-bridge's own native build (cargo xtask build-native) at
+# the mlx-bridge release that pins that MLX, so this repository reuses one
+# reviewed recipe for pairing MLX with MLX-C instead of keeping a second copy.
+# The built prefix is cached per mlx-bridge release, so MLX compiles once per
+# release, not on every run.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  plan:
+    name: Plan the MLX matrix from the tested set
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Fails, naming the difference, when .github/ci/mlx-releases.json and
+      # MLX_PERF_TESTED_MLX_VERSIONS disagree: a release cannot be promised
+      # without being tested here, or tested here without being promised.
+      - name: Plan the matrix and check it against the tested set
+        id: plan
+        run: echo "matrix=$(python3 .github/ci/plan_mlx_matrix.py .)" >> "$GITHUB_OUTPUT"
+
+  test:
+    name: Build and test on MLX ${{ matrix.mlx }}
+    needs: plan
+    # A hosted Apple silicon Mac: it has the Metal device the integration,
+    # acceptance and documentation-example tests run on.
+    runs-on: macos-latest
+    # A cold run compiles MLX (about ten minutes), the library twice (the
+    # documentation journey builds it as a reader would) and runs the suite.
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    defaults:
+      run:
+        working-directory: mlx-performance-profiler
+    steps:
+      # Side by side, as on a developer's machine: the Rust example depends on
+      # ../../../mlx-bridge, so it builds against this entry's mlx-bridge.
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: mlx-performance-profiler
+          persist-credentials: false
+      - name: Check out mlx-bridge ${{ matrix.mlx_bridge_tag }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: aosama/mlx-bridge
+          ref: ${{ matrix.mlx_bridge_tag }}
+          path: mlx-bridge
+          persist-credentials: false
+      # mlx-bridge and the Rust example pin the same nightly in their
+      # rust-toolchain.toml; installing it from mlx-bridge's file keeps that
+      # file the one source of the version.
+      - name: Install mlx-bridge's pinned Rust toolchain
+        working-directory: mlx-bridge
+        run: rustup toolchain install
+      - name: Cache Rust builds
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          key: ${{ matrix.mlx_bridge_tag }}
+          workspaces: |
+            mlx-bridge -> target
+            mlx-performance-profiler/rust/mlx_perf_rust_example -> target
+      # Keyed on the mlx-bridge release alone: a release pins its MLX and
+      # MLX-C sources by checksum, so its compiled prefix never changes.
+      - name: Restore the MLX prefix
+        id: mlx-prefix-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/mlx-bridge/native
+          key: mlx-prefix-${{ runner.os }}-${{ runner.arch }}-${{ matrix.mlx_bridge_tag }}
+      - name: Build MLX and MLX-C with mlx-bridge (skipped work when restored)
+        working-directory: mlx-bridge
+        run: cargo xtask build-native
+      # Saved right after building, not at the end: a later failure must not
+      # cost the next run the ten-minute compile.
+      - name: Save the MLX prefix
+        if: ${{ steps.mlx-prefix-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/mlx-bridge/native
+          key: mlx-prefix-${{ runner.os }}-${{ runner.arch }}-${{ matrix.mlx_bridge_tag }}
+      # Refuses a prefix of another MLX than this job's name claims, which a
+      # wrong entry in .github/ci/mlx-releases.json would otherwise build.
+      - name: Find the prefix and check it is MLX ${{ matrix.mlx }}
+        id: mlx-prefix
+        run: echo "path=$(python3 .github/ci/check_mlx_prefix.py ~/.cache/mlx-bridge/native ${{ matrix.mlx }})" >> "$GITHUB_OUTPUT"
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DMLX_PREFIX=${{ steps.mlx-prefix.outputs.path }}
+      - name: Build
+        run: cmake --build build --parallel
+      - name: Run the test suite
+        run: ctest --test-dir build --output-on-failure --timeout 600
+      - name: Run the Rust example's tests
+        working-directory: mlx-performance-profiler/rust/mlx_perf_rust_example
+        run: cargo test
+      - name: Keep the test log when the suite fails
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: test-log-mlx-${{ matrix.mlx }}
+          path: mlx-performance-profiler/build/Testing/Temporary/LastTest.log
+          if-no-files-found: ignore

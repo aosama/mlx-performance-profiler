@@ -1,0 +1,7 @@
+{
+  "description": "The MLX releases continuous integration tests against, and for each the mlx-bridge release whose native build (cargo xtask build-native) is that MLX with its paired MLX-C. Must list exactly the releases in MLX_PERF_TESTED_MLX_VERSIONS (cmake/mlx_perf_mlx_prefix.cmake): the plan job fails when they differ.",
+  "releases": [
+    {"mlx": "0.32.4", "mlx_bridge_tag": "v0.32.4-alpha.6"},
+    {"mlx": "0.32.5", "mlx_bridge_tag": "v0.32.5-alpha.1"}
+  ]
+}
