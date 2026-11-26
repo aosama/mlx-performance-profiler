@@ -7,6 +7,7 @@
 
 #include "graph_model.h"
 #include "measurement_session.h"
+#include "paired_measurement.h"
 #include "qwen35/qwen35_config.h"
 #include "qwen35/qwen35_decode_job.h"
 #include "qwen35/qwen35_generation.h"
@@ -118,7 +119,8 @@ void print_variant_summary(const mlx_perf::VariantMeasurement& variant_measureme
   mlx_perf::print_stage_table(variant_measurement.gpu_timeline);
 }
 
-// Measures one decode step at `context_length`, eager vs compiled.
+// Measures one decode step at `context_length`, eager vs compiled, with the
+// passes interleaved so the verdict is judged against the spread.
 bool profile_decode_step(const Qwen35Weights& weights, const Qwen35TextConfig& config,
                          const ProfileOptions& profile_options, int token_id,
                          const std::string& model_name) {
@@ -129,20 +131,17 @@ bool profile_decode_step(const Qwen35Weights& weights, const Qwen35TextConfig& c
   const CompiledDecodeGraphFactory compiled_factory(weights, config, flat_inputs);
   const auto stream_index_to_stream =
       mlx_perf::collect_streams(mlx_perf::capture_graph(eager_factory.build_fresh_graph()));
-  const auto eager_measurement =
-      mlx_perf::measure_variant("eager", eager_factory, stream_index_to_stream, nullptr,
-                                profile_options.timeline_options);
-  const auto compiled_measurement =
-      mlx_perf::measure_variant("compiled", compiled_factory, stream_index_to_stream, nullptr,
-                                profile_options.timeline_options);
-  print_variant_summary(eager_measurement);
-  print_variant_summary(compiled_measurement);
+  const auto paired_measurement = mlx_perf::measure_pair(
+      {"eager", eager_factory}, {"compiled", compiled_factory}, stream_index_to_stream,
+      profile_options.timeline_options);
+  print_variant_summary(paired_measurement.baseline);
+  print_variant_summary(paired_measurement.candidate);
   std::printf("\n");
   return mlx_perf::write_report_bundle(
       {model_name + " — one decode step at context " +
            std::to_string(profile_options.context_length),
        "build", "qwen35_decode"},
-      eager_measurement, compiled_measurement);
+      paired_measurement);
 }
 
 } // namespace

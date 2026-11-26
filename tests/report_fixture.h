@@ -8,6 +8,7 @@
 #include "graph_model.h"
 #include "job_totals.h"
 #include "latency_breakdown.h"
+#include "paired_measurement.h"
 #include "telemetry.h"
 
 #include "mlx/array.h"
@@ -114,6 +115,19 @@ void populate_two_stage_run(MeasuredRun& synthetic_run) {
   }
   gpu_timeline.stages[1].has_cross_stream_input = true;
   gpu_timeline.stages[1].cross_stream_producer_stage_positions = {0};
+}
+
+// A paired measurement of two copies of the synthetic run: the candidate's
+// rounds all beat the baseline's on GPU execution (a clear result) while
+// their job-wall ranges overlap (not a result). Must not be copied after.
+inline void populate_pair(mlx_perf::PairedMeasurement& paired_measurement) {
+  populate_two_stream_run(paired_measurement.baseline);
+  populate_two_stream_run(paired_measurement.candidate);
+  paired_measurement.baseline.variant_name = "stock";
+  paired_measurement.candidate.variant_name = "custom";
+  paired_measurement.baseline_rounds = {{100, 110, 120}, {50, 52, 51}, {200, 210, 220}, {9, 9, 9}};
+  paired_measurement.candidate_rounds = {{95, 105, 115}, {40, 41, 42}, {190, 200, 210}, {7, 8, 9}};
+  paired_measurement.output_agreement = {1, 0.25};
 }
 
 } // namespace report_fixture

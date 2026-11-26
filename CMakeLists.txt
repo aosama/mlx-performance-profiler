@@ -61,6 +61,8 @@ add_library(mlx_perf STATIC
     src/report_stage_table_section.cpp
     src/report_gantt_section.cpp
     src/report_comparison_page.cpp
+    src/report_verdict_section.cpp
+    src/comparison_record.cpp
     src/report_writer.cpp
     src/report_bundle.cpp
     src/sample_statistics.cpp

@@ -1,10 +1,11 @@
-// The demo: measure one small three-stream job twice — as written (eager) and
-// through mlx::core::compile — and write a Spark-style report for each plus
-// a side-by-side comparison. Orchestration only: the job lives in
-// demo_model, the passes in measurement_session, rendering in report_*.
+// The demo: measure one small three-stream job two ways — as written (eager)
+// and through mlx::core::compile — with their passes interleaved, and write a
+// Spark-style report for each plus a side-by-side comparison with a verdict.
+// Orchestration only: the job lives in demo_model, the passes in
+// paired_measurement, rendering in report_*.
 
 #include "demo_model.h"
-#include "measurement_session.h"
+#include "paired_measurement.h"
 #include "report_bundle.h"
 #include "timeline_console.h"
 
@@ -30,17 +31,15 @@ int main() {
   const EagerDemoGraphFactory eager_factory(demo_streams, demo_inputs);
   const CompiledDemoGraphFactory compiled_factory(demo_streams, demo_inputs);
 
-  const VariantMeasurement eager_measurement = measure_variant(
-      "eager", eager_factory, demo_streams.stream_index_to_stream);
-  const VariantMeasurement compiled_measurement = measure_variant(
-      "compiled", compiled_factory, demo_streams.stream_index_to_stream);
+  const PairedMeasurement paired_measurement =
+      measure_pair({"eager", eager_factory}, {"compiled", compiled_factory},
+                   demo_streams.stream_index_to_stream);
 
-  print_variant_console(eager_measurement);
-  print_variant_console(compiled_measurement);
+  print_variant_console(paired_measurement.baseline);
+  print_variant_console(paired_measurement.candidate);
 
   std::printf("\n");
   const bool are_reports_written = write_report_bundle(
-      {"Hello World — three-stream toy job", "build", "hello_world"}, eager_measurement,
-      compiled_measurement);
+      {"Hello World — three-stream toy job", "build", "hello_world"}, paired_measurement);
   return are_reports_written ? 0 : 1;
 }

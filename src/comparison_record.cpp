@@ -1,0 +1,79 @@
+#include "comparison_record.h"
+
+#include "measurement_document.h"
+
+#include <string>
+#include <vector>
+
+namespace mlx_perf {
+namespace {
+
+using Object = JsonValue::Object;
+using Array = JsonValue::Array;
+
+JsonValue json_number(double number_value) { return JsonValue(number_value); }
+JsonValue json_text(const std::string& text_value) { return JsonValue(text_value); }
+
+JsonValue sample_record(const SampleSummary& sample_summary,
+                        const std::vector<double>& samples) {
+  Array sample_values;
+  for (const double sample_value : samples) {
+    sample_values.push_back(json_number(sample_value));
+  }
+  return JsonValue(Object{{"median", json_number(sample_summary.median)},
+                          {"min", json_number(sample_summary.minimum)},
+                          {"max", json_number(sample_summary.maximum)},
+                          {"samples", JsonValue(std::move(sample_values))}});
+}
+
+JsonValue metric_record(const PairedComparison& paired_comparison,
+                        const std::vector<double>& baseline_samples,
+                        const std::vector<double>& candidate_samples) {
+  return JsonValue(Object{
+      {"baseline", sample_record(paired_comparison.baseline, baseline_samples)},
+      {"candidate", sample_record(paired_comparison.candidate, candidate_samples)},
+      {"median_difference_us", json_number(paired_comparison.median_difference)},
+      {"relative_difference", json_number(paired_comparison.relative_difference)},
+      {"verdict", json_text(std::string(comparison_verdict_name(paired_comparison.verdict)))},
+      {"rounds_candidate_faster", json_number(paired_comparison.rounds_candidate_faster)},
+      {"round_count", json_number(paired_comparison.round_count)}});
+}
+
+JsonValue variant_reference(const VariantMeasurement& variant_measurement,
+                            const std::string& measurement_file) {
+  return JsonValue(Object{{"variant_name", json_text(variant_measurement.variant_name)},
+                          {"measurement_file", json_text(measurement_file)}});
+}
+
+} // namespace
+
+JsonValue build_comparison_record(const PairedMeasurement& paired_measurement,
+                                  const std::string& baseline_measurement_file,
+                                  const std::string& candidate_measurement_file) {
+  const PairComparisons pair_comparisons = compare_pair(paired_measurement);
+  const VariantRounds& baseline_rounds = paired_measurement.baseline_rounds;
+  const VariantRounds& candidate_rounds = paired_measurement.candidate_rounds;
+  return JsonValue(Object{
+      {"schema_version", json_number(MEASUREMENT_SCHEMA_VERSION)},
+      {"kind", json_text("comparison")},
+      {"baseline", variant_reference(paired_measurement.baseline, baseline_measurement_file)},
+      {"candidate",
+       variant_reference(paired_measurement.candidate, candidate_measurement_file)},
+      {"metrics", JsonValue(Object{
+          {"job_wall_us", metric_record(pair_comparisons.job_wall,
+                                        baseline_rounds.job_wall_microseconds,
+                                        candidate_rounds.job_wall_microseconds)},
+          {"gpu_execution_us", metric_record(pair_comparisons.gpu_execution,
+                                             baseline_rounds.gpu_execution_microseconds,
+                                             candidate_rounds.gpu_execution_microseconds)},
+          {"host_submission_us",
+           metric_record(pair_comparisons.host_submission,
+                         baseline_rounds.host_submission_microseconds,
+                         candidate_rounds.host_submission_microseconds)}})},
+      {"output_agreement", JsonValue(Object{
+          {"output_count", json_number(paired_measurement.output_agreement.output_count)},
+          {"max_absolute_difference",
+           json_number(paired_measurement.output_agreement.max_absolute_difference)}})}});
+}
+
+} // namespace mlx_perf

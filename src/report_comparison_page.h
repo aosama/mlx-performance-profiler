@@ -1,9 +1,10 @@
 #pragma once
 
 // Comparison page: one concern only — the "planned vs executed" view of two
-// variants of the same job (eager vs compiled): a metric delta table, the two
-// DAGs side by side, both timelines on one shared time scale, and the
-// primitive mix showing what compile fused.
+// implementations of the same job (eager vs compiled, or a stock primitive
+// vs a custom kernel): the verdict when the caller supplies one, a metric
+// delta table, the two DAGs side by side, both timelines on one shared time
+// scale, and the primitive mix (with what compile fused, when it did).
 
 #include "measurement_session.h"
 
@@ -21,10 +22,19 @@ struct ComparedVariant {
 std::string render_comparison_metrics(
     const VariantMeasurement& baseline, const VariantMeasurement& candidate);
 
+// Caller-supplied text above the metrics. An empty subtitle becomes "Same
+// job, two implementations: <baseline> vs <candidate>"; an empty verdict is
+// omitted (single-pass comparisons have no spread to judge against).
+struct ComparisonPageText {
+  std::string subtitle;
+  std::string verdict_html;
+};
+
 std::string build_comparison_document(
     const std::string& page_title,
     const ComparedVariant& baseline_variant,
-    const ComparedVariant& candidate_variant);
+    const ComparedVariant& candidate_variant,
+    const ComparisonPageText& page_text = {});
 
 // "CompiledSigmoidMultiply" → "Sigmoid · Multiply". MLX names a fused node
 // "Compiled" + each fused primitive's name; splitting at capitals recovers
