@@ -3,6 +3,10 @@
 # tree (FetchContent, add_subdirectory) never inherits them.
 function(mlx_perf_apply_project_settings target_name)
   target_compile_options(${target_name} PRIVATE -Wall -Wextra)
+  # A consumer that sets no build type would compile the profiler at -O0,
+  # inflating the host-side numbers it reports (issue, sweep, probe);
+  # optimise anyway when no configuration is chosen.
+  target_compile_options(${target_name} PRIVATE "$<$<CONFIG:>:-O2>")
   # MLX's headers change class layouts when NDEBUG is absent (debug-only
   # members in mlx/allocator.h and mlx/backend/metal/device.h), and the
   # prebuilt MLX is a Release build. Code that includes those headers must

@@ -76,13 +76,14 @@ add_library(mlx_perf STATIC
     src/mlx_c_interop.cpp
     src/mlx_perf_c_api.cpp)
 add_library(mlx_perf::mlx_perf ALIAS mlx_perf)
-target_include_directories(mlx_perf PUBLIC
-    "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>"
-    "$<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/generated/include>"
-    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
-    # Internal C++ headers: visible to this repository's tools and tests,
-    # never installed. The installed surface is the C API alone.
-    "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>")
+# Consumers see the C API alone, installed or built from source.
+target_include_directories(mlx_perf
+    PUBLIC
+      "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>"
+      "$<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/generated/include>"
+      "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
+    PRIVATE
+      "${PROJECT_SOURCE_DIR}/src")
 # MLX is attached here only for this build tree; the installed package
 # attaches it from the consumer's own MLX_PREFIX (see cmake/), so the
 # export never carries this machine's paths.
@@ -91,9 +92,17 @@ mlx_perf_apply_project_settings(mlx_perf)
 
 # Support libraries for the tools and tests; never installed.
 if(MLX_PERF_BUILD_TOOLS OR MLX_PERF_BUILD_TESTS)
+  # The internal C++ headers in src/, for this repository's own tools and
+  # tests only. Kept off mlx_perf's interface so a project that pulls this
+  # one in from source does not get ~60 generically named headers
+  # (telemetry.h, json_value.h, …) on its include path.
+  add_library(mlx_perf_internal INTERFACE)
+  target_include_directories(mlx_perf_internal INTERFACE "${PROJECT_SOURCE_DIR}/src")
+  target_link_libraries(mlx_perf_internal INTERFACE mlx_perf)
+
   # The three-stream demo job (hello_world, the live server, tests).
   add_library(mlx_perf_demo_model STATIC src/demo_model.cpp)
-  target_link_libraries(mlx_perf_demo_model PUBLIC mlx_perf)
+  target_link_libraries(mlx_perf_demo_model PUBLIC mlx_perf_internal)
   mlx_perf_apply_project_settings(mlx_perf_demo_model)
 
   # The live server: HTTP, the view store and the pages it serves.
@@ -105,7 +114,7 @@ if(MLX_PERF_BUILD_TOOLS OR MLX_PERF_BUILD_TESTS)
       src/live_view_routes.cpp
       src/report_memory_section.cpp
       src/server_options.cpp)
-  target_link_libraries(mlx_perf_live_view PUBLIC mlx_perf)
+  target_link_libraries(mlx_perf_live_view PUBLIC mlx_perf_internal)
   mlx_perf_apply_project_settings(mlx_perf_live_view)
 
   # Qwen3.5 rebuilt in C++ from MLX kernels: model-specific, kept apart.
@@ -117,7 +126,7 @@ if(MLX_PERF_BUILD_TOOLS OR MLX_PERF_BUILD_TESTS)
       src/qwen35/token_text.cpp
       src/qwen35/qwen35_decode_job.cpp
       src/qwen35/qwen35_layer_stages.cpp)
-  target_link_libraries(mlx_perf_qwen35 PUBLIC mlx_perf)
+  target_link_libraries(mlx_perf_qwen35 PUBLIC mlx_perf_internal)
   mlx_perf_apply_project_settings(mlx_perf_qwen35)
 endif()
 

@@ -67,19 +67,36 @@ target_link_libraries(my_test PRIVATE mlx_perf::mlx_perf)
 
 The package attaches MLX from the consumer's `MLX_PREFIX`. That MLX must be
 the release the archive was built against; the package names both releases
-if they differ.
+if they differ. Without `REQUIRED`, a missing `MLX_PREFIX` makes the package
+report itself not found instead of stopping your configure.
 
-**From source (FetchContent or `add_subdirectory`):** the library alone is
-built, against the consumer's `MLX_PREFIX`, and `mlx_perf::mlx_perf` is
-available to link.
+**From source (FetchContent or `add_subdirectory`):**
 
-**Cargo:** link `static=mlx_perf` from the installed `lib/` and let the MLX
-binding crate (e.g. `mlx-bridge`) link MLX, as
-[`rust/mlx_perf_rust_example`](rust/mlx_perf_rust_example) does from this
-repository's build directory.
+```cmake
+include(FetchContent)
+FetchContent_Declare(mlx_perf
+  GIT_REPOSITORY https://github.com/aosama/mlx-performance-profiler.git
+  GIT_TAG v0.1.0)
+FetchContent_MakeAvailable(mlx_perf)   # with -DMLX_PREFIX=... on your command line
+target_link_libraries(my_test PRIVATE mlx_perf::mlx_perf)
+```
 
-`tests/packaging/` holds a C program built exactly this way; the test suite
-installs the library into a scratch prefix and builds, links and runs it.
+Only the library is built (no tools, tests or install rules), optimised
+even when your build sets no build type, and only the C API's headers reach
+your include path.
+
+**Cargo:** link `static=mlx_perf` from the installed `lib/` in your own
+`build.rs` (`cargo:rustc-link-search=native=<prefix>/lib`) and let the MLX
+binding crate (e.g. `mlx-bridge`) link MLX.
+[`rust/mlx_perf_rust_example`](rust/mlx_perf_rust_example) shows the same
+from this repository's build directory; it does not read an installed
+prefix.
+
+`tests/packaging/` holds a C program built both ways. The test suite
+installs the library into a scratch prefix and builds, links and runs the
+program against it. It also builds and links the program through the
+`FetchContent` declaration above, pointed at the checkout under test with
+`FETCHCONTENT_SOURCE_DIR_MLX_PERF` so nothing is downloaded.
 
 ## MLX compatibility
 

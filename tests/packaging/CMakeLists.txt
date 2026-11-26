@@ -42,17 +42,19 @@ add_test(NAME should_build_and_run_a_consumer_of_the_installed_package
 set_tests_properties(should_build_and_run_a_consumer_of_the_installed_package PROPERTIES
   FIXTURES_REQUIRED mlx_perf_installed)
 
-# --- edge: pulled in as a subdirectory, the build is the library alone ---
+# --- positive: built from source with FetchContent, the build is the library
+# alone, with only the C API exported, and a program links against it ---
 
-add_test(NAME should_build_only_the_library_when_added_as_a_subdirectory
-  COMMAND "${CMAKE_COMMAND}" --fresh
-          -S "${CMAKE_CURRENT_SOURCE_DIR}/subdirectory_consumer"
-          -B "${packaging_scratch_directory}/subdirectory_consumer_build"
-          -G "${CMAKE_GENERATOR}"
+add_test(NAME should_build_and_link_a_consumer_that_fetches_the_source
+  COMMAND "${CMAKE_COMMAND}"
+          "-DCONSUMER_SOURCE=${CMAKE_CURRENT_SOURCE_DIR}/source_consumer"
+          "-DCONSUMER_BUILD=${packaging_scratch_directory}/source_consumer_build"
           "-DMLX_PERF_SOURCE_DIRECTORY=${PROJECT_SOURCE_DIR}"
-          "-DMLX_PREFIX=${MLX_PREFIX}")
-set_tests_properties(should_build_only_the_library_when_added_as_a_subdirectory PROPERTIES
-  PASS_REGULAR_EXPRESSION "subdirectory consumer: library only")
+          "-DMLX_PREFIX=${MLX_PREFIX}"
+          "-DGENERATOR=${CMAKE_GENERATOR}"
+          -P "${CMAKE_CURRENT_SOURCE_DIR}/source_consumer_journey.cmake")
+set_tests_properties(should_build_and_link_a_consumer_that_fetches_the_source PROPERTIES
+  PASS_REGULAR_EXPRESSION "source consumer: library only.*source consumer: built and linked")
 
 # --- negative: the package names the problem instead of failing late ---
 
@@ -65,6 +67,19 @@ add_test(NAME should_refuse_a_consumer_without_mlx_prefix
 set_tests_properties(should_refuse_a_consumer_without_mlx_prefix PROPERTIES
   FIXTURES_REQUIRED mlx_perf_installed
   PASS_REGULAR_EXPRESSION "MLX_PREFIX is required")
+
+# --- edge: an optional consumer without MLX goes on, told why ---
+
+add_test(NAME should_let_an_optional_consumer_continue_without_mlx_prefix
+  COMMAND "${CMAKE_COMMAND}" --fresh
+          -S "${consumer_source_directory}"
+          -B "${packaging_scratch_directory}/optional_consumer_without_mlx_prefix"
+          -G "${CMAKE_GENERATOR}"
+          "-DCMAKE_PREFIX_PATH=${packaging_install_prefix}"
+          -DMLX_PERF_IS_OPTIONAL=ON)
+set_tests_properties(should_let_an_optional_consumer_continue_without_mlx_prefix PROPERTIES
+  FIXTURES_REQUIRED mlx_perf_installed
+  PASS_REGULAR_EXPRESSION "optional mlx_perf found: 0.*Generating done")
 
 add_test(NAME should_refuse_an_mlx_release_other_than_the_one_built_against
   COMMAND "${CMAKE_COMMAND}" --fresh
@@ -95,10 +110,10 @@ file(MAKE_DIRECTORY "${prefix_without_mlx}")
 
 add_test(NAME should_refuse_an_mlx_prefix_without_mlx
   COMMAND "${CMAKE_COMMAND}" --fresh
-          -S "${CMAKE_CURRENT_SOURCE_DIR}/subdirectory_consumer"
-          -B "${packaging_scratch_directory}/subdirectory_consumer_without_mlx"
+          -S "${CMAKE_CURRENT_SOURCE_DIR}/source_consumer"
+          -B "${packaging_scratch_directory}/source_consumer_without_mlx"
           -G "${CMAKE_GENERATOR}"
-          "-DMLX_PERF_SOURCE_DIRECTORY=${PROJECT_SOURCE_DIR}"
+          "-DFETCHCONTENT_SOURCE_DIR_MLX_PERF=${PROJECT_SOURCE_DIR}"
           "-DMLX_PREFIX=${prefix_without_mlx}")
 set_tests_properties(should_refuse_an_mlx_prefix_without_mlx PROPERTIES
   PASS_REGULAR_EXPRESSION "does not contain include/mlx/mlx.h")
@@ -110,10 +125,10 @@ set_tests_properties(should_refuse_an_mlx_prefix_without_mlx PROPERTIES
 
 add_test(NAME should_warn_but_continue_on_an_untested_mlx_release
   COMMAND "${CMAKE_COMMAND}" --fresh
-          -S "${CMAKE_CURRENT_SOURCE_DIR}/subdirectory_consumer"
-          -B "${packaging_scratch_directory}/subdirectory_consumer_untested_mlx"
+          -S "${CMAKE_CURRENT_SOURCE_DIR}/source_consumer"
+          -B "${packaging_scratch_directory}/source_consumer_untested_mlx"
           -G "${CMAKE_GENERATOR}"
-          "-DMLX_PERF_SOURCE_DIRECTORY=${PROJECT_SOURCE_DIR}"
+          "-DFETCHCONTENT_SOURCE_DIR_MLX_PERF=${PROJECT_SOURCE_DIR}"
           "-DMLX_PREFIX=${other_mlx_release_prefix}")
 set_tests_properties(should_warn_but_continue_on_an_untested_mlx_release PROPERTIES
-  PASS_REGULAR_EXPRESSION "not a tested[ \n]+release.*subdirectory consumer: library only.*Generating done")
+  PASS_REGULAR_EXPRESSION "not a tested[ \n]+release.*source consumer: library only.*Generating done")
