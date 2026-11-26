@@ -18,8 +18,9 @@ std::string describe_verdict(const std::string& baseline_name, const std::string
                              const PairedComparison& paired_comparison);
 
 // The headline sentence (job duration), the per-metric table with each
-// median beside its range, the rounds each variant won, and how closely the
-// two variants' outputs agree.
+// median beside the middle half of its rounds (the range the verdict is
+// judged on), the rounds the candidate won, and how closely the two
+// variants' outputs agree.
 std::string render_verdict_section(const std::string& baseline_name,
                                    const std::string& candidate_name,
                                    const PairComparisons& pair_comparisons,

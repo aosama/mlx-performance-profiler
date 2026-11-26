@@ -6,6 +6,7 @@
 
 #include "mlx/mlx.h"
 
+#include <stdexcept>
 #include <utility>
 #include <vector>
 
@@ -102,6 +103,23 @@ void should_keep_every_job_wall_sample_and_time_every_graph_build() {
   }
 }
 
+void should_return_evaluated_outputs_from_the_warm_up() {
+  const Stream job_stream = mlx::core::new_stream(mlx::core::Device::gpu);
+  const std::vector<array> warm_up_outputs = run_warm_up(SmallJobFactory(job_stream));
+  EXPECT_TRUE(warm_up_outputs.size() == 1);
+  EXPECT_TRUE(!warm_up_outputs.empty() && warm_up_outputs[0].is_available());
+}
+
+void should_record_median_range_and_samples_in_measured_order() {
+  JobTotals job_totals;
+  record_job_wall_samples({30, 10, 20, 40}, job_totals);
+  EXPECT_TRUE(job_totals.job_wall_microseconds == 25);  // mean of the two middle samples
+  EXPECT_TRUE(job_totals.job_wall_min_microseconds == 10);
+  EXPECT_TRUE(job_totals.job_wall_max_microseconds == 40);
+  EXPECT_TRUE(job_totals.job_wall_sample_count == 4);
+  EXPECT_TRUE((job_totals.job_wall_sample_microseconds == std::vector<double>{30, 10, 20, 40}));
+}
+
 // Performance test (asserts a threshold): timing each node alone, synchronized,
 // can never beat running the whole job overlapped. If it does, a pass is
 // mismeasuring — this is the decomposition invariant from PHASED_PLAN §6.
@@ -172,6 +190,17 @@ void should_keep_node_pointers_valid_after_the_result_is_moved() {
 
 // --- negative ---
 
+void should_refuse_to_record_no_job_wall_samples() {
+  JobTotals job_totals;
+  bool has_refused = false;
+  try {
+    record_job_wall_samples({}, job_totals);
+  } catch (const std::invalid_argument&) {
+    has_refused = true;
+  }
+  EXPECT_TRUE(has_refused);
+}
+
 void should_return_empty_measurement_for_an_already_materialized_job() {
   const VariantMeasurement variant_measurement =
       measure_variant("materialized", MaterializedJobFactory(), {});
@@ -186,11 +215,14 @@ int main() {
   return test_harness::run_all({
       TEST_CASE(should_measure_all_passes_with_an_ordered_job_wall_range),
       TEST_CASE(should_keep_every_job_wall_sample_and_time_every_graph_build),
+      TEST_CASE(should_return_evaluated_outputs_from_the_warm_up),
+      TEST_CASE(should_record_median_range_and_samples_in_measured_order),
       TEST_CASE(should_never_make_sum_of_stages_smaller_than_job_duration),
       TEST_CASE(should_time_stages_when_asked_and_cover_every_primitive),
       TEST_CASE(should_keep_per_node_automatically_for_a_small_staged_job),
       TEST_CASE(should_time_a_job_without_cuts_as_one_whole_job_stage),
       TEST_CASE(should_keep_node_pointers_valid_after_the_result_is_moved),
+      TEST_CASE(should_refuse_to_record_no_job_wall_samples),
       TEST_CASE(should_return_empty_measurement_for_an_already_materialized_job),
   });
 }

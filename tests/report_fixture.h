@@ -87,7 +87,7 @@ void populate_two_stream_run(MeasuredRun& synthetic_run) {
   synthetic_run.gpu_timeline.cross_stream_stall_microseconds = 95;
   synthetic_run.gpu_timeline.measured_gpu_compute_microseconds = 107;
   synthetic_run.gpu_timeline.gpu_measured_node_count = 2;
-  synthetic_run.job_totals = {90, 80, 120, 7, 300};
+  synthetic_run.job_totals = {90, 80, 120, 7, 300, {}};
   synthetic_run.serial_telemetry = {};
 }
 

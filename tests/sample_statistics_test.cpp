@@ -61,7 +61,7 @@ void should_call_a_candidate_slower_in_the_mirror_case() {
   EXPECT_TRUE(paired_comparison.rounds_candidate_faster == 0);
 }
 
-void should_call_overlapping_ranges_within_the_spread() {
+void should_call_overlapping_middle_halves_within_the_spread() {
   // Medians differ by 5, but the ranges overlap: not a result.
   const auto paired_comparison = compare_paired_samples({100, 110, 120}, {95, 105, 115});
   EXPECT_TRUE(paired_comparison.verdict == ComparisonVerdict::within_spread);
@@ -136,7 +136,7 @@ int main() {
       TEST_CASE(should_call_a_candidate_faster_when_its_middle_half_lies_below_the_baselines),
       TEST_CASE(should_not_let_one_disturbed_round_veto_a_clear_difference),
       TEST_CASE(should_call_a_candidate_slower_in_the_mirror_case),
-      TEST_CASE(should_call_overlapping_ranges_within_the_spread),
+      TEST_CASE(should_call_overlapping_middle_halves_within_the_spread),
       TEST_CASE(should_name_every_verdict),
       TEST_CASE(should_interpolate_the_median_and_quartiles_of_an_even_count),
       TEST_CASE(should_treat_middle_halves_touching_at_one_value_as_overlapping),

@@ -118,7 +118,43 @@ void should_compare_the_pair_on_job_wall_gpu_execution_and_host_submission() {
   EXPECT_TRUE(pair_comparisons.host_submission.baseline.median > 0);
 }
 
+// Two stage cuts' worth of job (matmul, then the unary op) on one stream.
+class StagedLoggingJobFactory final : public GraphFactory {
+ public:
+  StagedLoggingJobFactory(const Stream& job_stream, bool uses_sin)
+      : job_stream_(job_stream), uses_sin_(uses_sin) {}
+  std::vector<array> build_fresh_graph() const override {
+    return build_fresh_staged_graph().output_arrays;
+  }
+  StagedGraph build_fresh_staged_graph() const override {
+    const array job_input = mlx::core::ones({64, 64}, mlx::core::float32, job_stream_);
+    const array product = mlx::core::matmul(job_input, job_input, job_stream_);
+    const array finished = uses_sin_ ? mlx::core::sin(product, job_stream_)
+                                     : mlx::core::cos(product, job_stream_);
+    return {{finished}, {{"matmul", {product}}}, "unary"};
+  }
+
+ private:
+  Stream job_stream_;
+  bool uses_sin_;
+};
+
 // --- edge / boundary ---
+
+void should_time_both_variants_per_stage_when_asked() {
+  PairFixture fixture;
+  const StagedLoggingJobFactory sin_job(fixture.job_stream, true);
+  const StagedLoggingJobFactory cos_job(fixture.job_stream, false);
+  const PairedMeasurement paired_measurement =
+      measure_pair({"sin", sin_job}, {"cos", cos_job}, fixture.stream_index_to_stream,
+                   {GranularityChoice::per_stage});
+  for (const VariantMeasurement* variant : {&paired_measurement.baseline,
+                                            &paired_measurement.candidate}) {
+    EXPECT_TRUE(variant->gpu_timeline.granularity == TimelineGranularity::per_stage);
+    EXPECT_TRUE(variant->gpu_timeline.stages.size() == 2);
+  }
+  EXPECT_TRUE(compare_pair(paired_measurement).gpu_execution.baseline.median > 0);
+}
 
 void should_find_a_job_compared_with_itself_in_full_agreement() {
   PairFixture fixture;
@@ -152,6 +188,7 @@ int main() {
       TEST_CASE(should_alternate_the_variants_and_flip_the_order_every_round),
       TEST_CASE(should_keep_per_round_numbers_and_the_median_timeline),
       TEST_CASE(should_compare_the_pair_on_job_wall_gpu_execution_and_host_submission),
+      TEST_CASE(should_time_both_variants_per_stage_when_asked),
       TEST_CASE(should_find_a_job_compared_with_itself_in_full_agreement),
       TEST_CASE(should_refuse_jobs_with_different_output_shapes_before_timing_anything),
   });

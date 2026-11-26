@@ -250,7 +250,10 @@ void should_compare_two_mlx_c_jobs_and_write_the_verdict_page() {
   EXPECT_TRUE(summary.host_submission.round_count == 5);
   EXPECT_TRUE(summary.job_wall.verdict >= MLX_PERF_VERDICT_CANDIDATE_FASTER &&
               summary.job_wall.verdict <= MLX_PERF_VERDICT_CANDIDATE_SLOWER);
-  EXPECT_TRUE(summary.job_wall.baseline_min_us <= summary.job_wall.baseline_median_us);
+  EXPECT_TRUE(summary.job_wall.baseline_min_us <= summary.job_wall.baseline_lower_quartile_us);
+  EXPECT_TRUE(summary.job_wall.baseline_lower_quartile_us <= summary.job_wall.baseline_median_us);
+  EXPECT_TRUE(summary.gpu_execution.candidate_upper_quartile_us <=
+              summary.gpu_execution.candidate_max_us);
   EXPECT_TRUE(summary.max_absolute_output_difference > 0.0);  // sin and cos differ
   EXPECT_TRUE(summary.baseline.stream_count == 2);
   // stream discovery 1 + warm-up 1 + job wall 7 + timeline 5 + serial 1.

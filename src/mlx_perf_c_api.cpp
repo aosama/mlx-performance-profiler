@@ -71,19 +71,26 @@ void fill_summary(const VariantMeasurement& variant_measurement,
   summary.stream_count = static_cast<int>(gpu_timeline.streams.size());
 }
 
-// The callback and every string the entry point reads must be present; the
-// message names the entry point so a caller in another language can tell
-// which call it got wrong.
+// Every string the entry point reads must be present; the message names the
+// entry point so a caller in another language can tell which call it got
+// wrong.
+void require_strings(std::initializer_list<const char*> required_strings,
+                     const char* entry_point_name) {
+  for (const char* required_string : required_strings) {
+    if (required_string == nullptr) {
+      throw std::invalid_argument(std::string(entry_point_name) + ": null argument");
+    }
+  }
+}
+
+// The callback and the strings of a single-job entry point.
 void require_arguments(mlx_perf_build_graph_fn build_graph,
                        std::initializer_list<const char*> required_strings,
                        const char* entry_point_name) {
-  bool has_null_argument = build_graph == nullptr;
-  for (const char* required_string : required_strings) {
-    has_null_argument |= required_string == nullptr;
-  }
-  if (has_null_argument) {
+  if (build_graph == nullptr) {
     throw std::invalid_argument(std::string(entry_point_name) + ": null argument");
   }
+  require_strings(required_strings, entry_point_name);
 }
 
 // Both entry points measure the same way. The stream-discovery build is
@@ -206,9 +213,13 @@ void fill_metric(const PairedComparison& paired_comparison,
   metric_comparison.baseline_median_us = paired_comparison.baseline.median;
   metric_comparison.baseline_min_us = paired_comparison.baseline.minimum;
   metric_comparison.baseline_max_us = paired_comparison.baseline.maximum;
+  metric_comparison.baseline_lower_quartile_us = paired_comparison.baseline.lower_quartile;
+  metric_comparison.baseline_upper_quartile_us = paired_comparison.baseline.upper_quartile;
   metric_comparison.candidate_median_us = paired_comparison.candidate.median;
   metric_comparison.candidate_min_us = paired_comparison.candidate.minimum;
   metric_comparison.candidate_max_us = paired_comparison.candidate.maximum;
+  metric_comparison.candidate_lower_quartile_us = paired_comparison.candidate.lower_quartile;
+  metric_comparison.candidate_upper_quartile_us = paired_comparison.candidate.upper_quartile;
   metric_comparison.median_difference_us = paired_comparison.median_difference;
   metric_comparison.relative_difference = paired_comparison.relative_difference;
   metric_comparison.verdict = to_c_verdict(paired_comparison.verdict);
@@ -232,8 +243,8 @@ void compare_to_report(const mlx_perf_variant* baseline, const mlx_perf_variant*
                        const char* report_title, const char* output_directory,
                        const char* report_file_base, mlx_perf_comparison_summary* summary) {
   require_comparable_variants(baseline, candidate);
-  require_arguments(baseline->build_graph, {report_title, output_directory, report_file_base},
-                    "mlx_perf_compare_to_report");
+  require_strings({report_title, output_directory, report_file_base},
+                  "mlx_perf_compare_to_report");
   const CallbackGraphFactory baseline_factory(baseline->build_graph, baseline->builder_payload);
   const CallbackGraphFactory candidate_factory(candidate->build_graph,
                                                candidate->builder_payload);

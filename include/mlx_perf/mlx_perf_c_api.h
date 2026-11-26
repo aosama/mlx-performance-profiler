@@ -79,8 +79,9 @@ typedef struct mlx_perf_variant {
 } mlx_perf_variant;
 
 /* Values of mlx_perf_metric_comparison.verdict. Lower is better: a verdict
- * other than "within spread" means every candidate sample beat (or lost to)
- * every baseline sample. */
+ * other than "within spread" means the middle half of the candidate's rounds
+ * (lower to upper quartile) lies entirely below (or above) the baseline's,
+ * so a single disturbed round cannot decide it. */
 enum {
   MLX_PERF_VERDICT_CANDIDATE_FASTER = -1,
   MLX_PERF_VERDICT_WITHIN_SPREAD = 0,
@@ -92,9 +93,13 @@ typedef struct mlx_perf_metric_comparison {
   double baseline_median_us;
   double baseline_min_us;
   double baseline_max_us;
+  double baseline_lower_quartile_us;
+  double baseline_upper_quartile_us;
   double candidate_median_us;
   double candidate_min_us;
   double candidate_max_us;
+  double candidate_lower_quartile_us;
+  double candidate_upper_quartile_us;
   double median_difference_us; /* candidate − baseline: negative is faster */
   double relative_difference;  /* median_difference_us / baseline median */
   int verdict;                 /* an MLX_PERF_VERDICT_* value */
