@@ -3,7 +3,7 @@
 Versions follow [`VERSIONING.md`](VERSIONING.md). Each release lists the
 MLX releases it was built and tested against.
 
-## 0.1.0 (unreleased)
+## 0.1.0 (2026-11-26)
 
 Tested MLX releases: 0.32.4, 0.32.5 (Metal, macOS).
 
