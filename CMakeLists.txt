@@ -64,6 +64,8 @@ add_library(mlx_perf STATIC
     src/report_writer.cpp
     src/report_bundle.cpp
     src/measurement_session.cpp
+    src/measurement_document.cpp
+    src/measurement_file.cpp
     src/json_value.cpp
     src/json_writer.cpp
     src/mlx_c_interop.cpp

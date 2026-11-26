@@ -1,6 +1,7 @@
 // Integration tests for the C API on the Metal GPU, driven purely through
 // MLX-C the way a non-C++ caller (e.g. Rust via mlx-bridge) would.
 
+#include "json_value.h"
 #include "mlx_c_interop.h"
 #include "mlx_perf/mlx_perf_c_api.h"
 #include "test_harness.h"
@@ -10,7 +11,9 @@
 #include "mlx/c/ops.h"
 #include "mlx/c/stream.h"
 
+#include <cmath>
 #include <fstream>
+#include <map>
 #include <string>
 
 namespace {
@@ -36,6 +39,47 @@ int build_two_stream_graph(mlx_vector_array fresh_outputs, void* builder_payload
   mlx_array_free(square_ones);
   mlx_array_free(product);
   mlx_array_free(activated);
+  return status;
+}
+
+// About ten primitives on two streams: a side branch (ones, matmul, exp,
+// sin) and a main branch (ones, cos) joined across streams, then three more
+// steps on the main stream. Enough nodes in a row on each stream to have
+// gaps between consecutive GPU executions.
+int build_ten_node_graph(mlx_vector_array fresh_outputs, void* builder_payload) {
+  auto* payload = static_cast<TwoStreamPayload*>(builder_payload);
+  ++payload->build_count;
+  const int shape[] = {64, 64};
+  mlx_array node_handles[10];
+  for (mlx_array& node_handle : node_handles) {
+    node_handle = mlx_array_new();
+  }
+  int status = mlx_ones(&node_handles[0], shape, 2, MLX_FLOAT32, payload->side_stream);
+  status |= mlx_matmul(&node_handles[1], node_handles[0], node_handles[0], payload->side_stream);
+  status |= mlx_exp(&node_handles[2], node_handles[1], payload->side_stream);
+  status |= mlx_sin(&node_handles[3], node_handles[2], payload->side_stream);
+  status |= mlx_ones(&node_handles[4], shape, 2, MLX_FLOAT32, payload->main_stream);
+  status |= mlx_cos(&node_handles[5], node_handles[4], payload->main_stream);
+  status |= mlx_add(&node_handles[6], node_handles[3], node_handles[5], payload->main_stream);
+  status |= mlx_multiply(&node_handles[7], node_handles[6], node_handles[6], payload->main_stream);
+  status |= mlx_tanh(&node_handles[8], node_handles[7], payload->main_stream);
+  status |= mlx_exp(&node_handles[9], node_handles[8], payload->main_stream);
+  status |= mlx_vector_array_append_value(fresh_outputs, node_handles[9]);
+  for (mlx_array& node_handle : node_handles) {
+    mlx_array_free(node_handle);
+  }
+  return status;
+}
+
+// One primitive (ones) on the main stream: the smallest measurable job.
+int build_single_node_graph(mlx_vector_array fresh_outputs, void* builder_payload) {
+  auto* payload = static_cast<TwoStreamPayload*>(builder_payload);
+  ++payload->build_count;
+  const int shape[] = {16};
+  mlx_array single_output = mlx_array_new();
+  int status = mlx_ones(&single_output, shape, 1, MLX_FLOAT32, payload->main_stream);
+  status |= mlx_vector_array_append_value(fresh_outputs, single_output);
+  mlx_array_free(single_output);
   return status;
 }
 
@@ -93,7 +137,83 @@ void should_report_the_library_version_the_header_names() {
                   std::to_string(MLX_PERF_VERSION_PATCH));
 }
 
+// #11's acceptance: from the file alone, each node's GPU execution time and
+// the gap between one node's GPU end and the next node's GPU start.
+void should_write_per_node_measurements_a_caller_can_read_without_the_report() {
+  ApiFixture fixture;
+  mlx_perf_job_summary summary{};
+  EXPECT_TRUE(mlx_perf_profile_to_measurements(build_ten_node_graph, &fixture.payload,
+                                               "ten-node", ".", "c_api_measurements",
+                                               &summary) == 0);
+  EXPECT_TRUE(!std::ifstream("c_api_measurements.html").good());
+  const mlx_perf::JsonValue document = mlx_perf::parse_json_file("c_api_measurements.json");
+  const auto& node_records = document.at("nodes").as_array();
+  EXPECT_TRUE(static_cast<int>(node_records.size()) == summary.executed_node_count);
+  EXPECT_TRUE(node_records.size() >= 10);
+  std::map<double, const mlx_perf::JsonValue*> stream_to_previous_node;
+  int checked_gap_count = 0;
+  for (const mlx_perf::JsonValue& node_record : node_records) {
+    const double gpu_started = node_record.at("gpu_started_us").as_number();
+    const double gpu_finished = node_record.at("gpu_finished_us").as_number();
+    EXPECT_TRUE(gpu_finished >= gpu_started);
+    EXPECT_TRUE(node_record.at("is_compute_gpu_measured").as_bool());
+    const double stream_index = node_record.at("stream_index").as_number();
+    const auto previous_entry = stream_to_previous_node.find(stream_index);
+    if (previous_entry != stream_to_previous_node.end()) {
+      const double expected_gap =
+          gpu_started - previous_entry->second->at("gpu_finished_us").as_number();
+      EXPECT_TRUE(std::abs(node_record.at("gpu_idle_before_us").as_number() - expected_gap) <
+                  1e-6);
+      ++checked_gap_count;
+    } else {
+      EXPECT_TRUE(node_record.at("gpu_idle_before_us").is_null());
+    }
+    stream_to_previous_node[stream_index] = &node_record;
+  }
+  EXPECT_TRUE(checked_gap_count >= 8);
+}
+
+void should_account_for_every_call_into_the_build_callback() {
+  ApiFixture fixture;
+  EXPECT_TRUE(mlx_perf_profile_to_measurements(build_ten_node_graph, &fixture.payload,
+                                               "calls", ".", "c_api_build_calls",
+                                               nullptr) == 0);
+  const mlx_perf::JsonValue document = mlx_perf::parse_json_file("c_api_build_calls.json");
+  const auto& build_records = document.at("job").at("graph_build").as_array();
+  EXPECT_TRUE(build_records.size() == 5);
+  EXPECT_TRUE(build_records[0].at("pass").as_string() == "stream_discovery");
+  std::size_t recorded_call_count = 0;
+  for (const mlx_perf::JsonValue& build_record : build_records) {
+    recorded_call_count += build_record.at("calls_us").as_array().size();
+  }
+  EXPECT_TRUE(static_cast<int>(recorded_call_count) == fixture.payload.build_count);
+  EXPECT_TRUE(document.at("job").at("job_wall_us").at("samples").as_array().size() == 7);
+}
+
+void should_write_the_measurements_beside_the_report() {
+  ApiFixture fixture;
+  EXPECT_TRUE(mlx_perf_profile_to_report(build_two_stream_graph, &fixture.payload, "c-api",
+                                         "C API job", ".", "c_api_report_and_data",
+                                         nullptr) == 0);
+  EXPECT_TRUE(std::ifstream("c_api_report_and_data.html").good());
+  const mlx_perf::JsonValue document =
+      mlx_perf::parse_json_file("c_api_report_and_data.json");
+  EXPECT_TRUE(document.at("variant_name").as_string() == "c-api");
+}
+
 // --- edge / boundary ---
+
+void should_leave_the_gap_empty_for_a_single_node_job() {
+  ApiFixture fixture;
+  EXPECT_TRUE(mlx_perf_profile_to_measurements(build_single_node_graph, &fixture.payload,
+                                               "single", ".", "c_api_single_node",
+                                               nullptr) == 0);
+  const mlx_perf::JsonValue document = mlx_perf::parse_json_file("c_api_single_node.json");
+  const auto& node_records = document.at("nodes").as_array();
+  EXPECT_TRUE(!node_records.empty());
+  EXPECT_TRUE(node_records.front().at("gpu_idle_before_us").is_null());
+}
+
 void should_leave_the_last_error_untouched_when_asked_for_the_version() {
   EXPECT_TRUE(mlx_perf_profile_to_report(build_failure, nullptr, "v", "t", ".", "x",
                                          nullptr) != 0);
@@ -139,6 +259,22 @@ void should_report_an_unwritable_output_directory() {
               std::string::npos);
 }
 
+void should_reject_null_arguments_to_the_measurements_entry_point() {
+  EXPECT_TRUE(mlx_perf_profile_to_measurements(nullptr, nullptr, "v", ".", "x", nullptr) != 0);
+  EXPECT_TRUE(std::string(mlx_perf_last_error()) ==
+              "mlx_perf_profile_to_measurements: null argument");
+  EXPECT_TRUE(mlx_perf_profile_to_measurements(build_nothing, nullptr, "v", ".", nullptr,
+                                               nullptr) != 0);
+}
+
+void should_report_an_unwritable_measurements_directory() {
+  ApiFixture fixture;
+  EXPECT_TRUE(mlx_perf_profile_to_measurements(build_two_stream_graph, &fixture.payload, "v",
+                                               "no/such/directory", "x", nullptr) != 0);
+  EXPECT_TRUE(std::string(mlx_perf_last_error()).find("cannot write the measurements") !=
+              std::string::npos);
+}
+
 void should_reject_a_null_mlx_c_vector() {
   bool has_thrown = false;
   try {
@@ -156,12 +292,18 @@ int main() {
       TEST_CASE(should_measure_an_mlx_c_job_and_write_its_report),
       TEST_CASE(should_read_mlx_c_handles_as_the_same_core_arrays),
       TEST_CASE(should_report_the_library_version_the_header_names),
+      TEST_CASE(should_write_per_node_measurements_a_caller_can_read_without_the_report),
+      TEST_CASE(should_account_for_every_call_into_the_build_callback),
+      TEST_CASE(should_write_the_measurements_beside_the_report),
+      TEST_CASE(should_leave_the_gap_empty_for_a_single_node_job),
       TEST_CASE(should_leave_the_last_error_untouched_when_asked_for_the_version),
       TEST_CASE(should_accept_a_null_summary),
       TEST_CASE(should_reject_a_callback_that_produces_no_outputs),
       TEST_CASE(should_surface_a_failing_callback_as_an_error_not_a_crash),
       TEST_CASE(should_reject_null_arguments),
       TEST_CASE(should_report_an_unwritable_output_directory),
+      TEST_CASE(should_reject_null_arguments_to_the_measurements_entry_point),
+      TEST_CASE(should_report_an_unwritable_measurements_directory),
       TEST_CASE(should_reject_a_null_mlx_c_vector),
   });
 }
