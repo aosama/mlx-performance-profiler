@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <map>
 
-namespace mlx_plan {
+namespace mlx_perf {
 namespace {
 
 std::string node_caption(const NodeTimeline& node_timeline) {
@@ -108,4 +108,4 @@ const char* timed_unit_noun(const GpuTimeline& gpu_timeline) {
   return gpu_timeline.granularity == TimelineGranularity::per_stage ? "stage" : "node";
 }
 
-} // namespace mlx_plan
+} // namespace mlx_perf

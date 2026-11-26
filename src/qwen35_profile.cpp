@@ -25,7 +25,7 @@
 
 namespace {
 
-using namespace mlx_plan::qwen35;
+using namespace mlx_perf::qwen35;
 
 const std::vector<std::string> CHECK_PROMPT_ENTRIES = {"The", "Ġcapital", "Ġof", "ĠFrance",
                                                        "Ġis"};
@@ -36,7 +36,7 @@ constexpr int DEFAULT_CONTEXT_LENGTH = 1024;
 struct ProfileOptions {
   std::string model_directory;
   int context_length = DEFAULT_CONTEXT_LENGTH;
-  mlx_plan::TimelineOptions timeline_options;
+  mlx_perf::TimelineOptions timeline_options;
 };
 
 const char* const USAGE =
@@ -52,10 +52,10 @@ int parse_context_length(const std::string& context_text) {
   return static_cast<int>(context_length);
 }
 
-mlx_plan::GranularityChoice parse_granularity(const std::string& granularity_text) {
-  if (granularity_text == "auto") return mlx_plan::GranularityChoice::automatic;
-  if (granularity_text == "node") return mlx_plan::GranularityChoice::per_node;
-  if (granularity_text == "stage") return mlx_plan::GranularityChoice::per_stage;
+mlx_perf::GranularityChoice parse_granularity(const std::string& granularity_text) {
+  if (granularity_text == "auto") return mlx_perf::GranularityChoice::automatic;
+  if (granularity_text == "node") return mlx_perf::GranularityChoice::per_node;
+  if (granularity_text == "stage") return mlx_perf::GranularityChoice::per_stage;
   throw std::invalid_argument("--granularity needs auto, node or stage");
 }
 
@@ -110,12 +110,12 @@ bool prove_forward_is_correct(const Qwen35Weights& weights, const Qwen35TextConf
   return is_correct;
 }
 
-void print_variant_summary(const mlx_plan::VariantMeasurement& variant_measurement) {
+void print_variant_summary(const mlx_perf::VariantMeasurement& variant_measurement) {
   std::printf("\n######## %s ########", variant_measurement.variant_name.c_str());
-  mlx_plan::print_job_summary(variant_measurement.job_totals,
+  mlx_perf::print_job_summary(variant_measurement.job_totals,
                               variant_measurement.gpu_timeline);
-  mlx_plan::print_stream_table(variant_measurement.gpu_timeline);
-  mlx_plan::print_stage_table(variant_measurement.gpu_timeline);
+  mlx_perf::print_stream_table(variant_measurement.gpu_timeline);
+  mlx_perf::print_stage_table(variant_measurement.gpu_timeline);
 }
 
 // Measures one decode step at `context_length`, eager vs compiled.
@@ -128,17 +128,17 @@ bool profile_decode_step(const Qwen35Weights& weights, const Qwen35TextConfig& c
   const EagerDecodeGraphFactory eager_factory(weights, config, flat_inputs);
   const CompiledDecodeGraphFactory compiled_factory(weights, config, flat_inputs);
   const auto stream_index_to_stream =
-      mlx_plan::collect_streams(mlx_plan::capture_graph(eager_factory.build_fresh_graph()));
+      mlx_perf::collect_streams(mlx_perf::capture_graph(eager_factory.build_fresh_graph()));
   const auto eager_measurement =
-      mlx_plan::measure_variant("eager", eager_factory, stream_index_to_stream, nullptr,
+      mlx_perf::measure_variant("eager", eager_factory, stream_index_to_stream, nullptr,
                                 profile_options.timeline_options);
   const auto compiled_measurement =
-      mlx_plan::measure_variant("compiled", compiled_factory, stream_index_to_stream, nullptr,
+      mlx_perf::measure_variant("compiled", compiled_factory, stream_index_to_stream, nullptr,
                                 profile_options.timeline_options);
   print_variant_summary(eager_measurement);
   print_variant_summary(compiled_measurement);
   std::printf("\n");
-  return mlx_plan::write_report_bundle(
+  return mlx_perf::write_report_bundle(
       {model_name + " — one decode step at context " +
            std::to_string(profile_options.context_length),
        "build", "qwen35_decode"},

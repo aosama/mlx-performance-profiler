@@ -7,7 +7,7 @@
 #include <cstddef>
 #include <string>
 
-namespace mlx_plan {
+namespace mlx_perf {
 
 // "412.3 µs" below a millisecond, "1.24 ms" at or above.
 std::string format_microseconds(double duration_microseconds);
@@ -19,4 +19,4 @@ std::string escape_json_text(const std::string& raw_text);
 // Escapes quotes and backslashes; turns real newlines into DOT line breaks.
 std::string escape_dot_text(const std::string& raw_text);
 
-} // namespace mlx_plan
+} // namespace mlx_perf

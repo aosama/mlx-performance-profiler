@@ -11,8 +11,8 @@
 namespace {
 
 using namespace mlx::core;
-using mlx_plan::capture_graph;
-using mlx_plan::CapturedGraph;
+using mlx_perf::capture_graph;
+using mlx_perf::CapturedGraph;
 
 std::unordered_map<std::uintptr_t, std::size_t> topological_rank(
     const CapturedGraph& captured_graph) {
@@ -53,7 +53,7 @@ void should_label_edges_with_bytes_read_and_collect_streams() {
     has_side_edge |= graph_edge.bytes == 4 * 4 * sizeof(float);
   }
   EXPECT_TRUE(has_side_edge);
-  const auto stream_index_to_stream = mlx_plan::collect_streams(captured_graph);
+  const auto stream_index_to_stream = mlx_perf::collect_streams(captured_graph);
   EXPECT_TRUE(stream_index_to_stream.count(side_stream.index) == 1);
   EXPECT_TRUE(stream_index_to_stream.size() == 2);
 }
@@ -88,7 +88,7 @@ void should_return_an_empty_graph_for_no_outputs() {
   const CapturedGraph captured_graph = capture_graph({});
   EXPECT_TRUE(captured_graph.nodes.empty());
   EXPECT_TRUE(captured_graph.topological.empty());
-  EXPECT_TRUE(mlx_plan::collect_streams(captured_graph).empty());
+  EXPECT_TRUE(mlx_perf::collect_streams(captured_graph).empty());
 }
 
 void should_treat_an_evaluated_output_as_a_leaf_without_primitives() {

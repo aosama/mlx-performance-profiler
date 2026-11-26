@@ -7,7 +7,7 @@
 
 #include <string_view>
 
-namespace mlx_plan {
+namespace mlx_perf {
 
 // The four Spark-style buckets. Each maps to a StagePage slice:
 //   wait_on_cpu        ~ Scheduler Delay: host time spent issuing the node
@@ -77,4 +77,4 @@ LatencyBreakdown decompose_node_latency(const NodeTimestamps& timestamps);
 // only called "waiting" when waiting strictly outweighs working.
 NodeClass classify_breakdown(const LatencyBreakdown& breakdown);
 
-} // namespace mlx_plan
+} // namespace mlx_perf

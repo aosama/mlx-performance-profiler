@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(mlx_visual_plan LANGUAGES CXX)
+project(mlx_performance_profiler LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -29,7 +29,7 @@ endif()
 
 # The modules build once as a static library shared by the demo executable
 # and the tests, so tests exercise exactly the code the demo ships.
-add_library(mlx_plan STATIC
+add_library(mlx_perf STATIC
     src/graph_model.cpp
     src/telemetry.cpp
     src/latency_breakdown.cpp
@@ -63,7 +63,7 @@ add_library(mlx_plan STATIC
     src/live_view_routes.cpp
     src/server_options.cpp
     src/mlx_c_interop.cpp
-    src/mlx_plan_c_api.cpp
+    src/mlx_perf_c_api.cpp
     src/json_value.cpp
     src/qwen35/qwen35_config.cpp
     src/qwen35/qwen35_weights.cpp
@@ -74,18 +74,18 @@ add_library(mlx_plan STATIC
     src/qwen35/qwen35_layer_stages.cpp
     src/report_bundle.cpp)
 
-target_include_directories(mlx_plan PUBLIC src)
+target_include_directories(mlx_perf PUBLIC src)
 
 # SYSTEM keeps MLX's own headers from warning under our -Wall; they are a
 # vendored surface, not code we maintain.
-target_include_directories(mlx_plan SYSTEM PUBLIC
+target_include_directories(mlx_perf SYSTEM PUBLIC
     "${MLX_PREFIX}/include"
     "${MLX_PREFIX}/include/metal_cpp")
 
 # MLX's own consumer flags (mirrored from its MLXConfig): _METAL_ selects the
 # Metal backend surface, ACCELERATE_NEW_LAPACK the Accelerate BLAS layout,
 # MLX_STATIC the static-library linkage path inside the headers.
-target_compile_definitions(mlx_plan PUBLIC
+target_compile_definitions(mlx_perf PUBLIC
     MLX_STATIC _METAL_ ACCELERATE_NEW_LAPACK)
 
 # Why not find_package(MLX): the install exports an `mlx` imported target whose
@@ -94,7 +94,7 @@ target_compile_definitions(mlx_plan PUBLIC
 # proven working on this machine by ../mlx-bridge's build script: dependents
 # first (mlx), then the libraries it references, then frameworks. libc++ is
 # left to the C++ link driver; listing it again only draws a duplicate warning.
-target_link_libraries(mlx_plan PUBLIC
+target_link_libraries(mlx_perf PUBLIC
     "${MLX_PREFIX}/lib/libmlxc.a"
     "${MLX_PREFIX}/lib/libmlx.a"
     "${MLX_PREFIX}/lib/libgguflib.a"
@@ -102,21 +102,25 @@ target_link_libraries(mlx_plan PUBLIC
     "-framework Metal"
     "-framework Foundation"
     "-framework QuartzCore"
-    "-framework Accelerate")
+    "-framework Accelerate"
+    # MLX 0.32.5 reads the GPU core count through the IOKit registry
+    # (metal::gpu_core_count); without it every executable fails to link.
+    # A system framework, so listing it is harmless on 0.32.4.
+    "-framework IOKit")
 
-target_compile_options(mlx_plan PUBLIC -Wall -Wextra)
+target_compile_options(mlx_perf PUBLIC -Wall -Wextra)
 
 add_executable(hello_world src/hello_world.cpp)
-target_link_libraries(hello_world PRIVATE mlx_plan)
+target_link_libraries(hello_world PRIVATE mlx_perf)
 
 # A real model: ./build/qwen35_profile <dense Qwen3.5 MLX model directory>
 add_executable(qwen35_profile src/qwen35_profile.cpp)
-target_link_libraries(qwen35_profile PRIVATE mlx_plan)
+target_link_libraries(qwen35_profile PRIVATE mlx_perf)
 
-# The live view: ./build/mlx_plan_server [--port N], then open
+# The live view: ./build/mlx_perf_server [--port N], then open
 # http://127.0.0.1:N/ (loopback only).
-add_executable(mlx_plan_server src/mlx_plan_server.cpp)
-target_link_libraries(mlx_plan_server PRIVATE mlx_plan)
+add_executable(mlx_perf_server src/mlx_perf_server.cpp)
+target_link_libraries(mlx_perf_server PRIVATE mlx_perf)
 
 # Tests: a header-only assert runner (tests/test_harness.h) instead of a
 # framework, per the plan's "no heavy deps through Phase 2". Run with
@@ -125,126 +129,126 @@ enable_testing()
 
 # Unit: pure Spark arithmetic, no GPU needed.
 add_executable(latency_breakdown_test tests/latency_breakdown_test.cpp)
-target_link_libraries(latency_breakdown_test PRIVATE mlx_plan)
+target_link_libraries(latency_breakdown_test PRIVATE mlx_perf)
 add_test(NAME latency_breakdown_test COMMAND latency_breakdown_test)
 
 add_executable(text_format_test tests/text_format_test.cpp)
-target_link_libraries(text_format_test PRIVATE mlx_plan)
+target_link_libraries(text_format_test PRIVATE mlx_perf)
 add_test(NAME text_format_test COMMAND text_format_test)
 
 add_executable(latency_slices_test tests/latency_slices_test.cpp)
-target_link_libraries(latency_slices_test PRIVATE mlx_plan)
+target_link_libraries(latency_slices_test PRIVATE mlx_perf)
 add_test(NAME latency_slices_test COMMAND latency_slices_test)
 
 add_executable(report_components_test tests/report_components_test.cpp)
-target_link_libraries(report_components_test PRIVATE mlx_plan)
+target_link_libraries(report_components_test PRIVATE mlx_perf)
 add_test(NAME report_components_test COMMAND report_components_test)
 
 add_executable(report_writer_test tests/report_writer_test.cpp)
-target_link_libraries(report_writer_test PRIVATE mlx_plan)
+target_link_libraries(report_writer_test PRIVATE mlx_perf)
 add_test(NAME report_writer_test COMMAND report_writer_test)
 
 add_executable(report_comparison_page_test tests/report_comparison_page_test.cpp)
-target_link_libraries(report_comparison_page_test PRIVATE mlx_plan)
+target_link_libraries(report_comparison_page_test PRIVATE mlx_perf)
 add_test(NAME report_comparison_page_test COMMAND report_comparison_page_test)
 
 add_executable(server_options_test tests/server_options_test.cpp)
-target_link_libraries(server_options_test PRIVATE mlx_plan)
+target_link_libraries(server_options_test PRIVATE mlx_perf)
 add_test(NAME server_options_test COMMAND server_options_test)
 
 add_executable(live_view_store_test tests/live_view_store_test.cpp)
-target_link_libraries(live_view_store_test PRIVATE mlx_plan)
+target_link_libraries(live_view_store_test PRIVATE mlx_perf)
 add_test(NAME live_view_store_test COMMAND live_view_store_test)
 
 add_executable(report_memory_section_test tests/report_memory_section_test.cpp)
-target_link_libraries(report_memory_section_test PRIVATE mlx_plan)
+target_link_libraries(report_memory_section_test PRIVATE mlx_perf)
 add_test(NAME report_memory_section_test COMMAND report_memory_section_test)
 
 add_executable(http_server_test tests/http_server_test.cpp)
-target_link_libraries(http_server_test PRIVATE mlx_plan)
+target_link_libraries(http_server_test PRIVATE mlx_perf)
 add_test(NAME http_server_test COMMAND http_server_test)
 
 add_executable(live_view_routes_test tests/live_view_routes_test.cpp)
-target_link_libraries(live_view_routes_test PRIVATE mlx_plan)
+target_link_libraries(live_view_routes_test PRIVATE mlx_perf)
 add_test(NAME live_view_routes_test COMMAND live_view_routes_test)
 
 add_executable(json_value_test tests/json_value_test.cpp)
-target_link_libraries(json_value_test PRIVATE mlx_plan)
+target_link_libraries(json_value_test PRIVATE mlx_perf)
 add_test(NAME json_value_test COMMAND json_value_test)
 
 add_executable(qwen35_config_test tests/qwen35_config_test.cpp)
-target_link_libraries(qwen35_config_test PRIVATE mlx_plan)
+target_link_libraries(qwen35_config_test PRIVATE mlx_perf)
 add_test(NAME qwen35_config_test COMMAND qwen35_config_test)
 
 add_executable(token_text_test tests/token_text_test.cpp)
-target_link_libraries(token_text_test PRIVATE mlx_plan)
+target_link_libraries(token_text_test PRIVATE mlx_perf)
 add_test(NAME token_text_test COMMAND token_text_test)
 
 add_executable(progress_reporter_test tests/progress_reporter_test.cpp)
-target_link_libraries(progress_reporter_test PRIVATE mlx_plan)
+target_link_libraries(progress_reporter_test PRIVATE mlx_perf)
 add_test(NAME progress_reporter_test COMMAND progress_reporter_test)
 
 add_executable(stage_plan_test tests/stage_plan_test.cpp)
-target_link_libraries(stage_plan_test PRIVATE mlx_plan)
+target_link_libraries(stage_plan_test PRIVATE mlx_perf)
 add_test(NAME stage_plan_test COMMAND stage_plan_test)
 
 add_executable(report_stage_table_section_test tests/report_stage_table_section_test.cpp)
-target_link_libraries(report_stage_table_section_test PRIVATE mlx_plan)
+target_link_libraries(report_stage_table_section_test PRIVATE mlx_perf)
 add_test(NAME report_stage_table_section_test COMMAND report_stage_table_section_test)
 
 add_executable(dot_writer_test tests/dot_writer_test.cpp)
-target_link_libraries(dot_writer_test PRIVATE mlx_plan)
+target_link_libraries(dot_writer_test PRIVATE mlx_perf)
 add_test(NAME dot_writer_test COMMAND dot_writer_test)
 
 add_executable(timed_units_test tests/timed_units_test.cpp)
-target_link_libraries(timed_units_test PRIVATE mlx_plan)
+target_link_libraries(timed_units_test PRIVATE mlx_perf)
 add_test(NAME timed_units_test COMMAND timed_units_test)
 
 # Integration: drives real MLX streams on the Metal GPU.
 add_executable(graph_model_test tests/graph_model_test.cpp)
-target_link_libraries(graph_model_test PRIVATE mlx_plan)
+target_link_libraries(graph_model_test PRIVATE mlx_perf)
 add_test(NAME graph_model_test COMMAND graph_model_test)
 
 add_executable(telemetry_test tests/telemetry_test.cpp)
-target_link_libraries(telemetry_test PRIVATE mlx_plan)
+target_link_libraries(telemetry_test PRIVATE mlx_perf)
 add_test(NAME telemetry_test COMMAND telemetry_test)
 
 add_executable(metal_command_buffer_probe_test
     tests/metal_command_buffer_probe_test.cpp)
-target_link_libraries(metal_command_buffer_probe_test PRIVATE mlx_plan)
+target_link_libraries(metal_command_buffer_probe_test PRIVATE mlx_perf)
 add_test(NAME metal_command_buffer_probe_test
     COMMAND metal_command_buffer_probe_test)
 
 add_executable(demo_model_test tests/demo_model_test.cpp)
-target_link_libraries(demo_model_test PRIVATE mlx_plan)
+target_link_libraries(demo_model_test PRIVATE mlx_perf)
 add_test(NAME demo_model_test COMMAND demo_model_test)
 
 add_executable(measurement_session_test tests/measurement_session_test.cpp)
-target_link_libraries(measurement_session_test PRIVATE mlx_plan)
+target_link_libraries(measurement_session_test PRIVATE mlx_perf)
 add_test(NAME measurement_session_test COMMAND measurement_session_test)
 
-add_executable(mlx_plan_c_api_test tests/mlx_plan_c_api_test.cpp)
-target_link_libraries(mlx_plan_c_api_test PRIVATE mlx_plan)
+add_executable(mlx_perf_c_api_test tests/mlx_perf_c_api_test.cpp)
+target_link_libraries(mlx_perf_c_api_test PRIVATE mlx_perf)
 # Run from the source root so the test's relative build/ report path resolves.
-add_test(NAME mlx_plan_c_api_test COMMAND mlx_plan_c_api_test
+add_test(NAME mlx_perf_c_api_test COMMAND mlx_perf_c_api_test
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
 add_executable(qwen35_decode_step_test tests/qwen35_decode_step_test.cpp)
-target_link_libraries(qwen35_decode_step_test PRIVATE mlx_plan)
+target_link_libraries(qwen35_decode_step_test PRIVATE mlx_perf)
 add_test(NAME qwen35_decode_step_test COMMAND qwen35_decode_step_test)
 
 add_executable(gpu_timeline_test tests/gpu_timeline_test.cpp)
-target_link_libraries(gpu_timeline_test PRIVATE mlx_plan)
+target_link_libraries(gpu_timeline_test PRIVATE mlx_perf)
 add_test(NAME gpu_timeline_test COMMAND gpu_timeline_test)
 
 add_executable(stage_timeline_test tests/stage_timeline_test.cpp)
-target_link_libraries(stage_timeline_test PRIVATE mlx_plan)
+target_link_libraries(stage_timeline_test PRIVATE mlx_perf)
 add_test(NAME stage_timeline_test COMMAND stage_timeline_test)
 
 add_executable(timeline_dependencies_test tests/timeline_dependencies_test.cpp)
-target_link_libraries(timeline_dependencies_test PRIVATE mlx_plan)
+target_link_libraries(timeline_dependencies_test PRIVATE mlx_perf)
 add_test(NAME timeline_dependencies_test COMMAND timeline_dependencies_test)
 
 add_executable(qwen35_layer_stages_test tests/qwen35_layer_stages_test.cpp)
-target_link_libraries(qwen35_layer_stages_test PRIVATE mlx_plan)
+target_link_libraries(qwen35_layer_stages_test PRIVATE mlx_perf)
 add_test(NAME qwen35_layer_stages_test COMMAND qwen35_layer_stages_test)

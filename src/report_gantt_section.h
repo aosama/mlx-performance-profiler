@@ -8,7 +8,7 @@
 
 #include <string>
 
-namespace mlx_plan {
+namespace mlx_perf {
 
 std::string render_gantt_section(const ReportInputs& report_inputs);
 
@@ -18,4 +18,4 @@ std::string render_gantt_section(const ReportInputs& report_inputs);
 std::string render_gantt_svg(
     const GpuTimeline& gpu_timeline, double scale_total_microseconds);
 
-} // namespace mlx_plan
+} // namespace mlx_perf

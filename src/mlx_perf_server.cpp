@@ -1,4 +1,4 @@
-// mlx_plan_server: the live Spark-UI-style view. Orchestration only.
+// mlx_perf_server: the live Spark-UI-style view. Orchestration only.
 //
 // Threading model: this (main) thread owns every MLX call — measuring,
 // rendering, memory sampling — because MLX's default streams and Metal
@@ -24,7 +24,7 @@
 
 namespace {
 
-using namespace mlx_plan;
+using namespace mlx_perf;
 using Clock = std::chrono::steady_clock;
 
 const std::string JOB_TITLE = "Three-stream toy job";

@@ -7,8 +7,8 @@
 
 #include <string>
 
-namespace mlx_plan {
+namespace mlx_perf {
 
 std::string render_summary_section(const ReportInputs& report_inputs);
 
-} // namespace mlx_plan
+} // namespace mlx_perf

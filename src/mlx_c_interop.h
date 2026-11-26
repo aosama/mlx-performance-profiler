@@ -10,10 +10,10 @@
 
 #include <vector>
 
-namespace mlx_plan {
+namespace mlx_perf {
 
 // Copies (shares) every array in `vector_handle`. Throws std::runtime_error
 // on an MLX-C failure or a null handle.
 std::vector<mlx::core::array> read_mlx_c_vector(mlx_vector_array vector_handle);
 
-} // namespace mlx_plan
+} // namespace mlx_perf

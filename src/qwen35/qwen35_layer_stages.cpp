@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include <utility>
 
-namespace mlx_plan::qwen35 {
+namespace mlx_perf::qwen35 {
 namespace {
 
 constexpr std::size_t LEADING_OUTPUT_COUNT = 2;  // logits, position
@@ -58,4 +58,4 @@ std::vector<StageBoundary> layer_state_boundaries(
   return stage_boundaries;
 }
 
-} // namespace mlx_plan::qwen35
+} // namespace mlx_perf::qwen35

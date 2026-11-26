@@ -6,7 +6,7 @@
 
 #include <chrono>
 
-namespace mlx_plan {
+namespace mlx_perf {
 namespace {
 
 constexpr auto EVENT_STREAM_KEEPALIVE = std::chrono::milliseconds(15000);
@@ -108,4 +108,4 @@ void LiveViewRoutes::serve_event_stream(HttpConnection& connection) const {
   }
 }
 
-} // namespace mlx_plan
+} // namespace mlx_perf

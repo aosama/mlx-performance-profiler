@@ -10,7 +10,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace mlx_plan {
+namespace mlx_perf {
 
 // One captured node is one MLX array. Arrays with a primitive are operations
 // (the Spark "task"/"stage" unit); arrays without one are user inputs that
@@ -59,4 +59,4 @@ CapturedGraph capture_graph(const std::vector<mlx::core::array>& output_nodes);
 std::unordered_map<int, mlx::core::Stream> collect_streams(
     const CapturedGraph& captured_graph);
 
-} // namespace mlx_plan
+} // namespace mlx_perf

@@ -6,7 +6,7 @@
 
 #include <string_view>
 
-namespace mlx_plan {
+namespace mlx_perf {
 
 std::string_view report_stylesheet();
 // Click-to-sort for any <table class="sortable">: numeric when every cell in
@@ -17,4 +17,4 @@ std::string_view report_sort_script();
 // tables after load (the live view) and must re-apply it per insertion.
 std::string_view report_sort_function();
 
-} // namespace mlx_plan
+} // namespace mlx_perf

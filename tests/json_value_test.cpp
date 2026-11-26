@@ -8,8 +8,8 @@
 
 namespace {
 
-using mlx_plan::JsonValue;
-using mlx_plan::parse_json;
+using mlx_perf::JsonValue;
+using mlx_perf::parse_json;
 
 bool throws_runtime_error(const std::string& json_text) {
   try {

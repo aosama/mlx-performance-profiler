@@ -15,7 +15,7 @@
 #include <string>
 #include <vector>
 
-namespace mlx_plan {
+namespace mlx_perf {
 
 struct RenderedViews {
   std::string job_html;
@@ -71,4 +71,4 @@ class LiveViewStore {
   bool is_run_requested_ = false;
 };
 
-} // namespace mlx_plan
+} // namespace mlx_perf

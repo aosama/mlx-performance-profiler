@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include <string>
 
-namespace mlx_plan {
+namespace mlx_perf {
 
 std::vector<mlx::core::array> read_mlx_c_vector(mlx_vector_array vector_handle) {
   if (vector_handle.ctx == nullptr) {
@@ -30,4 +30,4 @@ std::vector<mlx::core::array> read_mlx_c_vector(mlx_vector_array vector_handle) 
   return core_arrays;
 }
 
-} // namespace mlx_plan
+} // namespace mlx_perf

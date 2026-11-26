@@ -14,7 +14,7 @@
 
 namespace {
 
-using namespace mlx_plan;
+using namespace mlx_perf;
 
 struct DemoFixture {
   DemoStreams demo_streams = make_demo_streams();

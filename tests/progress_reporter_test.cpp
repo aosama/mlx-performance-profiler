@@ -6,7 +6,7 @@
 
 namespace {
 
-using mlx_plan::estimate_remaining_seconds;
+using mlx_perf::estimate_remaining_seconds;
 
 constexpr double EXACT_SECONDS = 1e-9;
 

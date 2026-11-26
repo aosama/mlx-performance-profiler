@@ -8,7 +8,7 @@
 
 namespace {
 
-using namespace mlx_plan;
+using namespace mlx_perf;
 
 class EchoHandler final : public HttpHandler {
  public:

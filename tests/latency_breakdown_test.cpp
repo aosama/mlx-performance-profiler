@@ -6,10 +6,10 @@
 
 namespace {
 
-using mlx_plan::decompose_node_latency;
-using mlx_plan::LatencyBreakdown;
-using mlx_plan::NodeClass;
-using mlx_plan::NodeTimestamps;
+using mlx_perf::decompose_node_latency;
+using mlx_perf::LatencyBreakdown;
+using mlx_perf::NodeClass;
+using mlx_perf::NodeTimestamps;
 
 constexpr double EXACT_MICROSECONDS = 1e-9;
 
@@ -139,16 +139,16 @@ void should_report_zero_wall_when_completion_precedes_issue() {
 }
 
 void should_name_every_node_class() {
-  EXPECT_TRUE(mlx_plan::node_class_name(NodeClass::compute) == "compute");
+  EXPECT_TRUE(mlx_perf::node_class_name(NodeClass::compute) == "compute");
   EXPECT_TRUE(
-      mlx_plan::node_class_name(NodeClass::wait_on_cpu) == "wait_on_cpu");
+      mlx_perf::node_class_name(NodeClass::wait_on_cpu) == "wait_on_cpu");
   EXPECT_TRUE(
-      mlx_plan::node_class_name(NodeClass::wait_on_gpu) == "wait_on_gpu");
+      mlx_perf::node_class_name(NodeClass::wait_on_gpu) == "wait_on_gpu");
   EXPECT_TRUE(
-      mlx_plan::node_class_name(NodeClass::wait_on_dependency) ==
+      mlx_perf::node_class_name(NodeClass::wait_on_dependency) ==
       "wait_on_dependency");
   EXPECT_TRUE(
-      mlx_plan::node_class_name(NodeClass::scheduler_delay) ==
+      mlx_perf::node_class_name(NodeClass::scheduler_delay) ==
       "scheduler_delay");
 }
 

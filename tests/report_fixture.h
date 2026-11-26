@@ -17,16 +17,16 @@
 namespace report_fixture {
 
 struct SyntheticRun {
-  mlx_plan::CapturedGraph timeline_graph;
-  mlx_plan::GpuTimeline gpu_timeline;
-  mlx_plan::RunTelemetry serial_telemetry;
-  mlx_plan::JobTotals job_totals;
+  mlx_perf::CapturedGraph timeline_graph;
+  mlx_perf::GpuTimeline gpu_timeline;
+  mlx_perf::RunTelemetry serial_telemetry;
+  mlx_perf::JobTotals job_totals;
 };
 
-inline mlx_plan::GraphNode make_graph_node(
+inline mlx_perf::GraphNode make_graph_node(
     const std::string& label, const std::string& op_name, int stream_index) {
   // A scalar array is never evaluated here; it only gives the node a handle.
-  mlx_plan::GraphNode graph_node{.handle = mlx::core::array(0.0f)};
+  mlx_perf::GraphNode graph_node{.handle = mlx::core::array(0.0f)};
   graph_node.array_id = graph_node.handle.id();
   graph_node.label = label;
   graph_node.op_name = op_name;
@@ -38,11 +38,11 @@ inline mlx_plan::GraphNode make_graph_node(
   return graph_node;
 }
 
-inline mlx_plan::NodeTimestamps make_gpu_timestamps(
+inline mlx_perf::NodeTimestamps make_gpu_timestamps(
     double issue_started, double issue_finished, double stream_ready,
     double remote_ready, double gpu_started, double gpu_finished,
     double completed) {
-  mlx_plan::NodeTimestamps timestamps;
+  mlx_perf::NodeTimestamps timestamps;
   timestamps.issue_started_microseconds = issue_started;
   timestamps.issue_finished_microseconds = issue_finished;
   timestamps.stream_ready_microseconds = stream_ready;
@@ -56,25 +56,25 @@ inline mlx_plan::NodeTimestamps make_gpu_timestamps(
 
 // Must be called on a run that will not be copied afterwards: timeline nodes
 // point into timeline_graph.nodes. Works for any struct with the same field
-// names (SyntheticRun, mlx_plan::VariantMeasurement).
+// names (SyntheticRun, mlx_perf::VariantMeasurement).
 template <typename MeasuredRun>
 void populate_two_stream_run(MeasuredRun& synthetic_run) {
   synthetic_run.timeline_graph.nodes = {
       make_graph_node("A", "MatMul", 1), make_graph_node("B<x>", "Add", 0)};
   synthetic_run.timeline_graph.topological = {0, 1};
   synthetic_run.timeline_graph.stream_count = 2;
-  const mlx_plan::NodeTimestamps producer_timestamps =
+  const mlx_perf::NodeTimestamps producer_timestamps =
       make_gpu_timestamps(0, 10, 0, 0, 15, 115, 130);
-  const mlx_plan::NodeTimestamps join_timestamps =
+  const mlx_perf::NodeTimestamps join_timestamps =
       make_gpu_timestamps(12, 20, 0, 115, 118, 125, 140);
-  const mlx_plan::NodeTimestamps all_timestamps[] = {
+  const mlx_perf::NodeTimestamps all_timestamps[] = {
       producer_timestamps, join_timestamps};
   for (int position = 0; position < 2; ++position) {
-    mlx_plan::NodeTimeline node_timeline;
+    mlx_perf::NodeTimeline node_timeline;
     node_timeline.node = &synthetic_run.timeline_graph.nodes[position];
     node_timeline.timestamps = all_timestamps[position];
     node_timeline.breakdown =
-        mlx_plan::decompose_node_latency(node_timeline.timestamps);
+        mlx_perf::decompose_node_latency(node_timeline.timestamps);
     synthetic_run.gpu_timeline.nodes.push_back(node_timeline);
   }
   synthetic_run.gpu_timeline.nodes[1].has_cross_stream_input = true;
@@ -95,11 +95,11 @@ void populate_two_stream_run(MeasuredRun& synthetic_run) {
 template <typename MeasuredRun>
 void populate_two_stage_run(MeasuredRun& synthetic_run) {
   populate_two_stream_run(synthetic_run);
-  mlx_plan::GpuTimeline& gpu_timeline = synthetic_run.gpu_timeline;
-  gpu_timeline.granularity = mlx_plan::TimelineGranularity::per_stage;
+  mlx_perf::GpuTimeline& gpu_timeline = synthetic_run.gpu_timeline;
+  gpu_timeline.granularity = mlx_perf::TimelineGranularity::per_stage;
   const char* stage_names[] = {"layer 0", "layer 1"};
   for (int position = 0; position < 2; ++position) {
-    mlx_plan::StageTimeline stage_task;
+    mlx_perf::StageTimeline stage_task;
     stage_task.stage_index = position;
     stage_task.stage_name = stage_names[position];
     stage_task.stream_index = gpu_timeline.nodes[position].node->stream_index;

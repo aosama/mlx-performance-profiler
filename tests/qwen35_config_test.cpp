@@ -9,7 +9,7 @@
 
 namespace {
 
-using namespace mlx_plan::qwen35;
+using namespace mlx_perf::qwen35;
 
 const std::string TEXT_CONFIG_FIELDS = R"(
   "hidden_size": 1024, "intermediate_size": 3584, "vocab_size": 248320,

@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-namespace mlx_plan::qwen35 {
+namespace mlx_perf::qwen35 {
 
 enum class LayerKind { gated_delta_net, full_attention };
 
@@ -36,4 +36,4 @@ struct Qwen35TextConfig {
 // checkpoints (num_experts > 0) are rejected: this decode step is dense.
 Qwen35TextConfig load_qwen35_text_config(const std::string& model_directory);
 
-} // namespace mlx_plan::qwen35
+} // namespace mlx_perf::qwen35

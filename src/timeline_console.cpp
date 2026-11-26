@@ -6,7 +6,7 @@
 #include <cstdio>
 #include <string>
 
-namespace mlx_plan {
+namespace mlx_perf {
 namespace {
 
 constexpr double MICROSECONDS_PER_MILLISECOND = 1000.0;
@@ -199,4 +199,4 @@ void print_stage_table(const GpuTimeline& gpu_timeline) {
       " ran ahead of the GPU).\n");
 }
 
-} // namespace mlx_plan
+} // namespace mlx_perf

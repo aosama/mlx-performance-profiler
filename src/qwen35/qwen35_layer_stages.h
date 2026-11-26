@@ -18,7 +18,7 @@
 #include <string>
 #include <vector>
 
-namespace mlx_plan::qwen35 {
+namespace mlx_perf::qwen35 {
 
 // Collects one boundary per layer while an eager step is being built: the
 // layer's output hidden state plus its next cache arrays.
@@ -41,4 +41,4 @@ std::vector<StageBoundary> layer_state_boundaries(
 // What runs after the last layer's cut: final norm and the tied LM head.
 inline const std::string FINAL_STAGE_NAME = "final norm + LM head";
 
-} // namespace mlx_plan::qwen35
+} // namespace mlx_perf::qwen35

@@ -8,7 +8,7 @@
 
 namespace {
 
-using namespace mlx_plan::qwen35;
+using namespace mlx_perf::qwen35;
 
 // --- positive ---
 

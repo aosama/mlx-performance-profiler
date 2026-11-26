@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-namespace mlx_plan {
+namespace mlx_perf {
 
 // A cut through the job, in Spark's sense of a stage boundary: everything
 // the boundary arrays depend on that an EARLIER boundary did not already
@@ -42,4 +42,4 @@ class GraphFactory {
   }
 };
 
-} // namespace mlx_plan
+} // namespace mlx_perf

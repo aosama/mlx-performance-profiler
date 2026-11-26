@@ -8,7 +8,7 @@
 
 #include <array>
 
-namespace mlx_plan {
+namespace mlx_perf {
 
 enum class LatencySlice {
   wait_on_cpu,
@@ -44,4 +44,4 @@ LatencySlice slice_for_class(NodeClass node_class);
 double slice_microseconds(
     const LatencyBreakdown& breakdown, LatencySlice latency_slice);
 
-} // namespace mlx_plan
+} // namespace mlx_perf

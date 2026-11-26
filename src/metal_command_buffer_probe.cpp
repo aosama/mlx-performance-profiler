@@ -6,7 +6,7 @@
 
 #include <algorithm>
 
-namespace mlx_plan {
+namespace mlx_perf {
 namespace {
 
 constexpr double MICROSECONDS_PER_SECOND = 1e6;
@@ -154,4 +154,4 @@ std::vector<GpuExecutionWindow> MetalCommandBufferProbe::read_windows() const {
   return position_to_window;
 }
 
-} // namespace mlx_plan
+} // namespace mlx_perf

@@ -5,7 +5,7 @@
 // freshly built graphs; they answer different questions and are shown side
 // by side, never merged into one "true" duration.
 
-namespace mlx_plan {
+namespace mlx_perf {
 
 struct JobTotals {
   // Uninstrumented, warm eval: the MEDIAN of several fresh runs. One run of a
@@ -27,4 +27,4 @@ inline bool is_within_job_wall_range(
       other_wall_microseconds <= job_totals.job_wall_max_microseconds;
 }
 
-} // namespace mlx_plan
+} // namespace mlx_perf

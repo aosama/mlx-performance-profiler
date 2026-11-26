@@ -39,7 +39,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace mlx_plan {
+namespace mlx_perf {
 
 struct NodeTimeline {
   const GraphNode* node = nullptr;
@@ -114,4 +114,4 @@ GpuTimeline capture_gpu_timeline(
     const CapturedGraph& captured_graph,
     const std::unordered_map<int, mlx::core::Stream>& stream_index_to_stream);
 
-} // namespace mlx_plan
+} // namespace mlx_perf

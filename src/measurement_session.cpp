@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-namespace mlx_plan {
+namespace mlx_perf {
 namespace {
 
 constexpr int JOB_WALL_SAMPLE_COUNT = 7;
@@ -120,4 +120,4 @@ VariantMeasurement measure_variant(
   return variant_measurement;
 }
 
-} // namespace mlx_plan
+} // namespace mlx_perf

@@ -7,7 +7,7 @@
 #include <cmath>
 #include <stdexcept>
 
-namespace mlx_plan::qwen35 {
+namespace mlx_perf::qwen35 {
 namespace {
 
 using namespace mlx::core;
@@ -349,4 +349,4 @@ DecodeStepResult unflatten_step_outputs(const std::vector<array>& step_outputs,
   return {step_outputs[0], unflatten_state(step_outputs, 1, config)};
 }
 
-} // namespace mlx_plan::qwen35
+} // namespace mlx_perf::qwen35

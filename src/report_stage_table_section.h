@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-namespace mlx_plan {
+namespace mlx_perf {
 
 std::string render_stage_table_section(const ReportInputs& report_inputs);
 
@@ -21,4 +21,4 @@ std::string summarize_op_mix(const GpuTimeline& gpu_timeline,
                              const std::vector<int>& member_positions,
                              int shown_op_count);
 
-} // namespace mlx_plan
+} // namespace mlx_perf

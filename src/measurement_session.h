@@ -16,7 +16,7 @@
 #include <string>
 #include <unordered_map>
 
-namespace mlx_plan {
+namespace mlx_perf {
 
 // Move-only on purpose: gpu_timeline points into timeline_graph.nodes and
 // serial_telemetry into serial_graph.nodes. A move keeps those vectors'
@@ -59,4 +59,4 @@ VariantMeasurement measure_variant(
     MeasurementObserver* measurement_observer = nullptr,
     const TimelineOptions& timeline_options = {});
 
-} // namespace mlx_plan
+} // namespace mlx_perf

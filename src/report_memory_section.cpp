@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <sstream>
 
-namespace mlx_plan {
+namespace mlx_perf {
 namespace {
 
 constexpr int TOP_MEMORY_NODE_COUNT = 15;
@@ -121,4 +121,4 @@ std::string render_memory_timeline(const std::vector<MemorySample>& memory_sampl
   return chart_html.str();
 }
 
-} // namespace mlx_plan
+} // namespace mlx_perf

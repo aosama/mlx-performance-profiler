@@ -5,7 +5,7 @@
 
 #include <string>
 
-namespace mlx_plan {
+namespace mlx_perf {
 
 // Writes `dot_source` to `<output_directory>/<plan_file_base>.dot`, runs
 // `dot -Tsvg` over it, and returns the rendered SVG text. Returns an empty
@@ -15,4 +15,4 @@ std::string render_plan_svg(
     const std::string& output_directory,
     const std::string& plan_file_base);
 
-} // namespace mlx_plan
+} // namespace mlx_perf

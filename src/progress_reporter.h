@@ -6,7 +6,7 @@
 #include <chrono>
 #include <string>
 
-namespace mlx_plan {
+namespace mlx_perf {
 
 // Linear extrapolation from the observed rate: crude, but honest about being
 // an estimate, and it needs no model of per-unit cost. Returns 0 before any
@@ -38,4 +38,4 @@ class ProgressReporter {
   Clock::time_point last_printed_at_;
 };
 
-} // namespace mlx_plan
+} // namespace mlx_perf

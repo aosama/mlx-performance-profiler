@@ -8,7 +8,7 @@
 
 #include <string>
 
-namespace mlx_plan {
+namespace mlx_perf {
 
 struct ReportBundleRequest {
   std::string job_title;
@@ -21,4 +21,4 @@ bool write_report_bundle(const ReportBundleRequest& bundle_request,
                          const VariantMeasurement& baseline,
                          const VariantMeasurement& candidate);
 
-} // namespace mlx_plan
+} // namespace mlx_perf

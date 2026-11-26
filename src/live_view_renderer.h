@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-namespace mlx_plan {
+namespace mlx_perf {
 
 // `measured_variants` must be non-empty; with two or more, the Job tab leads
 // with the first-vs-second comparison table.
@@ -18,4 +18,4 @@ RenderedViews render_live_views(
     const std::string& job_title,
     const std::vector<const VariantMeasurement*>& measured_variants);
 
-} // namespace mlx_plan
+} // namespace mlx_perf

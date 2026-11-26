@@ -1,25 +1,25 @@
-//! The job this example profiles, built with mlx-c-rust's safe API: two
-//! independent branches on their own GPU streams, joined on the main stream
-//! (the cross-stream "shuffle" edge the report shows as a stall).
+//! The job this example profiles, built with mlx-bridge's safe API on three
+//! GPU streams: two independent branches on their own streams, joined on the
+//! main stream (the cross-stream "shuffle" edge the report shows as a stall).
 
 use std::ffi::{c_int, c_void};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
-use mlx_c_rust::{MlxArray, MlxBindingsContext, MlxCError, MlxDeviceHandle, MlxDtype, MlxStream, raw};
+use mlx_bridge::{MlxArray, MlxBindingsContext, MlxCError, MlxDeviceHandle, MlxDtype, MlxStream, raw};
 
 const BATCH_ROWS: i32 = 256;
 const FEATURE_WIDTH: i32 = 1024;
 const REDUCTION_ROWS: i32 = 2048;
 
-/// One context per stream: mlx-c-rust submits every operation to its
+/// One context per stream: mlx-bridge submits every operation to its
 /// context's stream, which is how the branches land on different streams.
-pub struct TwoStreamJob {
+pub struct ThreeStreamJob {
     main_context: MlxBindingsContext,
     projection_context: MlxBindingsContext,
     reduction_context: MlxBindingsContext,
 }
 
-impl TwoStreamJob {
+impl ThreeStreamJob {
     /// The main stream is the default GPU stream; each branch gets a new one.
     pub fn new() -> Result<Self, MlxCError> {
         let gpu_device = MlxDeviceHandle::default_device()?;
@@ -48,19 +48,19 @@ impl TwoStreamJob {
     }
 }
 
-/// The C callback handed to mlx-visual-plan. A panic must never unwind into
+/// The C callback handed to mlx-performance-profiler. A panic must never unwind into
 /// C++ frames (undefined behavior), so it is caught and reported as failure;
 /// catch_unwind's closure is the one closure this crate cannot avoid.
 ///
 /// # Safety
-/// `payload` must point at a live `TwoStreamJob`.
-pub unsafe extern "C" fn build_two_stream_graph(
+/// `payload` must point at a live `ThreeStreamJob`.
+pub unsafe extern "C" fn build_three_stream_graph(
     fresh_outputs: raw::mlx_vector_array,
     payload: *mut c_void,
 ) -> c_int {
-    // SAFETY: The caller passes the TwoStreamJob it registered as payload.
-    let two_stream_job = unsafe { &*(payload as *const TwoStreamJob) };
-    let build_outcome = catch_unwind(AssertUnwindSafe(|| append_fresh_output(two_stream_job, fresh_outputs)));
+    // SAFETY: The caller passes the ThreeStreamJob it registered as payload.
+    let three_stream_job = unsafe { &*(payload as *const ThreeStreamJob) };
+    let build_outcome = catch_unwind(AssertUnwindSafe(|| append_fresh_output(three_stream_job, fresh_outputs)));
     match build_outcome {
         Ok(Ok(())) => 0,
         Ok(Err(_)) => 1,
@@ -69,10 +69,10 @@ pub unsafe extern "C" fn build_two_stream_graph(
 }
 
 fn append_fresh_output(
-    two_stream_job: &TwoStreamJob,
+    three_stream_job: &ThreeStreamJob,
     fresh_outputs: raw::mlx_vector_array,
 ) -> Result<(), MlxCError> {
-    let job_output = two_stream_job.build_fresh_output()?;
+    let job_output = three_stream_job.build_fresh_output()?;
     // SAFETY: Both handles are live; MLX-C copies the array handle on append,
     // so dropping `job_output` afterwards is fine.
     let append_status = unsafe { raw::mlx_vector_array_append_value(fresh_outputs, job_output.raw()) };

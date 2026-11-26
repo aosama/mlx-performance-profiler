@@ -19,7 +19,7 @@ void should_materialize_outputs_and_report_positive_wall() {
   const array job_output = matmul(ones({64, 64}), ones({64, 64}));
   // The pass takes its outputs by value; a copy shares the descriptor, so
   // this handle observes the evaluation.
-  const double job_wall_microseconds = mlx_plan::run_pipeline_pass({job_output});
+  const double job_wall_microseconds = mlx_perf::run_pipeline_pass({job_output});
   EXPECT_TRUE(job_wall_microseconds > 0);
   EXPECT_TRUE(job_output.is_available());
 }
@@ -27,7 +27,7 @@ void should_materialize_outputs_and_report_positive_wall() {
 // --- edge / boundary ---
 
 void should_return_promptly_for_empty_output_list() {
-  const double job_wall_microseconds = mlx_plan::run_pipeline_pass({});
+  const double job_wall_microseconds = mlx_perf::run_pipeline_pass({});
   EXPECT_TRUE(job_wall_microseconds >= 0);
 }
 
@@ -38,7 +38,7 @@ void should_not_fail_when_outputs_are_already_evaluated() {
   evaluated_output.eval();
   bool has_thrown = false;
   try {
-    mlx_plan::run_pipeline_pass({evaluated_output});
+    mlx_perf::run_pipeline_pass({evaluated_output});
   } catch (...) {
     has_thrown = true;
   }

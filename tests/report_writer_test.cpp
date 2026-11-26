@@ -14,10 +14,10 @@ using report_fixture::SyntheticRun;
 
 std::string render_synthetic_document(SyntheticRun& synthetic_run,
                                       const std::string& report_title) {
-  const mlx_plan::ReportInputs report_inputs{
+  const mlx_perf::ReportInputs report_inputs{
       report_title, synthetic_run.timeline_graph, synthetic_run.gpu_timeline,
       synthetic_run.serial_telemetry, synthetic_run.job_totals};
-  return mlx_plan::build_report_document(report_inputs, "", "digraph {}");
+  return mlx_perf::build_report_document(report_inputs, "", "digraph {}");
 }
 
 std::size_t count_occurrences(const std::string& text, const std::string& needle) {

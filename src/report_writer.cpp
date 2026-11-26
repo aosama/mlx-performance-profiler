@@ -12,13 +12,13 @@
 #include <fstream>
 #include <sstream>
 
-namespace mlx_plan {
+namespace mlx_perf {
 namespace {
 
 std::string render_page_header(const std::string& report_title) {
   std::ostringstream header_html;
   header_html << "<header><h1>" << escape_html_text(report_title)
-              << "</h1><p>mlx-visual-plan — what MLX actually did, and what it"
+              << "</h1><p>mlx-performance-profiler — what MLX actually did, and what it"
               << " was waiting for</p></header><nav><a href=\"#job\">Job</a>"
               << "<a href=\"#timeline\">Timeline</a><a href=\"#tasks\">Tasks</a>"
               << "<a href=\"#dag\">DAG</a><a href=\"#method\">Method</a></nav>";
@@ -127,4 +127,4 @@ ReportPaths write_report(
   return report_paths;
 }
 
-} // namespace mlx_plan
+} // namespace mlx_perf

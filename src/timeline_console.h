@@ -7,7 +7,7 @@
 #include "gpu_timeline.h"
 #include "job_totals.h"
 
-namespace mlx_plan {
+namespace mlx_perf {
 
 void print_job_summary(const JobTotals& job_totals, const GpuTimeline& gpu_timeline);
 void print_stream_table(const GpuTimeline& gpu_timeline);
@@ -15,4 +15,4 @@ void print_node_table(const GpuTimeline& gpu_timeline);
 // One row per stage task; prints nothing for a per-node timeline.
 void print_stage_table(const GpuTimeline& gpu_timeline);
 
-} // namespace mlx_plan
+} // namespace mlx_perf

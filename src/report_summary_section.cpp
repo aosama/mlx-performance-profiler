@@ -7,7 +7,7 @@
 
 #include <sstream>
 
-namespace mlx_plan {
+namespace mlx_perf {
 namespace {
 
 void append_card(
@@ -109,4 +109,4 @@ std::string render_summary_section(const ReportInputs& report_inputs) {
   return section_html.str();
 }
 
-} // namespace mlx_plan
+} // namespace mlx_perf

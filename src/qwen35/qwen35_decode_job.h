@@ -10,7 +10,7 @@
 #include <functional>
 #include <vector>
 
-namespace mlx_plan::qwen35 {
+namespace mlx_perf::qwen35 {
 
 // One materialized token and decode state, as if `context_length` tokens of
 // conversation had been consumed. Shared by both variants so they measure
@@ -62,4 +62,4 @@ class CompiledDecodeGraphFactory final : public GraphFactory {
   std::vector<mlx::core::array> flat_inputs_;
 };
 
-} // namespace mlx_plan::qwen35
+} // namespace mlx_perf::qwen35

@@ -10,7 +10,7 @@
 #include <map>
 #include <sstream>
 
-namespace mlx_plan {
+namespace mlx_perf {
 namespace {
 
 constexpr std::string_view COMPILED_PREFIX = "Compiled";
@@ -273,4 +273,4 @@ std::string build_comparison_document(
   return page_html.str();
 }
 
-} // namespace mlx_plan
+} // namespace mlx_perf

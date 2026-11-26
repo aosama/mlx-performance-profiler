@@ -1,4 +1,4 @@
-# mlx-visual-plan
+# mlx-performance-profiler
 
 A feasibility experiment: can an Apple **MLX** computation be given the kind of
 **Apache Spark Web UI** experience — "here is the plan you asked for, and here

@@ -1,6 +1,6 @@
 #include "latency_slices.h"
 
-namespace mlx_plan {
+namespace mlx_perf {
 
 const SliceStyle& slice_style(LatencySlice latency_slice) {
   static const SliceStyle cpu_style{
@@ -59,4 +59,4 @@ double slice_microseconds(
   return 0.0;
 }
 
-} // namespace mlx_plan
+} // namespace mlx_perf

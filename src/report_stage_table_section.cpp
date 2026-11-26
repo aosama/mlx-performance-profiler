@@ -7,7 +7,7 @@
 #include <map>
 #include <sstream>
 
-namespace mlx_plan {
+namespace mlx_perf {
 namespace {
 
 constexpr int SHOWN_OP_COUNT = 4;
@@ -144,4 +144,4 @@ std::string render_stage_table_section(const ReportInputs& report_inputs) {
   return section_html.str();
 }
 
-} // namespace mlx_plan
+} // namespace mlx_perf

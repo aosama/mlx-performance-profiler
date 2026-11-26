@@ -35,7 +35,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace mlx_plan {
+namespace mlx_perf {
 
 // Translates job-supplied boundary arrays into cuts over `captured_graph`'s
 // topological positions. Boundary arrays not in the graph (already
@@ -54,4 +54,4 @@ GpuTimeline capture_stage_timeline(
     const std::vector<StageCut>& stage_cuts,
     const std::string& final_stage_name);
 
-} // namespace mlx_plan
+} // namespace mlx_perf

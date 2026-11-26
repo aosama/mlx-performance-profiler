@@ -18,7 +18,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace mlx_plan {
+namespace mlx_perf {
 
 struct DemoStreams {
   mlx::core::Stream main_stream;
@@ -78,4 +78,4 @@ class CompiledDemoGraphFactory final : public GraphFactory {
   std::vector<mlx::core::array> demo_inputs_;
 };
 
-} // namespace mlx_plan
+} // namespace mlx_perf

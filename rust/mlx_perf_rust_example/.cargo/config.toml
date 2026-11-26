@@ -1,9 +1,9 @@
-# How to run this example (from rust/mlx_plan_rust_example/):
+# How to run this example (from rust/mlx_perf_rust_example/):
 #
 #   1. Build the C++ library first, from the repository root:
 #        cmake -S . -B build -DMLX_PREFIX=$HOME/.cache/mlx-bridge/native/<identity>/prefix
 #        cmake --build build
-#      (build.rs links ../../build/libmlx_plan.a and fails with this hint if
+#      (build.rs links ../../build/libmlx_perf.a and fails with this hint if
 #      it is missing.)
 #   2. cargo profile-job     → measures the job, writes ../../build/rust_example.html
 #   3. cargo test            → unit tests of the FFI summary formatting

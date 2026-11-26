@@ -16,7 +16,7 @@
 #include <string_view>
 #include <vector>
 
-namespace mlx_plan {
+namespace mlx_perf {
 
 enum class TimelineGranularity { per_node, per_stage };
 
@@ -64,4 +64,4 @@ StagePlan plan_stages(
     const std::vector<StageCut>& stage_cuts,
     const std::string& final_stage_name);
 
-} // namespace mlx_plan
+} // namespace mlx_perf

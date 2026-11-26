@@ -10,7 +10,7 @@
 #include <sstream>
 #include <unordered_set>
 
-namespace mlx_plan {
+namespace mlx_perf {
 
 namespace {
 
@@ -160,4 +160,4 @@ std::unordered_map<int, mlx::core::Stream> collect_streams(
   return stream_index_to_stream;
 }
 
-} // namespace mlx_plan
+} // namespace mlx_perf

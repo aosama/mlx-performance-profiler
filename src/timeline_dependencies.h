@@ -14,7 +14,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace mlx_plan {
+namespace mlx_perf {
 
 using TimelineClock = std::chrono::steady_clock;
 inline constexpr int NO_POSITION = -1;
@@ -62,4 +62,4 @@ double latest_ready(
     const std::vector<int>& producer_units,
     const std::vector<double>& unit_to_ready_microseconds);
 
-} // namespace mlx_plan
+} // namespace mlx_perf

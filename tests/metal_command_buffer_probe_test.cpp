@@ -12,8 +12,8 @@
 namespace {
 
 using namespace mlx::core;
-using mlx_plan::GpuExecutionWindow;
-using mlx_plan::MetalCommandBufferProbe;
+using mlx_perf::GpuExecutionWindow;
+using mlx_perf::MetalCommandBufferProbe;
 using Clock = std::chrono::steady_clock;
 
 double microseconds_since(Clock::time_point pass_started_at) {

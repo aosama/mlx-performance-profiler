@@ -8,7 +8,7 @@
 
 namespace {
 
-using namespace mlx_plan;
+using namespace mlx_perf;
 
 bool contains(const std::string& text, const std::string& needle) {
   return text.find(needle) != std::string::npos;

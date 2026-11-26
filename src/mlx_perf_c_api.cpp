@@ -1,4 +1,4 @@
-#include "mlx_plan_c_api.h"
+#include "mlx_perf_c_api.h"
 
 #include "graph_factory.h"
 #include "graph_model.h"
@@ -12,7 +12,7 @@
 
 namespace {
 
-using namespace mlx_plan;
+using namespace mlx_perf;
 
 thread_local std::string last_error_message;
 
@@ -20,7 +20,7 @@ thread_local std::string last_error_message;
 // MLX-C vector per call, filled by the caller, read, then freed here.
 class CallbackGraphFactory final : public GraphFactory {
  public:
-  CallbackGraphFactory(mlx_plan_build_graph_fn build_graph, void* builder_payload)
+  CallbackGraphFactory(mlx_perf_build_graph_fn build_graph, void* builder_payload)
       : build_graph_(build_graph), builder_payload_(builder_payload) {}
 
   std::vector<mlx::core::array> build_fresh_graph() const override {
@@ -46,12 +46,12 @@ class CallbackGraphFactory final : public GraphFactory {
   }
 
  private:
-  mlx_plan_build_graph_fn build_graph_;
+  mlx_perf_build_graph_fn build_graph_;
   void* builder_payload_;
 };
 
 void fill_summary(const VariantMeasurement& variant_measurement,
-                  mlx_plan_job_summary& summary) {
+                  mlx_perf_job_summary& summary) {
   const JobTotals& job_totals = variant_measurement.job_totals;
   const GpuTimeline& gpu_timeline = variant_measurement.gpu_timeline;
   summary.job_wall_median_us = job_totals.job_wall_microseconds;
@@ -66,13 +66,13 @@ void fill_summary(const VariantMeasurement& variant_measurement,
   summary.stream_count = static_cast<int>(gpu_timeline.streams.size());
 }
 
-void profile_to_report(mlx_plan_build_graph_fn build_graph, void* builder_payload,
+void profile_to_report(mlx_perf_build_graph_fn build_graph, void* builder_payload,
                        const char* variant_name, const char* report_title,
                        const char* output_directory, const char* report_file_base,
-                       mlx_plan_job_summary* summary) {
+                       mlx_perf_job_summary* summary) {
   if (build_graph == nullptr || variant_name == nullptr || report_title == nullptr ||
       output_directory == nullptr || report_file_base == nullptr) {
-    throw std::invalid_argument("mlx_plan_profile_to_report: null argument");
+    throw std::invalid_argument("mlx_perf_profile_to_report: null argument");
   }
   const CallbackGraphFactory graph_factory(build_graph, builder_payload);
   // Streams are read from the job's own primitives on a throwaway graph.
@@ -97,10 +97,10 @@ void profile_to_report(mlx_plan_build_graph_fn build_graph, void* builder_payloa
 
 } // namespace
 
-extern "C" int mlx_plan_profile_to_report(
-    mlx_plan_build_graph_fn build_graph, void* builder_payload, const char* variant_name,
+extern "C" int mlx_perf_profile_to_report(
+    mlx_perf_build_graph_fn build_graph, void* builder_payload, const char* variant_name,
     const char* report_title, const char* output_directory, const char* report_file_base,
-    mlx_plan_job_summary* summary) {
+    mlx_perf_job_summary* summary) {
   last_error_message.clear();
   // Exceptions must not cross into C or Rust frames (undefined behavior).
   try {
@@ -115,4 +115,4 @@ extern "C" int mlx_plan_profile_to_report(
   return 1;
 }
 
-extern "C" const char* mlx_plan_last_error(void) { return last_error_message.c_str(); }
+extern "C" const char* mlx_perf_last_error(void) { return last_error_message.c_str(); }

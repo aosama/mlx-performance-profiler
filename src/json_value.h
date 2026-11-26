@@ -11,7 +11,7 @@
 #include <variant>
 #include <vector>
 
-namespace mlx_plan {
+namespace mlx_perf {
 
 class JsonValue {
  public:
@@ -55,4 +55,4 @@ class JsonValue {
 JsonValue parse_json(const std::string& json_text);
 JsonValue parse_json_file(const std::string& file_path);
 
-} // namespace mlx_plan
+} // namespace mlx_perf

@@ -12,7 +12,7 @@
 #include <string>
 #include <vector>
 
-namespace mlx_plan::qwen35 {
+namespace mlx_perf::qwen35 {
 
 // An MLX affine-quantized linear layer (weight packed into uint32).
 struct QuantizedLinear {
@@ -75,4 +75,4 @@ void materialize_qwen35_weights(const Qwen35Weights& weights);
 int derive_quantization_bits(const mlx::core::array& packed_weight,
                              const mlx::core::array& scales, int group_size);
 
-} // namespace mlx_plan::qwen35
+} // namespace mlx_perf::qwen35

@@ -9,7 +9,7 @@
 
 #include <string>
 
-namespace mlx_plan {
+namespace mlx_perf {
 
 struct ComparedVariant {
   const VariantMeasurement& variant_measurement;
@@ -32,4 +32,4 @@ std::string build_comparison_document(
 // the approximation does not bite on fusable elementwise ops).
 std::string describe_fused_primitives(const std::string& compiled_op_name);
 
-} // namespace mlx_plan
+} // namespace mlx_perf

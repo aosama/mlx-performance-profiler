@@ -4,7 +4,7 @@
 
 #include <array>
 
-namespace mlx_plan::qwen35 {
+namespace mlx_perf::qwen35 {
 namespace {
 
 // bytes_to_unicode: printable Latin-1 bytes map to themselves; the other 68
@@ -83,4 +83,4 @@ int TokenText::find_token_id(const std::string& vocabulary_entry) const {
   return entry == entry_to_token_id_.end() ? -1 : entry->second;
 }
 
-} // namespace mlx_plan::qwen35
+} // namespace mlx_perf::qwen35

@@ -1,14 +1,14 @@
-//! The C API of mlx-visual-plan (src/mlx_plan_c_api.h), declared for Rust.
+//! The C API of mlx-performance-profiler (src/mlx_perf_c_api.h), declared for Rust.
 
 use std::ffi::{CStr, CString, c_char, c_int, c_void};
 
-use mlx_c_rust::raw;
+use mlx_bridge::raw;
 
 /// Appends a fresh, unevaluated graph's outputs; returns 0 on success.
 pub type BuildGraphCallback =
     unsafe extern "C" fn(fresh_outputs: raw::mlx_vector_array, payload: *mut c_void) -> c_int;
 
-/// Mirrors `mlx_plan_job_summary` field for field (`#[repr(C)]`).
+/// Mirrors `mlx_perf_job_summary` field for field (`#[repr(C)]`).
 #[repr(C)]
 #[derive(Debug, Default, Clone, Copy)]
 pub struct JobSummary {
@@ -25,7 +25,7 @@ pub struct JobSummary {
 }
 
 unsafe extern "C" {
-    fn mlx_plan_profile_to_report(
+    fn mlx_perf_profile_to_report(
         build_graph: BuildGraphCallback,
         builder_payload: *mut c_void,
         variant_name: *const c_char,
@@ -34,7 +34,7 @@ unsafe extern "C" {
         report_file_base: *const c_char,
         summary: *mut JobSummary,
     ) -> c_int;
-    fn mlx_plan_last_error() -> *const c_char;
+    fn mlx_perf_last_error() -> *const c_char;
 }
 
 /// What to measure and where the report goes.
@@ -68,7 +68,7 @@ pub unsafe fn profile_to_report(
     // a valid #[repr(C)] out-parameter; payload validity is the caller's
     // contract above.
     let status = unsafe {
-        mlx_plan_profile_to_report(
+        mlx_perf_profile_to_report(
             build_graph,
             builder_payload,
             variant_name.as_ptr(),
@@ -82,6 +82,6 @@ pub unsafe fn profile_to_report(
         return Ok(job_summary);
     }
     // SAFETY: The library returns a valid thread-local C string.
-    let failure_text = unsafe { CStr::from_ptr(mlx_plan_last_error()) };
+    let failure_text = unsafe { CStr::from_ptr(mlx_perf_last_error()) };
     Err(failure_text.to_string_lossy().into_owned())
 }
