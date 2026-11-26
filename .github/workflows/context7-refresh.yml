@@ -1,0 +1,41 @@
+# Asks Context7 to re-index the documentation when it changes on main, so
+# coding agents read the current docs/ rather than a copy up to 45 days old
+# (Context7's own refresh interval for less popular libraries).
+#
+# Context7 publishes no Marketplace action for this; its documented
+# integration is this one authenticated request
+# (https://context7.com/docs/integrations/github-actions). The API key is the
+# repository secret CONTEXT7_API_KEY (Settings > Secrets and variables >
+# Actions), created at https://context7.com/dashboard.
+name: context7-refresh
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "context7.json"
+      - "README.md"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ask Context7 to re-index the docs
+        env:
+          CONTEXT7_API_KEY: ${{ secrets.CONTEXT7_API_KEY }}
+        # Skipped with a notice, not failed, until the secret exists: a fork
+        # or a fresh clone has no key, and that is not a broken build.
+        run: |
+          if [ -z "${CONTEXT7_API_KEY}" ]; then
+            echo "::notice::CONTEXT7_API_KEY is not set; skipping the Context7 refresh"
+            exit 0
+          fi
+          curl --fail-with-body --silent --show-error -X POST https://context7.com/api/v1/refresh \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${CONTEXT7_API_KEY}" \
+            -d '{"libraryName": "/${{ github.repository }}"}'
