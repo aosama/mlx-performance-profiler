@@ -1,5 +1,6 @@
-# Build output
+# Build output (build/, and build-<label>/ for builds against another MLX)
 build/
+build-*/
 
 # Compiler / linker artifacts
 *.o
