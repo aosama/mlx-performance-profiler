@@ -60,6 +60,42 @@ The two names differ only in case, or not at all. Their files would overwrite ea
 
 A comparison measures two ways of computing the same thing, so both must append the same number of outputs, in the same order, with the same shapes and dtypes. Nothing is measured or written. Values may differ: the largest element-wise difference is reported, not judged.
 
+### A procedure step reported a failure
+
+> error: `procedure <name>: run returned <value>`
+
+> error: `procedure <name>: prepare returned <value>`
+
+Your procedure's `run` or `prepare` callback returned non-zero, so the comparison stopped and wrote nothing. As with a graph callback, an MLX-C call inside it usually failed; the message names the procedure and the step.
+
+### A procedure or its run callback is missing
+
+> error: `mlx_perf_compare_procedures_to_report: null procedure`
+
+> error: `mlx_perf_compare_procedures_to_report: null run callback`
+
+`baseline` or `candidate` is `NULL`, or its `run` is. Only `prepare` and `summary` may be `NULL`.
+
+### A procedure name cannot be used
+
+> error: `procedure name "<name>" must be non-empty without '/'`
+
+> error: `both procedures are named "<name>" (ignoring case)`
+
+Procedure names follow the rules of variant names: non-empty, no `/`, and distinct from each other ignoring case.
+
+### Procedures cannot be measured on this GPU
+
+> error: `cannot observe this GPU's Metal command buffers: procedures cannot be measured`
+
+The profiler could not find, or could not observe, the Metal command buffer and shared event classes MLX uses, for example on a Mac without a Metal GPU. Without them every run would read as all GPU idle, so the comparison refuses instead of reporting that. Graph comparisons (`mlx_perf_compare_to_report`) do not need these hooks.
+
+### The procedure comparison cannot be written
+
+> error: `cannot write the procedure comparison into <directory>`
+
+As for the other reports: the directory does not exist, is not writable, or the disk is full.
+
 ### An MLX-C handle could not be read
 
 > error: `mlx_vector_array handle is null`

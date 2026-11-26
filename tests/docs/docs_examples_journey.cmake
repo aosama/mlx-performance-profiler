@@ -15,7 +15,7 @@ execute_process(
   COMMAND_ERROR_IS_FATAL ANY)
 execute_process(COMMAND "${CMAKE_COMMAND}" --build "${EXAMPLES_BUILD}" COMMAND_ERROR_IS_FATAL ANY)
 
-foreach(example_program profile_one_job compare_two_implementations measure_quietly)
+foreach(example_program profile_one_job compare_two_implementations compare_two_procedures measure_quietly)
   execute_process(COMMAND "${EXAMPLES_BUILD}/${example_program}" "${EXAMPLES_BUILD}"
                   COMMAND_ERROR_IS_FATAL ANY)
 endforeach()
@@ -43,5 +43,9 @@ execute_process(
 execute_process(
   COMMAND "${PYTHON}" "${DOCS_CHECK}" schema "${schema_directory}/comparison-record.schema.json"
           "${EXAMPLES_BUILD}/softmax.json"
+  COMMAND_ERROR_IS_FATAL ANY)
+execute_process(
+  COMMAND "${PYTHON}" "${DOCS_CHECK}" schema "${schema_directory}/procedure-comparison-record.schema.json"
+          "${EXAMPLES_BUILD}/token_loop.json"
   COMMAND_ERROR_IS_FATAL ANY)
 message(STATUS "docs examples: built, ran, read and matched the schemas")

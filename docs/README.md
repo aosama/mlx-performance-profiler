@@ -13,6 +13,7 @@ Every C program and CMake project on these pages is a file in [`examples/`](exam
 | Build it and see a report in five minutes | [Getting started](getting-started.md) |
 | Profile your own MLX graph from C or C++ | [Profiling a job](profiling-a-job.md) |
 | Know whether your kernel or rewrite is really faster | [Comparing two implementations](comparing-implementations.md) |
+| Compare two loops or pipelines that evaluate many graphs (a token loop, a sampler) | [Comparing procedures](comparing-procedures.md) |
 | Measure inside a test, benchmark or CI job, silently | [Measuring from code](measuring-from-code.md) |
 | Read per-node numbers as data (Python, jq, any language) | [The measurement file](measurement-file.md) |
 | Understand the report: the six slices, the timeline, the graph | [Reading the report](reading-the-report.md) |
@@ -24,7 +25,7 @@ Every C program and CMake project on these pages is a file in [`examples/`](exam
 ## Five facts that prevent most mistakes
 
 1. **Your callback builds a fresh graph every time it is called.** The profiler calls it many times (11 for one profile) and evaluates each graph itself. Build inputs once, outside; build the operations inside. See [Profiling a job](profiling-a-job.md#the-callback-contract).
-2. **Never decide "faster" from two separate runs.** Use `mlx_perf_compare_to_report`, which interleaves the two jobs and judges the per-round differences. See [Comparing two implementations](comparing-implementations.md).
+2. **Never decide "faster" from two separate runs.** Use `mlx_perf_compare_to_report` (one graph each) or `mlx_perf_compare_procedures_to_report` (any code that evaluates), which interleave the two and judge the per-round differences. See [Comparing two implementations](comparing-implementations.md) and [Comparing procedures](comparing-procedures.md).
 3. **"Within the spread" is not a result.** It means the difference did not beat noise. Report it as no difference found.
 4. **`null` in the JSON means not measured, never zero.** See [The measurement file](measurement-file.md#conventions).
 5. **`MLX_PREFIX` is a CMake cache variable**, the prefix of a prebuilt MLX (0.32.4 or 0.32.5), and your binary must link exactly that one MLX. See [Building and linking](building-and-linking.md).

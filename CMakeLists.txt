@@ -80,6 +80,14 @@ add_library(mlx_perf STATIC
     src/dispatch_occupancy.cpp
     src/gpu_device_facts.cpp
     src/metal_dispatch_recorder.cpp
+    src/metal_object_classes.cpp
+    src/metal_host_clock.cpp
+    src/metal_submission_recorder.cpp
+    src/gpu_busy_time.cpp
+    src/procedure_measurement.cpp
+    src/report_procedure_page.cpp
+    src/procedure_comparison_record.cpp
+    src/procedure_report_files.cpp
     src/kernel_launch_summary.cpp
     src/gpu_timeline.cpp
     src/timeline_dependencies.cpp
@@ -114,7 +122,9 @@ add_library(mlx_perf STATIC
     src/json_writer.cpp
     src/console_output.cpp
     src/mlx_c_interop.cpp
-    src/mlx_perf_c_api.cpp)
+    src/c_api_support.cpp
+    src/mlx_perf_c_api.cpp
+    src/mlx_perf_c_api_procedures.cpp)
 add_library(mlx_perf::mlx_perf ALIAS mlx_perf)
 # Consumers see the C API alone, installed or built from source.
 target_include_directories(mlx_perf

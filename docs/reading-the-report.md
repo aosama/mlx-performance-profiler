@@ -64,6 +64,10 @@ In a stage-timed report:
 
 `mlx_perf_compare_to_report` writes a page that opens with the **verdict**, then the metric table (each variant's median and middle half, the per-round difference and its interval), both execution graphs side by side, both timelines on one shared time scale, and the primitive mix: how many of each operation each variant ran, and which operations `mlx::core::compile` fused. See [Comparing two implementations](comparing-implementations.md).
 
+## The procedure comparison page
+
+`mlx_perf_compare_procedures_to_report` writes a page for two procedures measured whole: the **verdict** on their duration, the metric table for duration, GPU busy and GPU idle time, the **hand-offs per run** (command buffers, blocking waits, host time blocked, GPU busy share), and their kernel launches by Metal function. There is no execution graph: a procedure is many graphs. See [Comparing procedures](comparing-procedures.md).
+
 ## Which number to quote
 
 | Question | Number |

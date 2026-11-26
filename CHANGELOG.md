@@ -24,6 +24,19 @@ MLX releases it was built and tested against.
   "Kernel launches side by side" table on the comparison page. The hooks
   observe MLX's Metal encoder without changing it, and record only while
   the serial pass evaluates a node.
+- **Procedure comparisons (#38).** `mlx_perf_compare_procedures_to_report`
+  compares two procedures, code that evaluates any number of MLX graphs (a
+  token loop, a sampler, a pipeline), each measured whole: a `run` callback
+  timed until every command buffer it committed has completed, and an
+  optional untimed `prepare` before every run. The same 12 interleaved
+  rounds and verdict judge duration, GPU busy time (the union of its
+  command buffers' GPU windows) and GPU idle time. Observation-only hooks on
+  MLX's Metal command buffers and shared events count each run's command
+  buffers and blocking waits. It writes a page (verdict, hand-offs per run,
+  kernel launches by Metal function) and a record (`"kind":
+  "procedure_comparison"`, schema version 1, with its own JSON Schema).
+  New C API: `mlx_perf_procedure`, `mlx_perf_procedure_step_fn`,
+  `mlx_perf_procedure_summary`, `mlx_perf_procedure_comparison_summary`.
 - **Documentation for people and coding agents.** `docs/` holds task
   guides (getting started, profiling a job, comparing two implementations,
   measuring from code, the measurement file, reading the report, building

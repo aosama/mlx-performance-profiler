@@ -10,8 +10,16 @@
 #include "paired_measurement.h"
 
 #include <string>
+#include <vector>
 
 namespace mlx_perf {
+
+// One judged metric as JSON: each side's summary and samples, the per-round
+// differences, the interval, the sign test and the verdict. Shared by the
+// graph comparison record and the procedure comparison record.
+JsonValue build_metric_record(const PairedComparison& paired_comparison,
+                              const std::vector<double>& baseline_samples,
+                              const std::vector<double>& candidate_samples);
 
 JsonValue build_comparison_record(const PairedMeasurement& paired_measurement,
                                   const std::string& baseline_measurement_file,

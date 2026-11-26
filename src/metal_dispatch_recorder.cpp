@@ -1,5 +1,8 @@
 #include "metal_dispatch_recorder.h"
 
+#include "metal_object_classes.h"
+#include "objc_method_hooks.h"
+
 #include "mlx/backend/metal/device.h"
 
 #include <objc/runtime.h>
@@ -150,50 +153,10 @@ id new_pipeline_with_descriptor_hook(id device, SEL selector, id descriptor_obje
   return pipeline_object;
 }
 
-// Replaces one method on `target_class`, keeping its current implementation
-// (possibly inherited) as `original_implementation`. The original is stored
-// before the swap, so no call can reach a hook whose original is unset.
-template <typename ImplementationType>
-bool replace_method(Class target_class, const char* selector_name, IMP hook_implementation,
-                    ImplementationType& original_implementation) {
-  const SEL selector = sel_registerName(selector_name);
-  const Method current_method = class_getInstanceMethod(target_class, selector);
-  if (current_method == nullptr) {
-    return false;
-  }
-  original_implementation = reinterpret_cast<ImplementationType>(method_getImplementation(current_method));
-  class_replaceMethod(target_class, selector, hook_implementation, method_getTypeEncoding(current_method));
-  return true;
-}
-
-// The concrete compute encoder class for MLX's device, found by making one
-// encoder the way MLX does (a concurrent dispatch encoder on a command buffer
-// of the same device) and never committing it.
-Class find_compute_encoder_class(MTL::Device* metal_device) {
-  NS::AutoreleasePool* autorelease_pool = NS::AutoreleasePool::alloc()->init();
-  MTL::CommandQueue* probe_queue = metal_device->newCommandQueue();
-  Class encoder_class = nullptr;
-  if (probe_queue != nullptr) {
-    MTL::CommandBuffer* probe_buffer = probe_queue->commandBuffer();
-    MTL::ComputeCommandEncoder* probe_encoder =
-        probe_buffer == nullptr ? nullptr : probe_buffer->computeCommandEncoder(MTL::DispatchTypeConcurrent);
-    if (probe_encoder != nullptr) {
-      encoder_class = object_getClass(reinterpret_cast<id>(probe_encoder));
-      probe_encoder->endEncoding();
-    }
-    probe_queue->release();
-  }
-  autorelease_pool->release();
-  return encoder_class;
-}
-
 bool install_hooks() {
-  MTL::Device* metal_device = mlx::core::metal::device(mlx::core::Device::gpu).mtl_device();
-  if (metal_device == nullptr) {
-    return false;
-  }
-  const Class encoder_class = find_compute_encoder_class(metal_device);
-  const Class device_class = object_getClass(reinterpret_cast<id>(metal_device));
+  const MetalObjectClasses& metal_object_classes = find_metal_object_classes();
+  const Class encoder_class = metal_object_classes.compute_encoder_class;
+  const Class device_class = metal_object_classes.device_class;
   if (encoder_class == nullptr || device_class == nullptr) {
     return false;
   }

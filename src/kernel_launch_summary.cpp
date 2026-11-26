@@ -32,10 +32,32 @@ std::string describe_threadgroup_range(std::uint64_t fewest, std::uint64_t most)
   return range_text.str();
 }
 
+KernelLaunchSummary& find_or_add_summary(std::vector<KernelLaunchSummary>& kernel_summaries,
+                                         const std::string& kernel_key) {
+  for (KernelLaunchSummary& kernel_summary : kernel_summaries) {
+    if (kernel_summary.kernel_key == kernel_key) {
+      return kernel_summary;
+    }
+  }
+  kernel_summaries.push_back(KernelLaunchSummary{kernel_key});
+  return kernel_summaries.back();
+}
+
 } // namespace
 
 std::string kernel_key_of(const GraphNode& graph_node) {
   return graph_node.kernel_name.empty() ? graph_node.op_name : graph_node.kernel_name;
+}
+
+std::vector<KernelLaunchSummary> summarize_launches_by_function(
+    const std::vector<KernelDispatch>& kernel_dispatches, int gpu_core_count) {
+  std::vector<KernelLaunchSummary> function_summaries;
+  for (const KernelDispatch& kernel_dispatch : kernel_dispatches) {
+    const std::string function_key = kernel_dispatch.metal_function_name.empty()
+        ? std::string("(unnamed pipeline)") : kernel_dispatch.metal_function_name;
+    add_launch(find_or_add_summary(function_summaries, function_key), kernel_dispatch, gpu_core_count);
+  }
+  return function_summaries;
 }
 
 std::vector<KernelLaunchSummary> summarize_kernel_launches(const RunTelemetry& serial_telemetry) {
@@ -45,16 +67,9 @@ std::vector<KernelLaunchSummary> summarize_kernel_launches(const RunTelemetry& s
     if (node_telemetry.node == nullptr || node_telemetry.kernel_dispatches.empty()) {
       continue;
     }
-    const std::string kernel_key = kernel_key_of(*node_telemetry.node);
-    auto summary_entry = std::find_if(
-        kernel_summaries.begin(), kernel_summaries.end(),
-        [&kernel_key](const KernelLaunchSummary& candidate) { return candidate.kernel_key == kernel_key; });
-    if (summary_entry == kernel_summaries.end()) {
-      kernel_summaries.push_back(KernelLaunchSummary{kernel_key});
-      summary_entry = kernel_summaries.end() - 1;
-    }
+    KernelLaunchSummary& kernel_summary = find_or_add_summary(kernel_summaries, kernel_key_of(*node_telemetry.node));
     for (const KernelDispatch& kernel_dispatch : node_telemetry.kernel_dispatches) {
-      add_launch(*summary_entry, kernel_dispatch, gpu_core_count);
+      add_launch(kernel_summary, kernel_dispatch, gpu_core_count);
     }
   }
   return kernel_summaries;

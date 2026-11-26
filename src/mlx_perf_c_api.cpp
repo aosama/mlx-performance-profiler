@@ -1,5 +1,6 @@
 #include "mlx_perf/mlx_perf_c_api.h"
 
+#include "c_api_support.h"
 #include "graph_factory.h"
 #include "console_output.h"
 #include "graph_build_timer.h"
@@ -23,8 +24,6 @@
 namespace {
 
 using namespace mlx_perf;
-
-thread_local std::string last_error_message;
 
 // Adapts the C callback to the GraphFactory seam the measurement uses: a new
 // MLX-C vector per call, filled by the caller, read, then freed here.
@@ -74,18 +73,6 @@ void fill_summary(const VariantMeasurement& variant_measurement,
   summary.executed_node_count = static_cast<int>(gpu_timeline.nodes.size());
   summary.gpu_measured_node_count = gpu_timeline.gpu_measured_node_count;
   summary.stream_count = static_cast<int>(gpu_timeline.streams.size());
-}
-
-// Every string the entry point reads must be present; the message names the
-// entry point so a caller in another language can tell which call it got
-// wrong.
-void require_strings(std::initializer_list<const char*> required_strings,
-                     const char* entry_point_name) {
-  for (const char* required_string : required_strings) {
-    if (required_string == nullptr) {
-      throw std::invalid_argument(std::string(entry_point_name) + ": null argument");
-    }
-  }
 }
 
 // The callback and the strings of a single-job entry point.
@@ -207,47 +194,14 @@ void prepend_build_passes(const TimedGraphFactory& discovery_factory,
       discovery_factory.build_passes().begin(), discovery_factory.build_passes().end());
 }
 
-int to_c_verdict(ComparisonVerdict verdict) {
-  switch (verdict) {
-    case ComparisonVerdict::candidate_faster: return MLX_PERF_VERDICT_CANDIDATE_FASTER;
-    case ComparisonVerdict::candidate_slower: return MLX_PERF_VERDICT_CANDIDATE_SLOWER;
-    case ComparisonVerdict::within_spread: break;
-  }
-  return MLX_PERF_VERDICT_WITHIN_SPREAD;
-}
-
-void fill_metric(const PairedComparison& paired_comparison,
-                 mlx_perf_metric_comparison& metric_comparison) {
-  metric_comparison.baseline_median_us = paired_comparison.baseline.median;
-  metric_comparison.baseline_min_us = paired_comparison.baseline.minimum;
-  metric_comparison.baseline_max_us = paired_comparison.baseline.maximum;
-  metric_comparison.baseline_lower_quartile_us = paired_comparison.baseline.lower_quartile;
-  metric_comparison.baseline_upper_quartile_us = paired_comparison.baseline.upper_quartile;
-  metric_comparison.candidate_median_us = paired_comparison.candidate.median;
-  metric_comparison.candidate_min_us = paired_comparison.candidate.minimum;
-  metric_comparison.candidate_max_us = paired_comparison.candidate.maximum;
-  metric_comparison.candidate_lower_quartile_us = paired_comparison.candidate.lower_quartile;
-  metric_comparison.candidate_upper_quartile_us = paired_comparison.candidate.upper_quartile;
-  metric_comparison.median_difference_us = paired_comparison.median_difference;
-  metric_comparison.difference_interval_low_us = paired_comparison.difference_interval_low;
-  metric_comparison.difference_interval_high_us = paired_comparison.difference_interval_high;
-  metric_comparison.difference_interval_coverage =
-      paired_comparison.difference_interval_coverage;
-  metric_comparison.sign_test_p_value = paired_comparison.sign_test_p_value;
-  metric_comparison.relative_difference = paired_comparison.relative_difference;
-  metric_comparison.verdict = to_c_verdict(paired_comparison.verdict);
-  metric_comparison.rounds_candidate_faster = paired_comparison.rounds_candidate_faster;
-  metric_comparison.round_count = paired_comparison.round_count;
-}
-
 void fill_comparison_summary(const PairedMeasurement& paired_measurement,
                              mlx_perf_comparison_summary& comparison_summary) {
   fill_summary(paired_measurement.baseline, comparison_summary.baseline);
   fill_summary(paired_measurement.candidate, comparison_summary.candidate);
   const PairComparisons pair_comparisons = compare_pair(paired_measurement);
-  fill_metric(pair_comparisons.job_wall, comparison_summary.job_wall);
-  fill_metric(pair_comparisons.gpu_span, comparison_summary.gpu_span);
-  fill_metric(pair_comparisons.host_submission, comparison_summary.host_submission);
+  fill_metric_comparison(pair_comparisons.job_wall, comparison_summary.job_wall);
+  fill_metric_comparison(pair_comparisons.gpu_span, comparison_summary.gpu_span);
+  fill_metric_comparison(pair_comparisons.host_submission, comparison_summary.host_submission);
   comparison_summary.max_absolute_output_difference =
       paired_measurement.output_agreement.max_absolute_difference;
 }
@@ -281,28 +235,13 @@ void compare_to_report(const mlx_perf_variant* baseline, const mlx_perf_variant*
   }
 }
 
-// Called only from inside a catch block: records the exception in flight
-// as the thread's last error and returns the C failure status. Exceptions
-// must not cross into C or Rust frames (undefined behavior), so every entry
-// point catches everything and reports through here.
-int record_failure_in_flight() {
-  try {
-    throw;
-  } catch (const std::exception& failure) {
-    last_error_message = failure.what();
-  } catch (...) {
-    last_error_message = "unknown failure";
-  }
-  return 1;
-}
-
 } // namespace
 
 extern "C" int mlx_perf_profile_to_report(
     mlx_perf_build_graph_fn build_graph, void* builder_payload, const char* variant_name,
     const char* report_title, const char* output_directory, const char* report_file_base,
     mlx_perf_job_summary* summary) {
-  last_error_message.clear();
+  clear_last_c_api_error();
   try {
     profile_to_report(build_graph, builder_payload, variant_name, report_title,
                       output_directory, report_file_base, summary);
@@ -316,7 +255,7 @@ extern "C" int mlx_perf_profile_to_measurements(
     mlx_perf_build_graph_fn build_graph, void* builder_payload, const char* variant_name,
     const char* output_directory, const char* measurements_file_base,
     mlx_perf_job_summary* summary) {
-  last_error_message.clear();
+  clear_last_c_api_error();
   try {
     profile_to_measurements(build_graph, builder_payload, variant_name, output_directory,
                             measurements_file_base, summary);
@@ -330,7 +269,7 @@ extern "C" int mlx_perf_compare_to_report(
     const mlx_perf_variant* baseline, const mlx_perf_variant* candidate,
     const char* report_title, const char* output_directory, const char* report_file_base,
     mlx_perf_comparison_summary* summary) {
-  last_error_message.clear();
+  clear_last_c_api_error();
   try {
     compare_to_report(baseline, candidate, report_title, output_directory, report_file_base,
                       summary);
@@ -350,4 +289,4 @@ extern "C" int mlx_perf_install_launch_recorder(void) {
 
 extern "C" const char* mlx_perf_version(void) { return MLX_PERF_VERSION_STRING; }
 
-extern "C" const char* mlx_perf_last_error(void) { return last_error_message.c_str(); }
+extern "C" const char* mlx_perf_last_error(void) { return last_c_api_error(); }

@@ -16,6 +16,7 @@
     "The build_graph callback must append the outputs of a fresh, unevaluated MLX graph on every call; the profiler calls it 11 times for one profile and evaluates each graph itself. Evaluate inputs once outside the callback and pass them in builder_payload.",
     "Every mlx_perf_* function that measures returns 0 on success. On non-zero, read mlx_perf_last_error() before the next mlx_perf_* call on the same thread; the library never throws into the caller.",
     "To decide whether one implementation is faster, call mlx_perf_compare_to_report with both variants. Never compare durations from two separate profiles: they drift and are order-biased.",
+    "To compare code that evaluates many graphs (a token loop, a sampler), call mlx_perf_compare_procedures_to_report: run is timed whole; prepare runs untimed before each run. gpu_idle_us and blocking waits show host-GPU hand-off cost.",
     "A verdict of MLX_PERF_VERDICT_WITHIN_SPREAD (\"within_spread\" in JSON) means the difference did not beat run-to-run noise: report no difference found, never slightly faster or slower.",
     "In the measurement JSON, null means not measured (a CPU-stream node, or a node timed as part of its stage), never zero. Check schema_version is 1, and look fields up by name.",
     "Quote job_wall_median_us as the job's duration. timeline_wall_us is the instrumented pass and is longer by design.",

@@ -121,6 +121,23 @@ std::string describe_verdict(const std::string& baseline_name, const std::string
          format_difference_interval(paired_comparison) + ". The difference exceeds the spread.";
 }
 
+std::string render_verdict_table(const std::string& baseline_name, const std::string& candidate_name,
+                                 const std::vector<NamedComparison>& named_comparisons) {
+  std::ostringstream table_html;
+  table_html << "<div class=\"table-wrap\"><table><thead><tr><th>Metric</th><th>"
+             << escape_html_text(baseline_name) << " median (middle half)</th><th>"
+             << escape_html_text(candidate_name) << " median (middle half)</th><th>"
+             << escape_html_text(candidate_name) << " − " << escape_html_text(baseline_name)
+             << " (median of rounds)</th><th>Interval for the per-round difference</th>"
+             << "<th>Verdict</th><th>Rounds " << escape_html_text(candidate_name)
+             << " was faster</th></tr></thead><tbody>";
+  for (const NamedComparison& named_comparison : named_comparisons) {
+    table_html << render_metric_row(named_comparison.metric_name, *named_comparison.paired_comparison);
+  }
+  table_html << "</tbody></table></div>";
+  return table_html.str();
+}
+
 std::string render_verdict_section(const std::string& baseline_name,
                                    const std::string& candidate_name,
                                    const PairComparisons& pair_comparisons,
@@ -129,17 +146,12 @@ std::string render_verdict_section(const std::string& baseline_name,
   section_html << "<p class=\"verdict " << verdict_css_class(pair_comparisons.job_wall.verdict)
                << "\">" << escape_html_text(describe_verdict(baseline_name, candidate_name,
                                                              pair_comparisons.job_wall))
-               << "</p><div class=\"table-wrap\"><table><thead><tr><th>Metric</th><th>"
-               << escape_html_text(baseline_name) << " median (middle half)</th><th>"
-               << escape_html_text(candidate_name) << " median (middle half)</th><th>"
-               << escape_html_text(candidate_name) << " − " << escape_html_text(baseline_name)
-               << " (median of rounds)</th><th>Interval for the per-round difference</th>"
-               << "<th>Verdict</th><th>Rounds " << escape_html_text(candidate_name)
-               << " was faster</th></tr></thead><tbody>"
-               << render_metric_row("Job duration", pair_comparisons.job_wall)
-               << render_metric_row("GPU span", pair_comparisons.gpu_span)
-               << render_metric_row("Host submission", pair_comparisons.host_submission)
-               << "</tbody></table></div><p class=\"note\">Each round runs both variants,"
+               << "</p>"
+               << render_verdict_table(baseline_name, candidate_name,
+                                       {{"Job duration", &pair_comparisons.job_wall},
+                                        {"GPU span", &pair_comparisons.gpu_span},
+                                        {"Host submission", &pair_comparisons.host_submission}})
+               << "<p class=\"note\">Each round runs both variants,"
                << " uninstrumented, flipping which goes first; the verdict is judged on the"
                << " per-round differences (candidate − baseline), so drift both share within a"
                << " round cancels. A difference counts only when the whole interval for the"

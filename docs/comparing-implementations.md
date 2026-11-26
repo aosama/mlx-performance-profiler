@@ -166,5 +166,6 @@ A comparison builds each variant's graph 28 times through the C API. If the outp
 
 ## Related
 
+- [Comparing procedures](comparing-procedures.md) when an implementation is more than one graph: a loop, a sampler, a pipeline.
 - [The measurement file](measurement-file.md) to read the per-round numbers yourself.
 - [C API reference](reference/c-api.md#mlx_perf_compare_to_report) for exact signatures.

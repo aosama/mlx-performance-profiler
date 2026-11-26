@@ -9,6 +9,7 @@
 #include "sample_statistics.h"
 
 #include <string>
+#include <vector>
 
 namespace mlx_perf {
 
@@ -16,6 +17,18 @@ namespace mlx_perf {
 // rendered). Lower is better, so "faster" means a smaller median.
 std::string describe_verdict(const std::string& baseline_name, const std::string& candidate_name,
                              const PairedComparison& paired_comparison);
+
+// One judged metric for render_verdict_table.
+struct NamedComparison {
+  const char* metric_name;
+  const PairedComparison* paired_comparison;
+};
+
+// The table under a verdict: per metric, each variant's median beside the
+// middle half of its own rounds, the median per-round difference, the
+// interval the verdict was judged on, the verdict and the rounds won.
+std::string render_verdict_table(const std::string& baseline_name, const std::string& candidate_name,
+                                 const std::vector<NamedComparison>& named_comparisons);
 
 // The headline sentence (job duration), then per metric: each variant's
 // median beside the middle half of its own rounds, the median per-round

@@ -136,6 +136,60 @@ int mlx_perf_compare_to_report(const mlx_perf_variant* baseline,
                                const char* report_file_base,
                                mlx_perf_comparison_summary* summary);
 
+/* One step of a procedure: returns 0 on success. Any other value ends the
+ * comparison, writing nothing, with "procedure <name>: run returned <n>"
+ * (or "prepare returned <n>") in mlx_perf_last_error(). */
+typedef int (*mlx_perf_procedure_step_fn)(void* procedure_payload);
+
+/* A procedure: any code that does MLX work, however many graphs and
+ * evaluations it makes (a decode loop, a pipeline with host logic between
+ * evaluations). `run` is measured whole, from its start until every command
+ * buffer it committed has completed. `prepare` (may be NULL) runs before
+ * every run, untimed: put setup there (fresh inputs, a reset cache), and
+ * evaluate what it creates before returning, so that work is not left to the
+ * timed run. Both run on the calling thread. The name
+ * follows the rules of mlx_perf_variant.variant_name. */
+typedef struct mlx_perf_procedure {
+  const char* procedure_name;
+  mlx_perf_procedure_step_fn prepare;
+  mlx_perf_procedure_step_fn run;
+  void* procedure_payload;
+} mlx_perf_procedure;
+
+/* One procedure's hand-offs: medians over the 12 rounds, and its kernel
+ * launches from one extra observed run. */
+typedef struct mlx_perf_procedure_summary {
+  double median_command_buffer_count;  /* MLX's submissions to the GPU */
+  double median_blocking_wait_count;   /* evals and synchronizes that blocked */
+  double median_blocking_wait_us;      /* host time spent blocked */
+  int kernel_launch_count;
+  /* Launches with fewer threadgroups than the GPU has cores; -1 when the
+   * core count is unknown. */
+  int launches_unable_to_fill_gpu;
+} mlx_perf_procedure_summary;
+
+typedef struct mlx_perf_procedure_comparison_summary {
+  mlx_perf_procedure_summary baseline;
+  mlx_perf_procedure_summary candidate;
+  mlx_perf_metric_comparison duration; /* run() until its GPU work completed */
+  mlx_perf_metric_comparison gpu_busy; /* at least one of its buffers on the GPU */
+  mlx_perf_metric_comparison gpu_idle; /* the rest: the GPU waiting on the host */
+} mlx_perf_procedure_comparison_summary;
+
+/* Measures two procedures the way mlx_perf_compare_to_report measures two
+ * jobs (one warm-up and one observed run each, then 12 rounds, order flipped
+ * every round) and writes `<report_file_base>.html` (the verdict, the
+ * hand-offs per run, and the kernel launches by Metal function) and
+ * `<report_file_base>.json` (`"kind": "procedure_comparison"`). Use it when
+ * an implementation is more than one graph; for one graph,
+ * mlx_perf_compare_to_report shows more. `summary` may be NULL. */
+int mlx_perf_compare_procedures_to_report(const mlx_perf_procedure* baseline,
+                                          const mlx_perf_procedure* candidate,
+                                          const char* report_title,
+                                          const char* output_directory,
+                                          const char* report_file_base,
+                                          mlx_perf_procedure_comparison_summary* summary);
+
 /* Switches the library's console output on (non-zero, the default) or off
  * (0): progress and file lines on stdout, error lines on stderr. Off, the
  * library writes nothing to either; failures still come back as return

@@ -72,6 +72,14 @@ sidecar: it observes, it never changes MLX semantics.
   positive, edge/boundary and negative cases. Run after building:
   `ctest --test-dir build --output-on-failure`. Register a test with
   `mlx_perf_add_test` in `tests/CMakeLists.txt`.
+- Procedure comparisons (#38) measure code that evaluates many graphs:
+  `metal_submission_recorder` hooks MLX's command buffer commits and
+  blocking waits (observation-only, like `metal_dispatch_recorder`);
+  `procedure_measurement` runs the rounds; the page, the record and the
+  files are separate modules (`report_procedure_page`,
+  `procedure_comparison_record`, `procedure_report_files`). The C entry
+  point is `mlx_perf_c_api_procedures.cpp`; plumbing every entry point
+  shares is in `c_api_support`.
 - Model-specific code lives under `src/qwen35/` (config, weights, decode
   step, generation, token text). The generic profiler in `src/` never
   depends on it; `qwen35_profile.cpp` only orchestrates.
