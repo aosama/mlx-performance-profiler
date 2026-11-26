@@ -72,12 +72,17 @@ std::string render_metric_row(const char* metric_name, const PairedComparison& p
 }
 
 std::string describe_output_agreement(const OutputAgreement& output_agreement) {
+  const std::string same_kind = "Both variants produce " +
+                                std::to_string(output_agreement.output_count) +
+                                " output(s) of the same shapes and dtypes";
+  if (std::isnan(output_agreement.max_absolute_difference)) {
+    return same_kind + ", but where they differ the values are not finite (NaN or infinity),"
+                       " so their agreement cannot be measured.";
+  }
   char difference_text[64];
   std::snprintf(difference_text, sizeof(difference_text), "%.3g",
                 output_agreement.max_absolute_difference);
-  return "Both variants produce " + std::to_string(output_agreement.output_count) +
-         " output(s) of the same shapes and dtypes; the largest element-wise difference"
-         " is " + difference_text + ".";
+  return same_kind + "; the largest element-wise difference is " + difference_text + ".";
 }
 
 } // namespace

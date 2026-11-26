@@ -5,6 +5,7 @@
 #include "report_verdict_section.h"
 #include "test_harness.h"
 
+#include <cmath>
 #include <string>
 
 namespace {
@@ -64,6 +65,16 @@ void should_describe_equal_variants_without_dividing_by_zero() {
   EXPECT_TRUE(contains(verdict, "The 0.0 µs difference"));
 }
 
+void should_say_when_output_agreement_cannot_be_measured() {
+  const std::string section_html = render_verdict_section(
+      "stock", "custom",
+      {compare_paired_samples({10}, {8}), compare_paired_samples({10}, {8}),
+       compare_paired_samples({10}, {8})},
+      {1, std::nan("")});
+  EXPECT_TRUE(contains(section_html, "not finite (NaN or infinity)"));
+  EXPECT_TRUE(!contains(section_html, "largest element-wise difference is"));
+}
+
 // --- negative: names are the caller's text, never markup ---
 
 void should_escape_variant_names() {
@@ -86,6 +97,7 @@ int main() {
       TEST_CASE(should_say_a_difference_inside_the_spread_is_not_a_result),
       TEST_CASE(should_render_all_three_metrics_with_ranges_and_rounds),
       TEST_CASE(should_describe_equal_variants_without_dividing_by_zero),
+      TEST_CASE(should_say_when_output_agreement_cannot_be_measured),
       TEST_CASE(should_escape_variant_names),
   });
 }
