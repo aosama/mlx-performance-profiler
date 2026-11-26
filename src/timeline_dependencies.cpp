@@ -115,4 +115,19 @@ double latest_ready(
   return latest_microseconds;
 }
 
+void record_structure(const NodeDependencies& dependencies, NodeTimeline& node_timeline) {
+  node_timeline.cross_stream_producer_positions = dependencies.cross_stream_input_positions;
+  node_timeline.has_cross_stream_input =
+      !node_timeline.cross_stream_producer_positions.empty();
+  node_timeline.input_positions = dependencies.same_stream_input_positions;
+  node_timeline.input_positions.insert(node_timeline.input_positions.end(),
+                                       dependencies.cross_stream_input_positions.begin(),
+                                       dependencies.cross_stream_input_positions.end());
+  std::sort(node_timeline.input_positions.begin(), node_timeline.input_positions.end());
+  node_timeline.input_positions.erase(
+      std::unique(node_timeline.input_positions.begin(), node_timeline.input_positions.end()),
+      node_timeline.input_positions.end());
+  node_timeline.previous_on_stream_position = dependencies.previous_on_stream_position;
+}
+
 } // namespace mlx_perf

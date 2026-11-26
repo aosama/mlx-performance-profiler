@@ -49,6 +49,11 @@ struct NodeTimeline {
   // Positions (in GpuTimeline::nodes) of producers on other streams — the
   // cross-stream edges a Gantt draws as dependency arrows.
   std::vector<int> cross_stream_producer_positions;
+  // Every producer this node reads (both streams), and the node before it on
+  // its own stream (NO_POSITION when first): the structure a data consumer
+  // needs to compute gaps between nodes without re-deriving the graph.
+  std::vector<int> input_positions;
+  int previous_on_stream_position = -1;  // NO_POSITION (timeline_dependencies.h)
   // Per-stage pass only: the position (in GpuTimeline::stages) of the stage
   // task this node ran in. Its own timestamps/breakdown stay zero there —
   // the node was not timed individually, and must not pretend it was.
@@ -103,6 +108,11 @@ struct GpuTimeline {
   // per-stage pass: how many nodes sat in a stage task with one).
   double measured_gpu_compute_microseconds = 0.0;
   int gpu_measured_node_count = 0;
+  // MLX command buffers the probe held and saw complete in this pass. Exact
+  // per node (one buffer per async_eval); a lower bound per stage, where MLX
+  // may commit mid-stage buffers the probe never holds.
+  int observed_command_buffer_count = 0;
+  bool is_command_buffer_count_lower_bound = false;
 };
 
 // The returned NodeTimeline::node pointers point into `captured_graph`, so it

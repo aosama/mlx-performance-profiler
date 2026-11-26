@@ -6,7 +6,9 @@
 
 #include "mlx/mlx.h"
 
+#include <string>
 #include <unordered_map>
+#include <vector>
 
 namespace {
 
@@ -58,7 +60,50 @@ void should_label_edges_with_bytes_read_and_collect_streams() {
   EXPECT_TRUE(stream_index_to_stream.size() == 2);
 }
 
+// A one-input custom Metal kernel named `author_kernel_name`; only built
+// into the graph here, never compiled or run.
+array apply_custom_kernel(const std::string& author_kernel_name, const array& input_values) {
+  const auto custom_kernel = fast::metal_kernel(
+      author_kernel_name, {"input_values"}, {"output_values"},
+      "uint element_index = thread_position_in_grid.x;\n"
+      "output_values[element_index] = 2.0f * input_values[element_index];\n");
+  return custom_kernel({input_values}, {input_values.shape()}, {float32}, {8, 1, 1},
+                       {8, 1, 1}, {}, std::nullopt, false, {})[0];
+}
+
+void should_name_each_custom_metal_kernel_by_its_authors_name() {
+  const array doubled = apply_custom_kernel("double_values", ones({8}));
+  const array doubled_again = apply_custom_kernel("double_again", doubled);
+  const CapturedGraph captured_graph = capture_graph({doubled_again});
+  std::vector<std::string> kernel_names;
+  for (const std::size_t node_index : captured_graph.topological) {
+    const auto& graph_node = captured_graph.nodes[node_index];
+    if (graph_node.op_name == "CustomKernel") {
+      kernel_names.push_back(graph_node.kernel_name);
+    }
+  }
+  EXPECT_TRUE(kernel_names.size() == 2);
+  EXPECT_TRUE(kernel_names[0].find("double_values") != std::string::npos);
+  EXPECT_TRUE(kernel_names[1].find("double_again") != std::string::npos);
+}
+
+void should_keep_each_output_shape_as_integers() {
+  const array product = matmul(ones({3, 5}), ones({5, 7}));
+  const CapturedGraph captured_graph = capture_graph({product});
+  const auto& product_node = captured_graph.nodes[captured_graph.topological.back()];
+  EXPECT_TRUE((product_node.shape_dimensions == std::vector<int>{3, 7}));
+  EXPECT_TRUE(product_node.dtype_string == "float32");
+}
+
 // --- edge / boundary ---
+
+void should_give_a_scalar_output_no_dimensions() {
+  const array total = sum(ones({4, 4}));
+  const CapturedGraph captured_graph = capture_graph({total});
+  const auto& total_node = captured_graph.nodes[captured_graph.topological.back()];
+  EXPECT_TRUE(total_node.shape_dimensions.empty());
+  EXPECT_TRUE(total_node.shape_string == "()");
+}
 
 void should_capture_a_shared_input_once() {
   const array shared_input = ones({4});
@@ -91,6 +136,13 @@ void should_return_an_empty_graph_for_no_outputs() {
   EXPECT_TRUE(mlx_perf::collect_streams(captured_graph).empty());
 }
 
+void should_leave_the_kernel_name_empty_for_built_in_primitives() {
+  const CapturedGraph captured_graph = capture_graph({exp(ones({4}))});
+  for (const auto& graph_node : captured_graph.nodes) {
+    EXPECT_TRUE(graph_node.kernel_name.empty());
+  }
+}
+
 void should_treat_an_evaluated_output_as_a_leaf_without_primitives() {
   array evaluated_output = exp(ones({4}));
   evaluated_output.eval();
@@ -105,9 +157,13 @@ int main() {
   return test_harness::run_all({
       TEST_CASE(should_order_every_primitive_after_its_primitive_inputs),
       TEST_CASE(should_label_edges_with_bytes_read_and_collect_streams),
+      TEST_CASE(should_name_each_custom_metal_kernel_by_its_authors_name),
+      TEST_CASE(should_keep_each_output_shape_as_integers),
+      TEST_CASE(should_give_a_scalar_output_no_dimensions),
       TEST_CASE(should_capture_a_shared_input_once),
       TEST_CASE(should_capture_sibling_outputs_as_one_primitive),
       TEST_CASE(should_return_an_empty_graph_for_no_outputs),
+      TEST_CASE(should_leave_the_kernel_name_empty_for_built_in_primitives),
       TEST_CASE(should_treat_an_evaluated_output_as_a_leaf_without_primitives),
   });
 }

@@ -44,7 +44,28 @@ void should_prefer_measured_gpu_end_as_readiness() {
   EXPECT_TRUE(mlx_perf::latest_ready({0, 1}, ready) == 70);
 }
 
+void should_record_all_inputs_in_order_and_the_previous_node_on_the_stream() {
+  mlx_perf::NodeDependencies join_dependencies;
+  join_dependencies.same_stream_input_positions = {4, 1};
+  join_dependencies.cross_stream_input_positions = {3, 1};
+  join_dependencies.previous_on_stream_position = 4;
+  mlx_perf::NodeTimeline join_timeline;
+  mlx_perf::record_structure(join_dependencies, join_timeline);
+  EXPECT_TRUE(join_timeline.input_positions == (std::vector<int>{1, 3, 4}));
+  EXPECT_TRUE(join_timeline.cross_stream_producer_positions == (std::vector<int>{3, 1}));
+  EXPECT_TRUE(join_timeline.has_cross_stream_input);
+  EXPECT_TRUE(join_timeline.previous_on_stream_position == 4);
+}
+
 // --- edge / boundary ---
+
+void should_record_a_first_node_with_no_inputs_and_no_predecessor() {
+  mlx_perf::NodeTimeline first_timeline;
+  mlx_perf::record_structure(mlx_perf::NodeDependencies{}, first_timeline);
+  EXPECT_TRUE(first_timeline.input_positions.empty());
+  EXPECT_TRUE(!first_timeline.has_cross_stream_input);
+  EXPECT_TRUE(first_timeline.previous_on_stream_position == mlx_perf::NO_POSITION);
+}
 
 void should_treat_no_producers_as_ready_at_pass_start() {
   EXPECT_TRUE(mlx_perf::latest_ready({}, {5, 6}) == 0);
@@ -73,6 +94,8 @@ int main() {
   return test_harness::run_all({
       TEST_CASE(should_split_inputs_by_stream_and_chain_each_stream),
       TEST_CASE(should_prefer_measured_gpu_end_as_readiness),
+      TEST_CASE(should_record_all_inputs_in_order_and_the_previous_node_on_the_stream),
+      TEST_CASE(should_record_a_first_node_with_no_inputs_and_no_predecessor),
       TEST_CASE(should_treat_no_producers_as_ready_at_pass_start),
       TEST_CASE(should_reject_a_graph_with_an_unknown_stream),
   });

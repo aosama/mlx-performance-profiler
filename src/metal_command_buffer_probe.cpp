@@ -5,6 +5,7 @@
 #include <mach/mach_time.h>
 
 #include <algorithm>
+#include <unordered_set>
 
 namespace mlx_perf {
 namespace {
@@ -152,6 +153,18 @@ std::vector<GpuExecutionWindow> MetalCommandBufferProbe::read_windows() const {
         (finished_host_seconds - pass_anchor_host_seconds_) * MICROSECONDS_PER_SECOND;
   }
   return position_to_window;
+}
+
+int MetalCommandBufferProbe::count_completed_command_buffers() const {
+  // A set, not a count of slots: units dispatched back to back can land in
+  // the same MLX buffer when no commit separated them.
+  std::unordered_set<void*> completed_buffers;
+  for (void* held_buffer : position_to_command_buffer_) {
+    if (read_buffer_times(held_buffer).is_completed) {
+      completed_buffers.insert(held_buffer);
+    }
+  }
+  return static_cast<int>(completed_buffers.size());
 }
 
 } // namespace mlx_perf

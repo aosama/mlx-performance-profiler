@@ -23,6 +23,7 @@ void sample_job_wall(const GraphFactory& graph_factory, JobTotals& job_totals) {
     progress.update(sample_index + 1);
   }
   progress.finish(JOB_WALL_SAMPLE_COUNT);
+  job_totals.job_wall_sample_microseconds = job_wall_samples;
   std::sort(job_wall_samples.begin(), job_wall_samples.end());
   job_totals.job_wall_microseconds = job_wall_samples[JOB_WALL_SAMPLE_COUNT / 2];
   job_totals.job_wall_min_microseconds = job_wall_samples.front();
@@ -93,30 +94,38 @@ VariantMeasurement measure_variant(
     const TimelineOptions& timeline_options) {
   VariantMeasurement variant_measurement;
   variant_measurement.variant_name = variant_name;
+  // Every pass builds through the timer, so graph-construction time is
+  // recorded per pass without any pass knowing about it.
+  TimedGraphFactory timed_factory(graph_factory);
 
   // Discarded: the first eval pays Metal kernel compilation (and, for a
   // compiled variant, tracing and fused-kernel JIT), which is not job cost.
   announce_pass(measurement_observer, variant_name,
                 "pass 0/3: warm-up (compile/JIT; discarded)");
-  run_pipeline_pass(graph_factory.build_fresh_graph());
+  timed_factory.begin_pass("warm_up");
+  run_pipeline_pass(timed_factory.build_fresh_graph());
 
   announce_pass(measurement_observer, variant_name,
                 "pass 1/3: pipeline pass (job wall, median of " +
                     std::to_string(JOB_WALL_SAMPLE_COUNT) + ")");
-  sample_job_wall(graph_factory, variant_measurement.job_totals);
+  timed_factory.begin_pass("job_wall");
+  sample_job_wall(timed_factory, variant_measurement.job_totals);
 
   announce_pass(measurement_observer, variant_name,
                 "pass 2/3: timeline pass (overlap kept)");
-  run_timeline_pass(graph_factory, stream_index_to_stream, timeline_options,
+  timed_factory.begin_pass("timeline");
+  run_timeline_pass(timed_factory, stream_index_to_stream, timeline_options,
                     variant_measurement);
 
   announce_pass(measurement_observer, variant_name,
                 "pass 3/3: serial pass (sum of stages)");
-  variant_measurement.serial_graph = capture_fresh_graph(graph_factory);
+  timed_factory.begin_pass("serial");
+  variant_measurement.serial_graph = capture_fresh_graph(timed_factory);
   variant_measurement.serial_telemetry = run_attributed_pass(
       variant_measurement.serial_graph, stream_index_to_stream);
   variant_measurement.job_totals.sum_of_stages_microseconds =
       variant_measurement.serial_telemetry.attributed_total_microseconds;
+  variant_measurement.graph_build_passes = timed_factory.build_passes();
   return variant_measurement;
 }
 

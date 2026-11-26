@@ -39,6 +39,7 @@ configure_file(include/mlx_perf/mlx_perf_version.h.in
 # that is installed; it never depends on the demo, server or model code.
 add_library(mlx_perf STATIC
     src/graph_model.cpp
+    src/graph_build_timer.cpp
     src/telemetry.cpp
     src/latency_breakdown.cpp
     src/progress_reporter.cpp
@@ -64,6 +65,7 @@ add_library(mlx_perf STATIC
     src/report_bundle.cpp
     src/measurement_session.cpp
     src/json_value.cpp
+    src/json_writer.cpp
     src/mlx_c_interop.cpp
     src/mlx_perf_c_api.cpp)
 add_library(mlx_perf::mlx_perf ALIAS mlx_perf)

@@ -28,6 +28,7 @@ class JsonValue {
       : value_(std::make_shared<Object>(std::move(object_value))) {}
 
   bool is_null() const { return std::holds_alternative<std::monostate>(value_); }
+  bool is_bool() const { return std::holds_alternative<bool>(value_); }
   bool is_number() const { return std::holds_alternative<double>(value_); }
   bool is_string() const { return std::holds_alternative<std::string>(value_); }
   bool is_object() const;

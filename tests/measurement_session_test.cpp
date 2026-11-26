@@ -79,6 +79,29 @@ void should_measure_all_passes_with_an_ordered_job_wall_range() {
               primitive_count);
 }
 
+void should_keep_every_job_wall_sample_and_time_every_graph_build() {
+  const Stream job_stream = mlx::core::new_stream(mlx::core::Device::gpu);
+  const VariantMeasurement variant_measurement = measure_variant(
+      "samples", SmallJobFactory(job_stream), map_single_stream(job_stream));
+  const JobTotals& job_totals = variant_measurement.job_totals;
+  EXPECT_TRUE(job_totals.job_wall_sample_microseconds.size() == 7);
+  for (const double sample_microseconds : job_totals.job_wall_sample_microseconds) {
+    EXPECT_TRUE(sample_microseconds >= job_totals.job_wall_min_microseconds);
+    EXPECT_TRUE(sample_microseconds <= job_totals.job_wall_max_microseconds);
+  }
+  // warm-up 1, job wall 7, timeline 1, serial 1: one entry per pass, in order.
+  const auto& build_passes = variant_measurement.graph_build_passes;
+  EXPECT_TRUE(build_passes.size() == 4);
+  if (build_passes.size() == 4) {
+    EXPECT_TRUE(build_passes[0].pass_name == "warm_up");
+    EXPECT_TRUE(build_passes[1].pass_name == "job_wall");
+    EXPECT_TRUE(build_passes[1].call_microseconds.size() == 7);
+    EXPECT_TRUE(build_passes[2].pass_name == "timeline");
+    EXPECT_TRUE(build_passes[3].pass_name == "serial");
+    EXPECT_TRUE(build_passes[3].call_microseconds.size() == 1);
+  }
+}
+
 // Performance test (asserts a threshold): timing each node alone, synchronized,
 // can never beat running the whole job overlapped. If it does, a pass is
 // mismeasuring — this is the decomposition invariant from PHASED_PLAN §6.
@@ -162,6 +185,7 @@ void should_return_empty_measurement_for_an_already_materialized_job() {
 int main() {
   return test_harness::run_all({
       TEST_CASE(should_measure_all_passes_with_an_ordered_job_wall_range),
+      TEST_CASE(should_keep_every_job_wall_sample_and_time_every_graph_build),
       TEST_CASE(should_never_make_sum_of_stages_smaller_than_job_duration),
       TEST_CASE(should_time_stages_when_asked_and_cover_every_primitive),
       TEST_CASE(should_keep_per_node_automatically_for_a_small_staged_job),

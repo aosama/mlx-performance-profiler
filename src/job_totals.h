@@ -5,6 +5,8 @@
 // freshly built graphs; they answer different questions and are shown side
 // by side, never merged into one "true" duration.
 
+#include <vector>
+
 namespace mlx_perf {
 
 struct JobTotals {
@@ -16,6 +18,9 @@ struct JobTotals {
   double job_wall_max_microseconds = 0.0;
   int job_wall_sample_count = 0;
   double sum_of_stages_microseconds = 0.0;  // serial per-node pass
+  // Every job-wall sample, in the order measured, so a data consumer can
+  // judge the spread itself (the median and range above are derived).
+  std::vector<double> job_wall_sample_microseconds;
 };
 
 // True when `other_wall_microseconds` falls inside the sampled job-wall
