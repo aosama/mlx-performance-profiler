@@ -3,6 +3,18 @@
 Versions follow [`VERSIONING.md`](VERSIONING.md). Each release lists the
 MLX releases it was built and tested against.
 
+## Unreleased
+
+### Added
+- **Documentation for people and coding agents.** `docs/` holds task
+  guides (getting started, profiling a job, comparing two implementations,
+  measuring from code, the measurement file, reading the report, building
+  and linking, Rust, troubleshooting) and a C API reference, published to
+  Context7 through `context7.json` with rules for agents. Every example is
+  a file the test suite builds and runs; JSON Schemas for the measurement
+  file and the comparison record are checked against real output; and
+  `docs_*` tests fail when the docs drift from the code.
+
 ## 0.3.0 (2026-11-26)
 
 Tested MLX releases: 0.32.4, 0.32.5 (Metal, macOS).
