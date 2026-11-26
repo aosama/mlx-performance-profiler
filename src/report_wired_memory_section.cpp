@@ -119,6 +119,7 @@ std::string render_marks(const std::vector<WiredMemorySample>& wired_memory_samp
 std::string render_release_events(const std::vector<WiredMemorySample>& wired_memory_samples,
                                   const ChartScale& chart_scale, const WiredMemoryAnalysis& wired_memory_analysis) {
   std::ostringstream events_svg;
+  int label_row = 0;
   for (const WireReleaseEvent& release_event : wired_memory_analysis.release_events) {
     const double released_x = chart_scale.x_of(wired_memory_samples[release_event.released_sample_index].host_seconds);
     events_svg << "<line class=\"release\" x1=\"" << released_x << "\" x2=\"" << released_x << "\" y1=\""
@@ -127,7 +128,9 @@ std::string render_release_events(const std::vector<WiredMemorySample>& wired_me
     const double unwired_x = chart_scale.x_of(wired_memory_samples[*release_event.unwired_sample_index].host_seconds);
     events_svg << "<line class=\"unwired\" x1=\"" << unwired_x << "\" x2=\"" << unwired_x << "\" y1=\""
                << PLOT_TOP << "\" y2=\"" << PLOT_BOTTOM << "\"/><text class=\"axis\" x=\""
-               << (released_x + unwired_x) / 2 << "\" y=\"" << PLOT_TOP + 12 << "\" text-anchor=\"middle\">"
+               // Three label rows, so the labels of nearby releases do not overprint.
+               << (released_x + unwired_x) / 2 << "\" y=\"" << PLOT_TOP + 12 + 12 * (label_row++ % 3)
+               << "\" text-anchor=\"middle\">"
                << "un-wired after " << format_microseconds(*release_event.release_lag_microseconds) << "</text>";
   }
   return events_svg.str();

@@ -43,7 +43,8 @@ class WiredMemorySampler final : public EvaluationBoundaryListener {
   WiredMemorySampler(const WiredMemorySampler&) = delete;
   WiredMemorySampler& operator=(const WiredMemorySampler&) = delete;
 
-  // Takes the run_start sample and starts the interval thread.
+  // Takes the run_start sample and starts the interval thread. Calling it
+  // again while sampling does nothing.
   void start();
   void on_evaluation_boundary() override;
   // Stops the interval thread, takes the run_end sample, then samples at the

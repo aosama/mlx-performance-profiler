@@ -2,6 +2,7 @@
 // from a synthetic pair (no GPU).
 
 #include "procedure_fixture.h"
+#include "wired_memory_fixture.h"
 #include "report_procedure_page.h"
 #include "test_harness.h"
 
@@ -75,6 +76,15 @@ void should_show_launches_without_coverage_when_the_core_count_is_unknown() {
   EXPECT_TRUE(contains(page_html, "fewer threadgroups than the GPU's cores"));
 }
 
+void should_draw_a_wired_memory_lane_only_for_a_procedure_with_samples() {
+  PairedProcedureMeasurement paired_measurement = procedure_fixture::make_chatty_vs_batched();
+  paired_measurement.candidate.observed_wired_memory = wired_memory_fixture::release_then_unwire();
+  const std::string page_html = page_for(paired_measurement);
+  EXPECT_TRUE(contains(page_html, "id=\"wired-memory-candidate\""));
+  EXPECT_TRUE(contains(page_html, "Wired memory: batched"));
+  EXPECT_TRUE(!contains(page_html, "id=\"wired-memory-baseline\""));
+}
+
 // --- negative ---
 
 void should_escape_procedure_names_and_the_title() {
@@ -96,6 +106,7 @@ int main() {
       TEST_CASE(should_compare_launches_by_metal_function),
       TEST_CASE(should_show_zero_percent_busy_for_a_zero_length_run),
       TEST_CASE(should_describe_a_tie_as_within_spread),
+      TEST_CASE(should_draw_a_wired_memory_lane_only_for_a_procedure_with_samples),
       TEST_CASE(should_show_launches_without_coverage_when_the_core_count_is_unknown),
       TEST_CASE(should_escape_procedure_names_and_the_title),
   });

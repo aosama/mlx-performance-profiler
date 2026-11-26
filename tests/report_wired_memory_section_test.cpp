@@ -43,6 +43,14 @@ void should_summarize_the_limit_peaks_and_release() {
 
 // --- edge / boundary ---
 
+void should_stagger_the_labels_of_nearby_releases() {
+  using wired_memory_fixture::sample_at;
+  const std::string section_html = render_wired_memory_section(
+      SECTION_TEXT, {sample_at(0, GIB, 2 * GIB), sample_at(1, GIB, GIB), sample_at(2, GIB, 0), sample_at(3, GIB, 0)});
+  EXPECT_TRUE(contains(section_html, "y=\"24\" text-anchor=\"middle\">un-wired after"));
+  EXPECT_TRUE(contains(section_html, "y=\"36\" text-anchor=\"middle\">un-wired after"));
+}
+
 void should_render_nothing_without_samples() {
   EXPECT_TRUE(render_wired_memory_section(SECTION_TEXT, {}).empty());
 }
@@ -76,6 +84,7 @@ int main() {
       TEST_CASE(should_draw_the_three_series_the_release_and_its_lag),
       TEST_CASE(should_summarize_the_limit_peaks_and_release),
       TEST_CASE(should_render_nothing_without_samples),
+      TEST_CASE(should_stagger_the_labels_of_nearby_releases),
       TEST_CASE(should_draw_the_limit_line_only_when_it_sits_near_the_data),
       TEST_CASE(should_mark_evaluation_boundaries),
       TEST_CASE(should_escape_the_heading_and_say_when_the_limit_is_unknown),

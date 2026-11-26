@@ -6,6 +6,7 @@
 #include "json_writer.h"
 #include "procedure_comparison_record.h"
 #include "procedure_fixture.h"
+#include "wired_memory_fixture.h"
 #include "test_harness.h"
 
 #include <string>
@@ -99,6 +100,15 @@ void should_record_a_procedure_that_launched_nothing() {
   EXPECT_TRUE(record.at("candidate").at("kernel_launches").as_array().empty());
 }
 
+void should_write_each_procedures_wired_memory_or_null_without_samples() {
+  PairedProcedureMeasurement paired_measurement = procedure_fixture::make_chatty_vs_batched();
+  paired_measurement.baseline.observed_wired_memory = wired_memory_fixture::release_then_unwire();
+  const JsonValue record = written_and_parsed(paired_measurement);
+  EXPECT_TRUE(record.at("baseline").at("wired_memory").at("sample_count").as_number() == 8);
+  EXPECT_TRUE(record.at("baseline").at("wired_memory").at("release_events").as_array().size() == 1);
+  EXPECT_TRUE(record.at("candidate").at("wired_memory").is_null());
+}
+
 // --- negative ---
 
 void should_judge_too_few_rounds_within_spread() {
@@ -118,6 +128,7 @@ int main() {
       TEST_CASE(should_write_null_coverage_and_gpu_facts_when_the_gpu_is_unknown),
       TEST_CASE(should_name_launches_without_a_metal_function_as_unnamed),
       TEST_CASE(should_record_a_procedure_that_launched_nothing),
+      TEST_CASE(should_write_each_procedures_wired_memory_or_null_without_samples),
       TEST_CASE(should_judge_too_few_rounds_within_spread),
   });
 }
