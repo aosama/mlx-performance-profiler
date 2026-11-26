@@ -3,6 +3,16 @@
 Versions follow [`VERSIONING.md`](VERSIONING.md). Each release lists the
 MLX releases it was built and tested against.
 
+## Unreleased
+
+### Verified
+- **Every tested MLX release, on the current code.** The release skill
+  gains a step that runs the full suite on each release in
+  `MLX_PERF_TESTED_MLX_VERSIONS` before a release, with the skill's
+  `find_mlx_prefix.py` checking each prefix's MLX version. Run on the code
+  after 0.6.0: all 90 tests pass on MLX 0.32.4 and on MLX 0.32.5. Until now
+  0.32.4 had last been run on the 0.3.0 code.
+
 ## 0.6.0 (2026-11-26)
 
 Tested MLX releases: 0.32.4, 0.32.5 (Metal, macOS).

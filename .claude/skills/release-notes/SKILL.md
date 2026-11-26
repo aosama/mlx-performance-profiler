@@ -77,9 +77,9 @@ Two distinctions the notes must get right:
   candidate) is not a fix to anyone; it belongs in "How this release was
   verified", where it shows the review worked.
 - **Declared, or observed?** `MLX_PERF_TESTED_MLX_VERSIONS` is the list the
-  project claims. The notes also say which MLX release the release's own
-  test run used, from the PRs or by asking. If that is narrower than the
-  declared list, say so plainly; it is not a defect to hide.
+  project claims; step 7 runs the suite on each of them. The notes say
+  which MLX releases this release's own test runs used. If that is narrower
+  than the declared list, say so plainly; it is not a defect to hide.
 
 ### 3. Choose the headline
 
@@ -207,7 +207,45 @@ the new documentation:
 Report the result to the user in one line: what you checked and what
 Context7 returned.
 
-### 7. Check before publishing
+### 7. Build and test on every tested MLX release
+
+`VERSIONING.md` promises that a release builds and passes on every MLX
+release in `MLX_PERF_TESTED_MLX_VERSIONS` (`cmake/mlx_perf_mlx_prefix.cmake`).
+Nothing outside this step checks that promise: this repository has no
+continuous integration, by choice, because MLX comes from `mlx-bridge`'s
+native build and the maintainer keeps the two repositories' automation
+apart. So run the full suite on each release here, on the release's own
+code, before the release pull request.
+
+1. **Wait for a quiet GPU.** Check `ioreg -r -d 1 -c IOAccelerator` for
+   "Device Utilization %": the maintainer's own GPU work makes timings
+   noisy and can fail the timing and wired-memory tests. When it is busy,
+   wait (a background loop that waits for 30 quiet seconds works) rather
+   than reading a failure as the code's.
+2. **Find each release's prefix.** For every release in the tested list:
+   `python3 .claude/skills/release-notes/scripts/find_mlx_prefix.py <release>`
+   prints the prefix `mlx-bridge` built for it under
+   `~/.cache/mlx-bridge/native`, after checking its `mlx/version.h`. When a
+   release has none, it says so: build it with `cargo xtask build-native` in
+   a checkout of the `mlx-bridge` release that pins that MLX, or ask the
+   user. Never test on a prefix of another MLX and call it this one.
+3. **Build and test in a directory per release**, beside the main `build/`
+   (the main one also feeds the Rust example and the release visual):
+   ```bash
+   cmake -S . -B build-mlx-<release> -DMLX_PREFIX=<prefix>
+   cmake --build build-mlx-<release> --parallel
+   ctest --test-dir build-mlx-<release> --output-on-failure
+   ```
+   The build prints its progress, and ctest prints each test as it ends.
+   The Rust example's tests (`cargo test` in `rust/mlx_perf_rust_example`)
+   run once, against the main `build/`.
+4. **Record what passed, not what was declared.** The notes'
+   `verified_on_mlx` lists exactly the releases whose full suite passed in
+   this step, and the Compatibility section says which release each was.
+   A release that fails is a finding to fix or to report to the user before
+   publishing, never one to leave out of the notes quietly.
+
+### 8. Check before publishing
 
 - **The opening visual** renders on the page (open it after publishing),
   comes from this release's build, and agrees with the text or says why
@@ -226,11 +264,13 @@ Context7 returned.
   fine.
 - **Honesty:** limitations and open issues are stated plainly, and nothing
   is promised for a future release.
+- **Every tested MLX release:** step 7 is done, and `verified_on_mlx`
+  names exactly the releases whose full suite passed on this release's code.
 - **Context7:** step 6 is done: every new capability and changed behaviour
   is in `docs/`, the docs checks pass, and (after merge) Context7 returns
   the new names.
 
-### 8. Publish
+### 9. Publish
 
 - **A new release:** commit `release-notes/vX.Y.Z.md` and its image in
   `release-notes/media/` in the release pull request, beside the version
