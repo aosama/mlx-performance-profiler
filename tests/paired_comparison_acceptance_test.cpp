@@ -99,17 +99,19 @@ void should_state_which_quantized_projection_is_faster_by_how_much_and_against_t
   const std::string verdict_sentence =
       comparison_page.substr(verdict_at, comparison_page.find("</p>", verdict_at) - verdict_at);
   EXPECT_TRUE(contains(verdict_sentence, "quantized_matmul"));
-  EXPECT_TRUE(contains(verdict_sentence, "per-round differences"));
+  EXPECT_TRUE(contains(verdict_sentence, "interval for the per-round difference"));
   EXPECT_TRUE(contains(verdict_sentence, "% faster than") ||
               contains(verdict_sentence, "% slower than") ||
-              contains(verdict_sentence, "inside the spread"));
+              contains(verdict_sentence, "is not a result"));
 
   // The dequantizing path writes and re-reads a full float matrix that the
-  // fused kernel never materializes: on GPU execution the fused kernel must
-  // win beyond the spread (the middle halves of the rounds do not overlap).
+  // fused kernel never materializes: over the whole job's GPU span (one
+  // timed unit per round, so node count adds no instrumentation) the fused
+  // kernel must win beyond the spread. Timing-dependent by nature; the
+  // margin is about 6x.
   const mlx_perf::JsonValue comparison_record =
       mlx_perf::parse_json_file("acceptance_quantized_projection.json");
-  EXPECT_TRUE(comparison_record.at("metrics").at("gpu_execution_us").at("verdict").as_string() ==
+  EXPECT_TRUE(comparison_record.at("metrics").at("gpu_span_us").at("verdict").as_string() ==
               "candidate_faster");
   // Same projection, two primitives: the outputs agree closely.
   EXPECT_TRUE(paired_measurement.output_agreement.output_count == 1);

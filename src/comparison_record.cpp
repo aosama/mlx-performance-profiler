@@ -11,8 +11,6 @@ namespace {
 using Object = JsonValue::Object;
 using Array = JsonValue::Array;
 
-JsonValue json_number(double number_value) { return JsonValue(number_value); }
-JsonValue json_text(const std::string& text_value) { return JsonValue(text_value); }
 
 JsonValue sample_record(const SampleSummary& sample_summary,
                         const std::vector<double>& samples) {
@@ -37,9 +35,12 @@ JsonValue metric_record(const PairedComparison& paired_comparison,
       {"round_difference_us", JsonValue(Object{
           {"median", json_number(paired_comparison.round_difference.median)},
           {"min", json_number(paired_comparison.round_difference.minimum)},
-          {"max", json_number(paired_comparison.round_difference.maximum)},
-          {"lower_quartile", json_number(paired_comparison.round_difference.lower_quartile)},
-          {"upper_quartile", json_number(paired_comparison.round_difference.upper_quartile)}})},
+          {"max", json_number(paired_comparison.round_difference.maximum)}})},
+      {"difference_interval_us", JsonValue(Object{
+          {"low", json_number(paired_comparison.difference_interval_low)},
+          {"high", json_number(paired_comparison.difference_interval_high)},
+          {"coverage", json_number(paired_comparison.difference_interval_coverage)}})},
+      {"sign_test_p_value", json_number(paired_comparison.sign_test_p_value)},
       {"median_difference_us", json_number(paired_comparison.median_difference)},
       {"relative_difference", json_number(paired_comparison.relative_difference)},
       {"verdict", json_text(std::string(comparison_verdict_name(paired_comparison.verdict)))},
@@ -71,9 +72,9 @@ JsonValue build_comparison_record(const PairedMeasurement& paired_measurement,
           {"job_wall_us", metric_record(pair_comparisons.job_wall,
                                         baseline_rounds.job_wall_microseconds,
                                         candidate_rounds.job_wall_microseconds)},
-          {"gpu_execution_us", metric_record(pair_comparisons.gpu_execution,
-                                             baseline_rounds.gpu_execution_microseconds,
-                                             candidate_rounds.gpu_execution_microseconds)},
+          {"gpu_span_us", metric_record(pair_comparisons.gpu_span,
+                                        baseline_rounds.gpu_span_microseconds,
+                                        candidate_rounds.gpu_span_microseconds)},
           {"host_submission_us",
            metric_record(pair_comparisons.host_submission,
                          baseline_rounds.host_submission_microseconds,

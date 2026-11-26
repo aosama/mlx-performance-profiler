@@ -120,6 +120,12 @@ void should_record_median_range_and_samples_in_measured_order() {
   EXPECT_TRUE((job_totals.job_wall_sample_microseconds == std::vector<double>{30, 10, 20, 40}));
 }
 
+void should_measure_the_whole_jobs_gpu_span_as_one_unit() {
+  const Stream job_stream = mlx::core::new_stream(mlx::core::Device::gpu);
+  EXPECT_TRUE(measure_gpu_span_once(SmallJobFactory(job_stream),
+                                    map_single_stream(job_stream)) > 0);
+}
+
 // Performance test (asserts a threshold): timing each node alone, synchronized,
 // can never beat running the whole job overlapped. If it does, a pass is
 // mismeasuring — this is the decomposition invariant from PHASED_PLAN §6.
@@ -190,6 +196,24 @@ void should_keep_node_pointers_valid_after_the_result_is_moved() {
 
 // --- negative ---
 
+// A CPU-only job has no command buffer, so no GPU span: zero, not an error.
+void should_measure_no_gpu_span_for_a_cpu_only_job() {
+  const Stream cpu_stream = mlx::core::new_stream(mlx::core::Device::cpu);
+  EXPECT_TRUE(measure_gpu_span_once(SmallJobFactory(cpu_stream),
+                                    map_single_stream(cpu_stream)) == 0);
+}
+
+void should_refuse_a_gpu_span_on_an_unknown_stream() {
+  const Stream job_stream = mlx::core::new_stream(mlx::core::Device::gpu);
+  bool has_refused = false;
+  try {
+    measure_gpu_span_once(SmallJobFactory(job_stream), {});
+  } catch (const std::out_of_range&) {
+    has_refused = true;
+  }
+  EXPECT_TRUE(has_refused);
+}
+
 void should_refuse_to_record_no_job_wall_samples() {
   JobTotals job_totals;
   bool has_refused = false;
@@ -217,11 +241,14 @@ int main() {
       TEST_CASE(should_keep_every_job_wall_sample_and_time_every_graph_build),
       TEST_CASE(should_return_evaluated_outputs_from_the_warm_up),
       TEST_CASE(should_record_median_range_and_samples_in_measured_order),
+      TEST_CASE(should_measure_the_whole_jobs_gpu_span_as_one_unit),
       TEST_CASE(should_never_make_sum_of_stages_smaller_than_job_duration),
       TEST_CASE(should_time_stages_when_asked_and_cover_every_primitive),
       TEST_CASE(should_keep_per_node_automatically_for_a_small_staged_job),
       TEST_CASE(should_time_a_job_without_cuts_as_one_whole_job_stage),
       TEST_CASE(should_keep_node_pointers_valid_after_the_result_is_moved),
+      TEST_CASE(should_measure_no_gpu_span_for_a_cpu_only_job),
+      TEST_CASE(should_refuse_a_gpu_span_on_an_unknown_stream),
       TEST_CASE(should_refuse_to_record_no_job_wall_samples),
       TEST_CASE(should_return_empty_measurement_for_an_already_materialized_job),
   });

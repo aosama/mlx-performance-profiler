@@ -5,7 +5,9 @@
 #include "test_harness.h"
 
 #include "mlx/mlx.h"
+#include "mlx/primitives.h"
 
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -136,6 +138,27 @@ void should_return_an_empty_graph_for_no_outputs() {
   EXPECT_TRUE(mlx_perf::collect_streams(captured_graph).empty());
 }
 
+// A caller's own primitive that happens to call itself "CustomKernel":
+// never evaluated, only captured, so its kernels are never needed.
+class CallersOwnCustomKernel final : public UnaryPrimitive {
+ public:
+  explicit CallersOwnCustomKernel(Stream stream) : UnaryPrimitive(stream) {}
+  void eval_cpu(const std::vector<array>&, array&) override {}
+  void eval_gpu(const std::vector<array>&, array&) override {}
+  const char* name() const override { return "CustomKernel"; }
+};
+
+void should_not_mistake_a_callers_primitive_named_custom_kernel_for_mlxs() {
+  const array caller_input = ones({4});
+  const array caller_output(caller_input.shape(), float32,
+                            std::make_shared<CallersOwnCustomKernel>(default_stream(Device::gpu)),
+                            {caller_input});
+  const CapturedGraph captured_graph = capture_graph({caller_output});
+  const auto& caller_node = captured_graph.nodes[captured_graph.topological.back()];
+  EXPECT_TRUE(caller_node.op_name == "CustomKernel");
+  EXPECT_TRUE(caller_node.kernel_name.empty());
+}
+
 void should_leave_the_kernel_name_empty_for_built_in_primitives() {
   const CapturedGraph captured_graph = capture_graph({exp(ones({4}))});
   for (const auto& graph_node : captured_graph.nodes) {
@@ -164,6 +187,7 @@ int main() {
       TEST_CASE(should_capture_sibling_outputs_as_one_primitive),
       TEST_CASE(should_return_an_empty_graph_for_no_outputs),
       TEST_CASE(should_leave_the_kernel_name_empty_for_built_in_primitives),
+      TEST_CASE(should_not_mistake_a_callers_primitive_named_custom_kernel_for_mlxs),
       TEST_CASE(should_treat_an_evaluated_output_as_a_leaf_without_primitives),
   });
 }

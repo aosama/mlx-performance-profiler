@@ -3,16 +3,16 @@
 # Run with:  ctest --test-dir build --output-on-failure
 
 # Adds `<test_name>` from `<test_name>.cpp`, linked to the support libraries
-# named after it, or to the core library when none is named (each support
-# library already carries the core; naming it twice makes the linker warn
-# about a duplicate archive). Every test runs from the build directory, so a
+# named after it, or to the core library and its internal headers when none
+# is named (each support library already carries both; naming the core twice
+# makes the linker warn about a duplicate archive). Every test runs from the build directory, so a
 # test that writes reports writes them there.
 function(mlx_perf_add_test test_name)
   add_executable(${test_name} ${test_name}.cpp)
   if(ARGN)
     target_link_libraries(${test_name} PRIVATE ${ARGN})
   else()
-    target_link_libraries(${test_name} PRIVATE mlx_perf)
+    target_link_libraries(${test_name} PRIVATE mlx_perf_internal)
   endif()
   mlx_perf_apply_project_settings(${test_name})
   add_test(NAME ${test_name} COMMAND ${test_name}
@@ -38,6 +38,7 @@ mlx_perf_add_test(progress_reporter_test)
 mlx_perf_add_test(stage_plan_test)
 mlx_perf_add_test(report_stage_table_section_test)
 mlx_perf_add_test(dot_writer_test)
+mlx_perf_add_test(svg_renderer_test)
 mlx_perf_add_test(timed_units_test)
 mlx_perf_add_test(server_options_test mlx_perf_live_view)
 mlx_perf_add_test(live_view_store_test mlx_perf_live_view)

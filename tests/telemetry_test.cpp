@@ -19,16 +19,21 @@ void should_materialize_outputs_and_report_positive_wall() {
   const array job_output = matmul(ones({64, 64}), ones({64, 64}));
   // The pass takes its outputs by value; a copy shares the descriptor, so
   // this handle observes the evaluation.
-  const double job_wall_microseconds = mlx_perf::run_pipeline_pass({job_output});
-  EXPECT_TRUE(job_wall_microseconds > 0);
+  const auto pipeline_timing = mlx_perf::run_pipeline_pass({job_output});
+  EXPECT_TRUE(pipeline_timing.job_wall_microseconds > 0);
+  // Submitting is part of the job's wall, never more than it.
+  EXPECT_TRUE(pipeline_timing.host_submission_microseconds > 0);
+  EXPECT_TRUE(pipeline_timing.host_submission_microseconds <=
+              pipeline_timing.job_wall_microseconds);
   EXPECT_TRUE(job_output.is_available());
 }
 
 // --- edge / boundary ---
 
 void should_return_promptly_for_empty_output_list() {
-  const double job_wall_microseconds = mlx_perf::run_pipeline_pass({});
-  EXPECT_TRUE(job_wall_microseconds >= 0);
+  const auto pipeline_timing = mlx_perf::run_pipeline_pass({});
+  EXPECT_TRUE(pipeline_timing.job_wall_microseconds >= 0);
+  EXPECT_TRUE(pipeline_timing.host_submission_microseconds >= 0);
 }
 
 // --- negative ---

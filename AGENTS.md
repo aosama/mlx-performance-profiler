@@ -29,8 +29,10 @@ sidecar: it observes, it never changes MLX semantics.
 - Targets: `mlx_perf` (profiler, reports, C API) is the only installed
   library and never depends on the demo, server or model code, which build
   as `mlx_perf_demo_model`, `mlx_perf_live_view` and `mlx_perf_qwen35`. The
-  public surface is `include/mlx_perf/`; headers in `src/` are internal.
-  New sources go into the target whose job they do (`CMakeLists.txt`).
+  public surface is `include/mlx_perf/`; headers in `src/` are internal and
+  reach tools and tests only through `mlx_perf_internal` (link it, or a
+  support library, never `src/` directly). New sources go into the target
+  whose job they do (`CMakeLists.txt`).
 - Versions follow `VERSIONING.md`; the MLX releases a version is tested
   against live in `MLX_PERF_TESTED_MLX_VERSIONS`
   (`cmake/mlx_perf_mlx_prefix.cmake`).

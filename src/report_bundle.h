@@ -19,7 +19,9 @@ struct ReportBundleRequest {
   std::string file_base;
 };
 
-// Returns false if any report or measurement file could not be written.
+// Returns false, writing nothing, when the two variant names are equal
+// ignoring case (their files would collide); otherwise false if any report
+// or measurement file could not be written.
 bool write_report_bundle(const ReportBundleRequest& bundle_request,
                          const PairedMeasurement& paired_measurement);
 

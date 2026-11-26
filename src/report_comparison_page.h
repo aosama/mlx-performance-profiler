@@ -18,7 +18,8 @@ struct ComparedVariant {
   std::string full_report_file;  // relative link to the variant's report
 };
 
-// The metric delta table alone (also used by the live server's Job tab).
+// The metric delta table alone (also used by the live server's Job tab):
+// single figures per variant, labelled as not judged against a spread.
 std::string render_comparison_metrics(
     const VariantMeasurement& baseline, const VariantMeasurement& candidate);
 

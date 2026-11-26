@@ -57,7 +57,7 @@ call, so they never disagree. Any JSON reader works: Python's `json`, Rust's
 | `measured_gpu_execution_us` | the sum of GPU-measured compute |
 | `cross_stream_stall_us` | the sum of `wait_on_other_stream_us`; can exceed the wall when streams stall at the same time |
 | `executed_node_count`, `gpu_measured_node_count`, `timed_unit_count`, `stream_count` | counts |
-| `peak_memory_bytes` | the highest peak during the serial pass |
+| `peak_memory_bytes` | the highest per-node peak during the serial pass, above the memory already allocated when that pass began |
 | `command_buffers.timeline_pass_observed` | MLX command buffers seen to complete during the timeline pass |
 | `command_buffers.is_lower_bound` | `true` when MLX may have committed buffers the probe never held (stage-timed runs) |
 | `graph_build[]` | per pass (`stream_discovery`, `warm_up`, `job_wall`, `timeline`, `serial`): `calls_us`, the time each call spent inside the job's own graph-building code, and `total_us` |
@@ -123,7 +123,8 @@ granularity** section explains what that window includes.
 
 ## `streams[]`
 
-`stream_index`, `is_gpu`, `timed_unit_count`, `first_issue_us`,
+`stream_index`, `is_gpu`, `node_count` (nodes on the stream, whichever unit
+timed them), `first_issue_us`,
 `last_completion_us`, `wall_us`, `busy_us` (compute summed) and
 `wait_on_other_stream_us`.
 
@@ -136,7 +137,7 @@ each variant's own file, which the record names.
 |---|---|
 | `schema_version`, `kind` | `1`, `"comparison"` |
 | `baseline`, `candidate` | `variant_name`, and `measurement_file`: that variant's measurement file, relative to this one |
-| `metrics.job_wall_us`, `metrics.gpu_execution_us`, `metrics.host_submission_us` | one record per metric, below |
+| `metrics.job_wall_us`, `metrics.gpu_span_us`, `metrics.host_submission_us` | one record per metric, below |
 | `output_agreement` | `output_count`, and `max_absolute_difference` between the two variants' outputs (float32) |
 
 Each metric record:
@@ -144,17 +145,24 @@ Each metric record:
 | Field | Meaning |
 |---|---|
 | `baseline`, `candidate` | `median`, `min`, `max`, `lower_quartile`, `upper_quartile`, and every `samples` value in round order |
-| `round_difference_us` | the per-round differences (candidate − baseline): `median`, `min`, `max`, `lower_quartile`, `upper_quartile` |
+| `round_difference_us` | the per-round differences (candidate − baseline): `median`, `min`, `max` |
+| `difference_interval_us` | `low`, `high` and `coverage` of the distribution-free interval for the median per-round difference (12 rounds: the 3rd and 10th smallest difference, coverage 0.961) |
+| `sign_test_p_value` | exact two-sided sign test over the non-zero per-round differences (1 when all are zero) |
 | `median_difference_us` | the median per-round difference; negative means the candidate is faster |
 | `relative_difference` | `median_difference_us` / the baseline median (0 when that is 0) |
-| `verdict` | `candidate_faster` when the middle half of the per-round differences (lower to upper quartile) lies entirely below zero, `candidate_slower` when entirely above, otherwise `within_spread` |
+| `verdict` | `candidate_faster` when the whole interval lies below zero, `candidate_slower` when above, otherwise `within_spread` (always, when the interval cannot reach 95% coverage) |
 | `rounds_candidate_faster`, `round_count` | rounds, paired by index, in which the candidate's sample was lower |
 
-Job wall has 7 rounds; GPU execution and host submission come from 5
-timeline rounds. Host submission is the host time spent inside `async_eval`
-over the whole job: encoding and committing the work.
+All three metrics come from 12 rounds measured without per-node
+instrumentation. Job wall and host submission (host time inside the job's
+single `async_eval`) come from the same runs. GPU span comes from the whole
+job timed as one unit per stream: from its first command buffer's GPU start
+to its last one's end, summed over streams. It includes GPU gaps while the
+host is still encoding, and its end is bounded by an empty marker buffer
+(an upper bound by the marker's small scheduling gap, the same for both
+variants). The order of the two variants flips every round.
 
-## Example: each node's GPU time and the gaps between nodes
+## Example: each node's GPU compute and the gaps between nodes
 
 ```python
 import json
@@ -162,9 +170,11 @@ import json
 with open("build/rust_example.json") as measurement_file:
     measurement = json.load(measurement_file)
 for node in measurement["nodes"]:
-    if node["gpu_started_us"] is None:
-        continue  # not GPU-measured
-    gpu_execution_us = node["gpu_finished_us"] - node["gpu_started_us"]
-    print(node["position"], node["op_name"], f"{gpu_execution_us:.1f} us",
+    if not node["is_compute_gpu_measured"]:
+        continue  # a CPU-stream node: compute is a host-time fallback
+    # compute_us is the GPU's own execution. gpu_finished_us − gpu_started_us
+    # is the whole command-buffer window, which for a node joining another
+    # stream also includes the wait for that stream's data.
+    print(node["position"], node["op_name"], f"{node['compute_us']:.1f} us",
           "idle before:", node["gpu_idle_before_us"])
 ```

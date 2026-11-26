@@ -16,7 +16,17 @@ set(MLX_PERF_BUILT_AGAINST_MLX_VERSION "@MLX_PERF_BUILT_AGAINST_MLX_VERSION@")
 include("${CMAKE_CURRENT_LIST_DIR}/mlx_perf_mlx_prefix.cmake")
 
 set(MLX_PREFIX "${MLX_PREFIX}" CACHE PATH "Prefix of the prebuilt MLX installation mlx_perf links against.")
-mlx_perf_require_mlx_prefix("${MLX_PREFIX}")
+# A required package without MLX stops configure with the reason; an optional
+# one (QUIET, or no REQUIRED) is reported not found and the consumer goes on.
+if(NOT MLX_PREFIX OR NOT EXISTS "${MLX_PREFIX}/include/mlx/mlx.h")
+  if(${CMAKE_FIND_PACKAGE_NAME}_FIND_REQUIRED)
+    mlx_perf_require_mlx_prefix("${MLX_PREFIX}")
+  endif()
+  set(${CMAKE_FIND_PACKAGE_NAME}_FOUND FALSE)
+  set(${CMAKE_FIND_PACKAGE_NAME}_NOT_FOUND_MESSAGE
+      "mlx_perf needs MLX_PREFIX set to a prebuilt MLX prefix (containing include/mlx/mlx.h).")
+  return()
+endif()
 mlx_perf_read_mlx_version("${MLX_PREFIX}" mlx_perf_consumer_mlx_version)
 if(NOT mlx_perf_consumer_mlx_version VERSION_EQUAL MLX_PERF_BUILT_AGAINST_MLX_VERSION)
   set(${CMAKE_FIND_PACKAGE_NAME}_FOUND FALSE)

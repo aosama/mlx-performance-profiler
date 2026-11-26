@@ -5,6 +5,8 @@
 
 #include "mlx/mlx.h"
 
+#include <cmath>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -50,7 +52,25 @@ void should_agree_on_empty_and_half_precision_outputs() {
   EXPECT_TRUE(compare_outputs({}, {}).output_count == 0);
 }
 
-// --- negative ---
+// --- negative: a broken kernel never reads as agreement ---
+
+void should_report_a_nan_output_as_unmeasurable_not_as_agreement() {
+  const array baseline_output = array({1.0f, 2.0f, 3.0f});
+  const array candidate_output = array({1.0f, std::nanf(""), 3.0f});
+  EXPECT_TRUE(std::isnan(compare_outputs({baseline_output}, {candidate_output})
+                             .max_absolute_difference));
+  // A NaN in a later output is not hidden by an earlier finite one.
+  EXPECT_TRUE(std::isnan(compare_outputs({array({0.0f}), baseline_output},
+                                         {array({0.5f}), candidate_output})
+                             .max_absolute_difference));
+}
+
+void should_report_infinities_on_both_sides_as_unmeasurable() {
+  const float infinity = std::numeric_limits<float>::infinity();
+  EXPECT_TRUE(std::isnan(compare_outputs({array({infinity})}, {array({infinity})})
+                             .max_absolute_difference));
+}
+
 
 void should_refuse_a_different_number_of_outputs() {
   EXPECT_TRUE(invalid_argument_message({ones({2})}, {ones({2}), ones({2})}).find("2") !=
@@ -76,6 +96,8 @@ int main() {
       TEST_CASE(should_measure_the_largest_difference_between_matching_outputs),
       TEST_CASE(should_find_identical_outputs_in_full_agreement),
       TEST_CASE(should_agree_on_empty_and_half_precision_outputs),
+      TEST_CASE(should_report_a_nan_output_as_unmeasurable_not_as_agreement),
+      TEST_CASE(should_report_infinities_on_both_sides_as_unmeasurable),
       TEST_CASE(should_refuse_a_different_number_of_outputs),
       TEST_CASE(should_refuse_a_different_shape_naming_both),
       TEST_CASE(should_refuse_a_different_dtype),

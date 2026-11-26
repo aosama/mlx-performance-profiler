@@ -6,11 +6,13 @@
 // numbers from which a difference can be judged against the spread.
 //
 // The schedule: both warm-ups (whose outputs must agree), then
-// JOB_WALL_SAMPLE_COUNT job-wall rounds and PAIRED_TIMELINE_ROUND_COUNT
-// timeline rounds, each round running both variants with the order flipped
-// every round (A B, B A, …), then one serial pass each. With a fixed order,
-// whichever ran second would always see a slightly warmer GPU; flipping
-// cancels that along with slow drift.
+// PAIRED_ROUND_COUNT uninstrumented rounds (job wall and host submission)
+// and PAIRED_ROUND_COUNT GPU-span rounds (the whole job as one timed unit),
+// each round running both variants with the order flipped every round
+// (A B, B A, …); then one per-node timeline each, for the picture only, and
+// one serial pass each. With a fixed order, whichever ran second would
+// always see a slightly warmer GPU; an even round count with the order
+// flipped cancels that exactly.
 
 #include "measurement_session.h"
 #include "output_agreement.h"
@@ -24,10 +26,11 @@
 
 namespace mlx_perf {
 
-// Five timeline rounds per variant: GPU execution gets a median and a range
-// of its own. More rounds would hold more timelines in memory (each round's
-// graph stays alive until the median round is chosen).
-inline constexpr int PAIRED_TIMELINE_ROUND_COUNT = 5;
+// Twelve rounds per metric: the fewest at which "won at least 10 of 12" is a
+// result at under 4% false positives while two disturbed rounds still cannot
+// veto it (sample_statistics.h). Even, so each variant runs first in exactly
+// half the rounds. A round costs one run of the job per variant.
+inline constexpr int PAIRED_ROUND_COUNT = 12;
 
 // One implementation to compare; `graph_factory` must outlive the call.
 struct ComparedJob {
@@ -35,18 +38,19 @@ struct ComparedJob {
   const GraphFactory& graph_factory;
 };
 
-// One variant's headline numbers, one entry per round, in round order.
+// One variant's headline numbers, one entry per round, in round order. None
+// comes from the per-node instrumented pass.
 struct VariantRounds {
   std::vector<double> job_wall_microseconds;
-  std::vector<double> gpu_execution_microseconds;
-  std::vector<double> timeline_wall_microseconds;
-  // Host time inside async_eval for the whole job: encoding and committing.
+  // Host time inside the single async_eval of the uninstrumented run.
   std::vector<double> host_submission_microseconds;
+  // The whole job's GPU span (measure_gpu_span_once).
+  std::vector<double> gpu_span_microseconds;
 };
 
-// Each variant's VariantMeasurement holds the timeline round whose GPU
-// execution was the median, so the picture shown is the run the headline
-// number came from. Move-only, as VariantMeasurement is.
+// Each variant's VariantMeasurement holds one per-node timeline for the
+// picture (DAG, Gantt, task table), measured after the rounds; the verdict
+// never reads it. Move-only, as VariantMeasurement is.
 struct PairedMeasurement {
   VariantMeasurement baseline;
   VariantMeasurement candidate;
@@ -58,7 +62,7 @@ struct PairedMeasurement {
 // The three questions a comparison answers, each against its own spread.
 struct PairComparisons {
   PairedComparison job_wall;
-  PairedComparison gpu_execution;
+  PairedComparison gpu_span;
   PairedComparison host_submission;
 };
 

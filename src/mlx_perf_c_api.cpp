@@ -6,6 +6,7 @@
 #include "measurement_file.h"
 #include "paired_measurement.h"
 #include "report_bundle.h"
+#include "text_format.h"
 #include "measurement_session.h"
 #include "mlx_c_interop.h"
 #include "report_writer.h"
@@ -175,9 +176,11 @@ void require_comparable_variants(const mlx_perf_variant* baseline,
                                   variant_name + "\" must be non-empty without '/'");
     }
   }
-  if (std::string(baseline->variant_name) == candidate->variant_name) {
+  // Case-insensitive: on macOS's default file system "Stock" and "stock" name
+  // the same files, and one variant's report would overwrite the other's.
+  if (are_equal_ignoring_case(baseline->variant_name, candidate->variant_name)) {
     throw std::invalid_argument("mlx_perf_compare_to_report: both variants are named \"" +
-                                std::string(baseline->variant_name) + "\"");
+                                std::string(baseline->variant_name) + "\" (ignoring case)");
   }
 }
 
@@ -221,10 +224,11 @@ void fill_metric(const PairedComparison& paired_comparison,
   metric_comparison.candidate_lower_quartile_us = paired_comparison.candidate.lower_quartile;
   metric_comparison.candidate_upper_quartile_us = paired_comparison.candidate.upper_quartile;
   metric_comparison.median_difference_us = paired_comparison.median_difference;
-  metric_comparison.difference_lower_quartile_us =
-      paired_comparison.round_difference.lower_quartile;
-  metric_comparison.difference_upper_quartile_us =
-      paired_comparison.round_difference.upper_quartile;
+  metric_comparison.difference_interval_low_us = paired_comparison.difference_interval_low;
+  metric_comparison.difference_interval_high_us = paired_comparison.difference_interval_high;
+  metric_comparison.difference_interval_coverage =
+      paired_comparison.difference_interval_coverage;
+  metric_comparison.sign_test_p_value = paired_comparison.sign_test_p_value;
   metric_comparison.relative_difference = paired_comparison.relative_difference;
   metric_comparison.verdict = to_c_verdict(paired_comparison.verdict);
   metric_comparison.rounds_candidate_faster = paired_comparison.rounds_candidate_faster;
@@ -237,7 +241,7 @@ void fill_comparison_summary(const PairedMeasurement& paired_measurement,
   fill_summary(paired_measurement.candidate, comparison_summary.candidate);
   const PairComparisons pair_comparisons = compare_pair(paired_measurement);
   fill_metric(pair_comparisons.job_wall, comparison_summary.job_wall);
-  fill_metric(pair_comparisons.gpu_execution, comparison_summary.gpu_execution);
+  fill_metric(pair_comparisons.gpu_span, comparison_summary.gpu_span);
   fill_metric(pair_comparisons.host_submission, comparison_summary.host_submission);
   comparison_summary.max_absolute_output_difference =
       paired_measurement.output_agreement.max_absolute_difference;

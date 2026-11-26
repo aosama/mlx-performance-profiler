@@ -4,9 +4,10 @@
  *
  * The caller describes its job as a callback that appends a FRESH, unevaluated
  * graph's outputs to a vector it is handed; the library calls it once per
- * pass (warm-up, 7 job-wall samples, timeline, serial), exactly as the C++
- * demo does, and writes `<output_directory>/<report_file_base>.html` plus the
- * same measurement as data in `<report_file_base>.json` (one record per node,
+ * graph it needs (11 times for one profile: stream discovery, warm-up, 7
+ * job-wall samples, timeline, serial; more per variant in a comparison),
+ * and writes `<output_directory>/<report_file_base>.html` plus the same
+ * measurement as data in `<report_file_base>.json` (one record per node,
  * in execution order; schema in docs/measurement-file.md). Callers that only
  * want the data use mlx_perf_profile_to_measurements. Results come back as
  * files plus the plain summary struct, so no result arrays and no ownership
@@ -79,10 +80,11 @@ typedef struct mlx_perf_variant {
 } mlx_perf_variant;
 
 /* Values of mlx_perf_metric_comparison.verdict. Lower is better. The verdict
- * is judged on the per-round differences (candidate − baseline): other than
- * "within spread" only when the middle half of those differences (lower to
- * upper quartile) lies entirely below (or above) zero, so drift shared
- * within a round cancels and a single disturbed round cannot decide it. */
+ * is judged on the per-round differences (candidate − baseline, 12 rounds,
+ * order flipped every round): other than "within spread" only when the
+ * whole interval for the median difference lies below (or above) zero,
+ * i.e. the candidate won (or lost) at least 10 of 12 rounds. Two identical
+ * variants are called different under 4% of the time per metric. */
 enum {
   MLX_PERF_VERDICT_CANDIDATE_FASTER = -1,
   MLX_PERF_VERDICT_WITHIN_SPREAD = 0,
@@ -102,8 +104,10 @@ typedef struct mlx_perf_metric_comparison {
   double candidate_lower_quartile_us;
   double candidate_upper_quartile_us;
   double median_difference_us; /* median per-round candidate − baseline: negative is faster */
-  double difference_lower_quartile_us;
-  double difference_upper_quartile_us;
+  double difference_interval_low_us;  /* interval for the median difference */
+  double difference_interval_high_us;
+  double difference_interval_coverage; /* e.g. 0.961 for 12 rounds */
+  double sign_test_p_value;            /* exact, two-sided, non-zero rounds */
   double relative_difference;  /* median_difference_us / baseline median */
   int verdict;                 /* an MLX_PERF_VERDICT_* value */
   int rounds_candidate_faster;
@@ -113,9 +117,9 @@ typedef struct mlx_perf_metric_comparison {
 typedef struct mlx_perf_comparison_summary {
   mlx_perf_job_summary baseline;
   mlx_perf_job_summary candidate;
-  mlx_perf_metric_comparison job_wall;
-  mlx_perf_metric_comparison gpu_execution;
-  mlx_perf_metric_comparison host_submission; /* host time inside async_eval */
+  mlx_perf_metric_comparison job_wall;        /* uninstrumented runs */
+  mlx_perf_metric_comparison gpu_span;        /* whole job as one timed unit */
+  mlx_perf_metric_comparison host_submission; /* inside the uninstrumented async_eval */
   double max_absolute_output_difference;
 } mlx_perf_comparison_summary;
 

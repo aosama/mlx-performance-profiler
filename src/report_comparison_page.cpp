@@ -75,7 +75,7 @@ std::string render_comparison_metrics(
   table_html << "<div class=\"table-wrap\"><table><thead><tr><th>Metric</th><th>"
              << escape_html_text(baseline.variant_name) << "</th><th>"
              << escape_html_text(candidate.variant_name)
-             << "</th><th>Change</th></tr></thead><tbody>";
+             << "</th><th>Change (not judged)</th></tr></thead><tbody>";
   for (const MetricRow& metric_row : collect_metric_rows(baseline, candidate)) {
     table_html << "<tr><td>" << metric_row.metric_name << "</td><td class=\"number\">"
                << escape_html_text(format_metric(metric_row.baseline_value,
@@ -88,8 +88,12 @@ std::string render_comparison_metrics(
                << "</td></tr>";
   }
   table_html << "</tbody></table></div><p class=\"note\">Lower is better for every"
-             << " row; a negative change is an improvement. Each variant ran the"
-             << " same four passes on the same materialized inputs. Timeline pass: "
+             << " row; a negative change is an improvement. These are single figures with"
+             << " no spread to judge them against: job duration is each variant's median,"
+             << " the GPU, stall and instrumented rows come from one per-node timeline per"
+             << " variant (instrumented: each node submitted on its own), and the sum of"
+             << " stages from one serial pass. Where a Verdict section is shown, it is the"
+             << " judged comparison. Timeline pass: "
              << escape_html_text(baseline.variant_name) << " timed "
              << granularity_name(baseline.gpu_timeline.granularity) << ", "
              << escape_html_text(candidate.variant_name) << " timed "
@@ -110,7 +114,7 @@ std::string render_variant_column(const ComparedVariant& compared_variant) {
   column_html << "<div class=\"variant\"><h3>" << escape_html_text(variant.variant_name)
               << " <small>(" << variant.gpu_timeline.nodes.size()
               << " nodes) — <a href=\""
-              << escape_html_text(compared_variant.full_report_file)
+              << escape_html_text(encode_url_path_segment(compared_variant.full_report_file))
               << "\">full report</a></small></h3><div class=\"dag\">";
   if (compared_variant.plan_svg.empty()) {
     column_html << "<p class=\"note\">Graphviz unavailable: open the full report"
@@ -235,7 +239,10 @@ std::string render_shared_scale_timelines(
                candidate.gpu_timeline.timeline_wall_microseconds);
   std::ostringstream timelines_html;
   timelines_html << render_slice_legend() << "<p class=\"note\">Both timeline"
-                 << " passes on one time axis, so lengths compare directly.</p>";
+                 << " passes on one time axis, so lengths compare directly. These are"
+                 << " per-node timelines, instrumented (each node submitted on its own), drawn"
+                 << " to show what ran where; a verdict, when shown, comes from separate"
+                 << " uninstrumented rounds.</p>";
   for (const VariantMeasurement* variant : {&baseline, &candidate}) {
     timelines_html << "<h3>" << escape_html_text(variant->variant_name)
                    << "</h3><div class=\"gantt-wrap\">"

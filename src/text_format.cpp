@@ -1,5 +1,7 @@
 #include "text_format.h"
 
+#include <cctype>
+
 #include <cstdio>
 
 namespace mlx_perf {
@@ -98,6 +100,37 @@ std::string escape_dot_text(const std::string& raw_text) {
     escaped_text += letter;
   }
   return escaped_text;
+}
+
+std::string encode_url_path_segment(const std::string& raw_text) {
+  static constexpr char HEX_DIGITS[] = "0123456789ABCDEF";
+  std::string encoded_text;
+  for (const char letter : raw_text) {
+    const unsigned char byte_value = static_cast<unsigned char>(letter);
+    const bool is_unreserved = std::isalnum(byte_value) || letter == '-' || letter == '.' ||
+                               letter == '_' || letter == '~';
+    if (is_unreserved) {
+      encoded_text += letter;
+    } else {
+      encoded_text += '%';
+      encoded_text += HEX_DIGITS[byte_value >> 4];
+      encoded_text += HEX_DIGITS[byte_value & 0x0F];
+    }
+  }
+  return encoded_text;
+}
+
+bool are_equal_ignoring_case(const std::string& first_name, const std::string& second_name) {
+  if (first_name.size() != second_name.size()) {
+    return false;
+  }
+  for (std::size_t letter_index = 0; letter_index < first_name.size(); ++letter_index) {
+    if (std::tolower(static_cast<unsigned char>(first_name[letter_index])) !=
+        std::tolower(static_cast<unsigned char>(second_name[letter_index]))) {
+      return false;
+    }
+  }
+  return true;
 }
 
 } // namespace mlx_perf
