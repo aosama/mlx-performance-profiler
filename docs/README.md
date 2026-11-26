@@ -33,4 +33,4 @@ Every C program and CMake project on these pages is a file in [`examples/`](exam
 
 ## Versions
 
-These pages describe the current release, 0.4.0 (MLX 0.32.4 and 0.32.5). 0.4.0 added to the C API (procedure comparisons and `mlx_perf_install_launch_recorder`) without changing any existing function or struct; the measurement file is still `schema_version` 1, with new fields only. What changed in each release is in the [changelog](../CHANGELOG.md) and the [release notes](https://github.com/aosama/mlx-performance-profiler/releases).
+These pages describe the current release, 0.5.0 (MLX 0.32.4 and 0.32.5). 0.4.0 and 0.5.0 added to the C API (procedure comparisons, `mlx_perf_install_launch_recorder`, and the wired memory reading and probe) without changing any existing function or struct; the measurement file is still `schema_version` 1, with new fields only. What changed in each release is in the [changelog](../CHANGELOG.md) and the [release notes](https://github.com/aosama/mlx-performance-profiler/releases).
