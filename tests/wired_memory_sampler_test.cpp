@@ -89,6 +89,14 @@ void should_finish_at_once_when_nothing_was_released() {
   EXPECT_TRUE(wired_memory_samples.size() >= 2);
 }
 
+void should_ignore_a_second_start() {
+  WiredMemorySampler wired_memory_sampler;
+  wired_memory_sampler.start();
+  wired_memory_sampler.start();
+  const std::vector<WiredMemorySample> wired_memory_samples = wired_memory_sampler.finish();
+  EXPECT_TRUE(count_samples_at(wired_memory_samples, WiredSamplePoint::run_start) == 1);
+}
+
 // --- negative ---
 
 void should_stop_waiting_for_unwiring_at_the_limit() {
@@ -114,6 +122,7 @@ int main() {
       TEST_CASE(should_sample_each_evaluation_boundary_and_the_interval_between),
       TEST_CASE(should_keep_sampling_after_the_run_until_macos_unwires_a_release),
       TEST_CASE(should_finish_at_once_when_nothing_was_released),
+      TEST_CASE(should_ignore_a_second_start),
       TEST_CASE(should_stop_waiting_for_unwiring_at_the_limit),
   });
 }

@@ -111,6 +111,15 @@ void should_count_the_hand_offs_of_each_procedure_per_run() {
   EXPECT_TRUE(!paired_measurement.candidate.observed_launches.empty());
   EXPECT_TRUE(!paired_measurement.candidate.observed_launches.front().metal_function_name.empty());
   EXPECT_TRUE(compare_procedure_pair(paired_measurement).duration.round_count == PROCEDURE_ROUND_COUNT);
+  // The observed run carries a wired memory track, from its start to its end.
+  const std::vector<WiredMemorySample>& chatty_wired_memory = paired_measurement.baseline.observed_wired_memory;
+  EXPECT_TRUE(chatty_wired_memory.size() >= 2);
+  EXPECT_TRUE(!chatty_wired_memory.empty() && chatty_wired_memory.front().sample_point == WiredSamplePoint::run_start);
+  int boundary_sample_count = 0;
+  for (const WiredMemorySample& wired_memory_sample : chatty_wired_memory) {
+    boundary_sample_count += wired_memory_sample.sample_point == WiredSamplePoint::evaluation_boundary ? 1 : 0;
+  }
+  EXPECT_TRUE(boundary_sample_count >= 8);
 }
 
 void should_prepare_before_every_run_of_both_procedures() {

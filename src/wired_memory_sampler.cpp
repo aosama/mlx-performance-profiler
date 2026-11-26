@@ -54,7 +54,12 @@ WiredMemorySampler::~WiredMemorySampler() {
   }
 }
 
+// A second start() is ignored: assigning over a running std::thread would
+// terminate the process.
 void WiredMemorySampler::start() {
+  if (interval_thread_.joinable()) {
+    return;
+  }
   add_sample(take_wired_memory_sample(WiredSamplePoint::run_start));
   should_keep_sampling_ = true;
   interval_thread_ = std::thread(&WiredMemorySampler::sample_on_interval, this);
@@ -90,9 +95,11 @@ void WiredMemorySampler::add_sample(const WiredMemorySample& wired_memory_sample
   wired_memory_samples_.push_back(wired_memory_sample);
 }
 
-// Runs on the caller's thread after the run. A late boundary from a worker
-// thread may still add a sample meanwhile, so the list is only touched under
-// its lock; the release check works on a sorted copy.
+// Runs on the caller's thread after the run. A caller that leaves this
+// sampler attached as a boundary listener may still receive a late boundary
+// from a worker thread meanwhile (the procedure measurement detaches it
+// first), so the list is only touched under its lock; the release check
+// works on a sorted copy.
 void WiredMemorySampler::sample_until_unwired() {
   const auto wait_ends_at = std::chrono::steady_clock::now() + unwire_wait_limit_;
   while (std::chrono::steady_clock::now() < wait_ends_at) {
