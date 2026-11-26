@@ -3,6 +3,25 @@
 Versions follow [`VERSIONING.md`](VERSIONING.md). Each release lists the
 MLX releases it was built and tested against.
 
+## Unreleased
+
+### Added
+- **Interactive execution graph (#30).** The report's DAG is now an
+  explorable graph instead of a static Graphviz drawing: nodes coloured by
+  where their time went and brighter the more they cost, hover cards with
+  the six-slice breakdown, click to trace upstream and downstream, search,
+  the hot path (most expensive dependency chain), colour by cost or stream,
+  full screen and PNG download. Stage-timed jobs open on their stages and
+  drill into each. Built on Cytoscape.js and dagre (MIT), vendored in
+  `third_party/` and compiled into the library, so reports stay one offline
+  HTML file. The view reads the measurement document (schema version 1).
+
+### Removed
+- **Graphviz.** Reports no longer run `dot` or write an `.svg`; the `.dot`
+  file is still written. `ReportPaths` loses `svg_path`,
+  `graphviz_available` and `plan_svg` (internal C++ only; the C API is
+  unchanged).
+
 ## 0.2.0 (2026-11-26)
 
 Tested MLX releases: 0.32.4, 0.32.5 (Metal, macOS).

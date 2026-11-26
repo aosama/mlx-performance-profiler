@@ -1,5 +1,6 @@
 #include "report_comparison_page.h"
 
+#include "graph_view_section.h"
 #include "report_assets.h"
 #include "report_gantt_section.h"
 #include "report_components.h"
@@ -108,21 +109,19 @@ std::string render_comparison_metrics(
 
 namespace {
 
-std::string render_variant_column(const ComparedVariant& compared_variant) {
+// `view_name` keeps the two views' element ids apart even when the variant
+// names reduce to the same id ("a b" and "a-b").
+std::string render_variant_column(const ComparedVariant& compared_variant,
+                                  const std::string& view_name) {
   const VariantMeasurement& variant = compared_variant.variant_measurement;
   std::ostringstream column_html;
   column_html << "<div class=\"variant\"><h3>" << escape_html_text(variant.variant_name)
               << " <small>(" << variant.gpu_timeline.nodes.size()
               << " nodes) — <a href=\""
               << escape_html_text(encode_url_path_segment(compared_variant.full_report_file))
-              << "\">full report</a></small></h3><div class=\"dag\">";
-  if (compared_variant.plan_svg.empty()) {
-    column_html << "<p class=\"note\">Graphviz unavailable: open the full report"
-                << " for the DOT source.</p>";
-  } else {
-    column_html << compared_variant.plan_svg;
-  }
-  column_html << "</div></div>";
+              << "\">full report</a></small></h3>"
+              << render_graph_view(view_name, compared_variant.measurement_document_json)
+              << "</div>";
   return column_html.str();
 }
 
@@ -290,7 +289,8 @@ std::string build_comparison_document(
   page_html << "<!DOCTYPE html>\n<html lang=\"en\"><head><meta charset=\"utf-8\">"
             << "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
             << "<title>" << escape_html_text(page_title) << "</title><style>"
-            << report_stylesheet() << "</style></head><body><header><h1>"
+            << report_stylesheet() << render_graph_view_stylesheet()
+            << "</style></head><body><header><h1>"
             << escape_html_text(page_title) << "</h1><p>" << escape_html_text(subtitle)
             << "</p></header>";
   if (!page_text.verdict_html.empty()) {
@@ -299,14 +299,15 @@ std::string build_comparison_document(
   }
   page_html << "<section id=\"compare\"><h2>Job metrics</h2>"
             << render_comparison_metrics(baseline, candidate) << "</section>"
-            << "<section id=\"plans\"><h2>Plans side by side</h2><div class=\"variant-grid\">"
-            << render_variant_column(baseline_variant)
-            << render_variant_column(candidate_variant) << "</div></section>"
+            << "<section id=\"plans\"><h2>Execution graphs side by side</h2><div class=\"variant-grid\">"
+            << render_variant_column(baseline_variant, "baseline")
+            << render_variant_column(candidate_variant, "candidate") << "</div></section>"
             << "<section id=\"timelines\"><h2>Timelines (shared scale)</h2>"
             << render_shared_scale_timelines(baseline, candidate) << "</section>"
             << "<section id=\"primitives\"><h2>Primitive mix (planned vs executed)</h2>"
             << render_primitive_mix(baseline, candidate) << "</section>"
-            << "<script>" << report_sort_script() << "</script></body></html>\n";
+            << "<script>" << report_sort_script() << "</script>"
+            << render_graph_view_scripts() << "</body></html>\n";
   return page_html.str();
 }
 

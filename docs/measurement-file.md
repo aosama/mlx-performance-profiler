@@ -72,7 +72,7 @@ Identity and structure:
 
 | Field | Meaning |
 |---|---|
-| `position`, `label` | execution order, and the plan's variable name (as in the report's DAG) |
+| `position`, `label` | execution order, and the plan's variable name (as in the report's graph) |
 | `op_name` | the primitive's name, e.g. `"Matmul"` |
 | `kernel_name` | for a custom Metal kernel (`op_name` `"CustomKernel"`): MLX's name for it, `"custom_kernel_"` plus the author's name. Otherwise `null` |
 | `stream_index`, `shape`, `dtype`, `output_bytes` | where it ran and what it produced |

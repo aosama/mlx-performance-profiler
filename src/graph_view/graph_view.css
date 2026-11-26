@@ -1,0 +1,52 @@
+/* mlx-performance-profiler graph view. Built on the report's colour tokens
+   (--page, --panel, --ink, --muted, --rule), so it follows the page between
+   light and dark themes without its own palette. */
+.graph-view { position: relative; border: 1px solid var(--rule); border-radius: 10px;
+  background: radial-gradient(ellipse at 50% 0%, var(--panel), var(--page) 75%);
+  overflow: hidden; display: flex; flex-direction: column; }
+.graph-view:fullscreen { border-radius: 0; }
+.graph-view [hidden] { display: none !important; }
+.gv-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 8px 16px; padding: 8px 12px; border-bottom: 1px solid var(--rule);
+  background: color-mix(in srgb, var(--panel) 85%, transparent); backdrop-filter: blur(6px); }
+.gv-breadcrumb { font-size: 12.5px; color: var(--ink); }
+.gv-breadcrumb span { color: var(--muted); }
+.gv-breadcrumb a { color: var(--slice-queued); text-decoration: none; font-weight: 600; }
+.gv-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.gv-controls button, .gv-controls select, .gv-search {
+  font: inherit; font-size: 12px; color: var(--ink); background: var(--page);
+  border: 1px solid var(--rule); border-radius: 7px; padding: 4px 10px; height: 28px; }
+.gv-controls button { cursor: pointer; font-weight: 600; }
+.gv-controls button:hover, .gv-controls select:hover { border-color: var(--muted); }
+.gv-controls button[aria-pressed="true"] { background: var(--ink); color: var(--page); border-color: var(--ink); }
+.gv-segmented { display: inline-flex; }
+.gv-segmented button { border-radius: 0; }
+.gv-segmented button:first-child { border-radius: 7px 0 0 7px; }
+.gv-segmented button:last-child { border-radius: 0 7px 7px 0; border-left: 0; }
+.gv-search { width: 150px; }
+.gv-stage { position: relative; height: 620px; }
+.graph-view:fullscreen .gv-stage { height: auto; flex: 1; }
+.gv-canvas { position: absolute; inset: 0; }
+.gv-tooltip, .gv-details { position: absolute; z-index: 2; width: 300px; padding: 10px 12px;
+  background: color-mix(in srgb, var(--panel) 94%, transparent); color: var(--ink);
+  border: 1px solid var(--rule); border-radius: 10px; box-shadow: 0 10px 30px rgba(0, 0, 0, .28);
+  backdrop-filter: blur(8px); font-size: 12px; pointer-events: none; }
+.gv-details { top: 10px; right: 10px; pointer-events: auto; max-height: calc(100% - 20px); overflow: auto; }
+.gv-tooltip h4, .gv-details h4 { margin: 0 0 4px; font-size: 13px; word-break: break-all; }
+.gv-tooltip h4 small, .gv-details h4 small { color: var(--muted); font-weight: 500; }
+.gv-class { margin: 0 0 6px; color: var(--muted); }
+.gv-note { margin: 6px 0 0; color: var(--muted); font-size: 11px; }
+.gv-facts { width: 100%; border-collapse: collapse; font-size: 11.5px; margin-top: 4px; }
+.gv-facts td { border: 0; padding: 2px 0; white-space: normal; }
+.gv-facts td:last-child { text-align: right; font-variant-numeric: tabular-nums; word-break: break-all; }
+.gv-facts tr.gv-total td { border-top: 1px solid var(--rule); font-weight: 600; }
+.gv-facts i, .gv-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; }
+.gv-slice-bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; margin: 8px 0 4px; background: var(--rule); }
+.gv-slice-bar span { display: block; height: 100%; }
+.gv-footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 16px;
+  padding: 7px 12px; border-top: 1px solid var(--rule); font-size: 11.5px; color: var(--muted); }
+.gv-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; }
+.gv-legend span { display: inline-flex; align-items: center; }
+.gv-legend-note { opacity: .8; }
+.gv-status { color: var(--ink); font-weight: 600; }
+.variant-grid .gv-stage { height: 520px; }

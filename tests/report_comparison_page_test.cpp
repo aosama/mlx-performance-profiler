@@ -43,13 +43,29 @@ void should_render_metrics_plans_shared_timelines_and_primitive_mix() {
   populate_variant(eager_measurement, "eager", 200);
   populate_variant(compiled_measurement, "compiled", 100);
   const std::string document = build_comparison_document(
-      "Job", {eager_measurement, "<svg id=\"a\"></svg>", "eager.html"},
+      "Job", {eager_measurement, "{\"variant_name\": \"eager\"}", "eager.html"},
       {compiled_measurement, "", "compiled.html"});
   EXPECT_TRUE(document.find("-50.0%") != std::string::npos);
   EXPECT_TRUE(count_occurrences(document, "<svg class=\"gantt\"") == 2);
   EXPECT_TRUE(document.find("id=\"primitives\"") != std::string::npos);
   EXPECT_TRUE(document.find("href=\"compiled.html\"") != std::string::npos);
-  EXPECT_TRUE(document.find("<svg id=\"a\">") != std::string::npos);
+  EXPECT_TRUE(document.find("{\"variant_name\": \"eager\"}") != std::string::npos);
+}
+
+void should_give_each_variant_its_own_graph_view_and_load_the_scripts_once() {
+  VariantMeasurement eager_measurement;
+  VariantMeasurement compiled_measurement;
+  populate_variant(eager_measurement, "eager", 200);
+  populate_variant(compiled_measurement, "compiled", 100);
+  const std::string document = build_comparison_document(
+      "Job", {eager_measurement, "{\"variant_name\": \"eager\"}", "e.html"},
+      {compiled_measurement, "{\"variant_name\": \"compiled\"}", "c.html"});
+  EXPECT_TRUE(count_occurrences(document, "class=\"graph-view\"") == 2);
+  EXPECT_TRUE(document.find("id=\"graph-document-baseline\">{\"variant_name\": \"eager\"}") !=
+              std::string::npos);
+  EXPECT_TRUE(document.find("id=\"graph-document-candidate\">{\"variant_name\": \"compiled\"}") !=
+              std::string::npos);
+  EXPECT_TRUE(count_occurrences(document, "graph view: mounting and interaction") == 1);
 }
 
 void should_open_with_the_callers_verdict_and_subtitle() {
@@ -127,7 +143,7 @@ void should_show_dash_for_change_when_baseline_is_zero() {
   populate_variant(compiled_measurement, "compiled", 100);
   const std::string document = build_comparison_document(
       "Job", {eager_measurement, "", "e.html"}, {compiled_measurement, "", "c.html"});
-  EXPECT_TRUE(document.find("inf") == std::string::npos);
+  EXPECT_TRUE(report_fixture::remove_script_elements(document).find("inf") == std::string::npos);
   EXPECT_TRUE(document.find(">—</td>") != std::string::npos);
 }
 
@@ -155,6 +171,7 @@ int main() {
   return test_harness::run_all({
       TEST_CASE(should_split_a_compiled_name_into_its_fused_primitives),
       TEST_CASE(should_render_metrics_plans_shared_timelines_and_primitive_mix),
+      TEST_CASE(should_give_each_variant_its_own_graph_view_and_load_the_scripts_once),
       TEST_CASE(should_open_with_the_callers_verdict_and_subtitle),
       TEST_CASE(should_percent_encode_report_links_with_special_characters),
       TEST_CASE(should_omit_the_verdict_and_the_fused_column_when_there_is_nothing_to_show),

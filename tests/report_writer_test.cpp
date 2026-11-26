@@ -17,7 +17,7 @@ std::string render_synthetic_document(SyntheticRun& synthetic_run,
   const mlx_perf::ReportInputs report_inputs{
       report_title, synthetic_run.timeline_graph, synthetic_run.gpu_timeline,
       synthetic_run.serial_telemetry, synthetic_run.job_totals};
-  return mlx_perf::build_report_document(report_inputs, "", "digraph {}");
+  return mlx_perf::build_report_document(report_inputs, "{\"nodes\": []}");
 }
 
 std::size_t count_occurrences(const std::string& text, const std::string& needle) {
@@ -44,6 +44,17 @@ void should_render_every_spark_view() {
   EXPECT_TRUE(document.find("<svg class=\"gantt\"") != std::string::npos);
 }
 
+void should_embed_one_graph_view_with_its_document_and_scripts_once() {
+  SyntheticRun synthetic_run;
+  report_fixture::populate_two_stream_run(synthetic_run);
+  const std::string document = render_synthetic_document(synthetic_run, "Run");
+  EXPECT_TRUE(count_occurrences(document, "class=\"graph-view\"") == 1);
+  EXPECT_TRUE(document.find("id=\"graph-document-report\">{\"nodes\": []}</script>") !=
+              std::string::npos);
+  EXPECT_TRUE(count_occurrences(document, "graph view: mounting and interaction") == 1);
+  EXPECT_TRUE(document.find(".gv-toolbar") < document.find("</head>"));
+}
+
 void should_render_one_task_row_per_node_with_a_stacked_bar() {
   SyntheticRun synthetic_run;
   report_fixture::populate_two_stream_run(synthetic_run);
@@ -66,8 +77,9 @@ void should_draw_stall_and_dependency_arrow_for_the_join() {
 void should_render_empty_measurement_without_nan_or_infinity() {
   SyntheticRun empty_run;
   const std::string document = render_synthetic_document(empty_run, "Empty");
-  EXPECT_TRUE(document.find("nan") == std::string::npos);
-  EXPECT_TRUE(document.find("inf\"") == std::string::npos);
+  const std::string visible_page = report_fixture::remove_script_elements(document);
+  EXPECT_TRUE(visible_page.find("nan") == std::string::npos);
+  EXPECT_TRUE(visible_page.find("inf\"") == std::string::npos);
   EXPECT_TRUE(document.find("</html>") != std::string::npos);
 }
 
@@ -113,6 +125,7 @@ void should_render_stage_rows_and_stage_bars_for_a_per_stage_timeline() {
 int main() {
   return test_harness::run_all({
       TEST_CASE(should_render_every_spark_view),
+      TEST_CASE(should_embed_one_graph_view_with_its_document_and_scripts_once),
       TEST_CASE(should_render_one_task_row_per_node_with_a_stacked_bar),
       TEST_CASE(should_draw_stall_and_dependency_arrow_for_the_join),
       TEST_CASE(should_render_empty_measurement_without_nan_or_infinity),

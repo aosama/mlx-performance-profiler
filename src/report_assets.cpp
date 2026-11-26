@@ -72,7 +72,6 @@ td.number { text-align: right; font-variant-numeric: tabular-nums; }
 .gantt .lane { fill: var(--lane); }
 .gantt .grid { stroke: var(--rule); stroke-width: 1; }
 .gantt .dependency-arrow { stroke: var(--slice-stalled); stroke-width: 1; fill: none; opacity: .55; }
-.dag svg { max-width: 100%; height: auto; }
 .line-compute { stroke: var(--slice-compute); }
 .line-scheduling { stroke: var(--slice-scheduling); stroke-dasharray: 4 3; }
 .line-result { stroke: var(--slice-result); }

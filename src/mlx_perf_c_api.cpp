@@ -4,6 +4,8 @@
 #include "console_output.h"
 #include "graph_build_timer.h"
 #include "graph_model.h"
+#include "json_writer.h"
+#include "measurement_document.h"
 #include "measurement_file.h"
 #include "paired_measurement.h"
 #include "report_bundle.h"
@@ -136,7 +138,8 @@ void profile_to_report(mlx_perf_build_graph_fn build_graph, void* builder_payloa
       variant_measurement.gpu_timeline, variant_measurement.serial_telemetry,
       variant_measurement.job_totals};
   const ReportPaths report_paths =
-      write_report(report_inputs, output_directory, report_file_base);
+      write_report(report_inputs, write_json(build_measurement_document(variant_measurement)),
+                   output_directory, report_file_base);
   if (!report_paths.is_written) {
     throw std::runtime_error("cannot write the report into " +
                              std::string(output_directory));

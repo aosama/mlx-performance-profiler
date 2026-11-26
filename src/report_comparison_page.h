@@ -3,7 +3,7 @@
 // Comparison page: one concern only — the "planned vs executed" view of two
 // implementations of the same job (eager vs compiled, or a stock primitive
 // vs a custom kernel): the verdict when the caller supplies one, a metric
-// delta table, the two DAGs side by side, both timelines on one shared time
+// delta table, the two execution graphs side by side, both timelines on one shared time
 // scale, and the primitive mix (with what compile fused, when it did).
 
 #include "measurement_session.h"
@@ -14,7 +14,9 @@ namespace mlx_perf {
 
 struct ComparedVariant {
   const VariantMeasurement& variant_measurement;
-  std::string plan_svg;          // rendered DAG, empty without Graphviz
+  // The variant's measurement document as text (measurement_document.h),
+  // drawn by the interactive graph view.
+  std::string measurement_document_json;
   std::string full_report_file;  // relative link to the variant's report
 };
 
