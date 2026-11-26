@@ -1,6 +1,6 @@
 ---
 name: release-notes
-description: Write the GitHub release notes for a mlx-performance-profiler release, as release-notes/vX.Y.Z.md, which the release workflow publishes as the release body. Use this whenever the user asks to cut, tag, publish or prepare a release, to write, improve or rewrite release notes, to announce what shipped, or to edit a published GitHub release's description, even if they only say "make a release", "what's in this version" or "write it up for users". Also use it when an agent needs to explain what changed between two tags.
+description: The release skill. Write the GitHub release notes for a mlx-performance-profiler release, as release-notes/vX.Y.Z.md, which the release workflow publishes as the release body, and make sure the Context7 documentation coding agents read covers everything the release adds or changes. Use this whenever the user asks to cut, tag, publish or prepare a release, to write, improve or rewrite release notes, to announce what shipped, or to edit a published GitHub release's description, even if they only say "make a release", "what's in this version" or "write it up for users". Also use it when an agent needs to explain what changed between two tags.
 ---
 
 # Release notes for mlx-performance-profiler
@@ -144,7 +144,70 @@ sections in order and what each must contain. Every section earns its
 place; drop one that would be empty, except "Upgrading" (write "Nothing to
 change" when that's true, because readers look for it) and "For agents".
 
-### 6. Check before publishing
+### 6. Bring the Context7 documentation up to date
+
+Coding agents learn this library from Context7, which indexes `docs/` and
+the rules in `context7.json`, not from the release notes. A capability that
+is missing from `docs/` does not exist for them, and a changed behaviour
+that `docs/` still describes the old way is worse: agents will write wrong
+code with confidence. So before the release pull request, go through the
+fact sheet item by item. For every capability the release adds and every
+behaviour it changes, confirm each of these, and fix any gap in the release
+pull request (or in a pull request before it):
+
+- **A page answers it.** A task guide in `docs/` (a new page for a new
+  question, a section for an extension), indexed in `docs/README.md`'s
+  "Which page answers your question" table when it is a new question.
+- **A complete example shows it.** Every C, CMake or Python example is a
+  file in `docs/examples/`, copied into the page between
+  `<!-- example: ... -->` markers with `python3 tests/docs/docs_check.py sync .`,
+  and built and run by `docs_examples_journey`.
+- **The reference has it.** Every new or changed C function, struct and
+  constant is in `docs/reference/c-api.md`, with its size for structs that
+  other languages mirror.
+- **The data formats have it.** Every new JSON field is in
+  `docs/measurement-file.md` and in its JSON Schema in `docs/schema/`, and
+  a real file from this release validates against that schema.
+- **Errors are findable.** Every new error message has a troubleshooting
+  entry quoting it, and a surprising new number has an entry explaining it.
+- **Agents are told what they must not get wrong.** If the release changes
+  how a caller must use the library (a new contract, a new default, a new
+  trap), add or update a rule in `context7.json`. Rules stay under 255
+  characters, or Context7 drops them all.
+- **Nothing describes the old behaviour.** Search `docs/`, `README.md` and
+  the rules for the old wording of anything the release changed (a renamed
+  function, a limitation it removed, a figure it corrected) and update it.
+- **The pins name this release.** `docs/README.md`'s "Versions" paragraph,
+  the `GIT_TAG` and `--branch` pins and the reference's version macros say
+  `X.Y.Z`.
+
+Then run `python3 tests/docs/docs_check.py check .` and the `docs_*` CTest
+tests (`ctest --test-dir build -R docs_ --output-on-failure`): they catch
+drifted examples, broken links, a reference missing a declaration, a
+troubleshooting quote the code cannot produce, a stale version pin,
+`context7.json` over Context7's limits, and real output that disagrees with
+a schema. They cannot tell whether a capability is documented at all; the
+item-by-item pass above is what catches that.
+
+**After the release pull request merges**, confirm Context7 actually serves
+the new documentation:
+
+1. The `context7-refresh` workflow ran for the merge and its log says
+   `Refresh started successfully`, not the "skipping" notice it prints when
+   the `CONTEXT7_API_KEY` secret is missing:
+   `gh run view "$(gh run list --workflow context7-refresh.yml --limit 1 --json databaseId --jq '.[0].databaseId')" --log | grep -E 'Refresh started|skipping'`.
+   If it did not run, start it: `gh workflow run context7-refresh.yml`.
+2. Ask Context7 for one new name from the release and see it come back:
+   `curl -s "https://context7.com/api/v1/aosama/mlx-performance-profiler?type=txt&topic=<topic>&tokens=3000" | grep -c <new_function_name>`.
+   Indexing takes a few minutes after a refresh; try again before
+   concluding it is missing. If it stays missing, the page is probably
+   excluded (`excludeFolders` in `context7.json`) or not linked from
+   `docs/README.md`.
+
+Report the result to the user in one line: what you checked and what
+Context7 returned.
+
+### 7. Check before publishing
 
 - **The opening visual** renders on the page (open it after publishing),
   comes from this release's build, and agrees with the text or says why
@@ -163,8 +226,11 @@ change" when that's true, because readers look for it) and "For agents".
   fine.
 - **Honesty:** limitations and open issues are stated plainly, and nothing
   is promised for a future release.
+- **Context7:** step 6 is done: every new capability and changed behaviour
+  is in `docs/`, the docs checks pass, and (after merge) Context7 returns
+  the new names.
 
-### 7. Publish
+### 8. Publish
 
 - **A new release:** commit `release-notes/vX.Y.Z.md` and its image in
   `release-notes/media/` in the release pull request, beside the version
