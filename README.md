@@ -89,7 +89,7 @@ installs the library into a scratch prefix and builds, links and runs it.
 | Backend | Metal (macOS); Linux and CUDA are tracked in #15 |
 
 Configure prints the MLX release it found and warns, without failing, when
-it is not a tested one. Beyond MLX's public API, the library relies on four
+it is not a tested one. Beyond MLX's public API, the library relies on five
 things; a locally patched MLX that keeps them works:
 
 1. `mlx/backend/metal/device.h`: `get_command_encoder(stream).get_command_buffer()`,
@@ -99,6 +99,9 @@ things; a locally patched MLX that keeps them works:
 3. `Primitive::name()` and `Primitive::stream()`.
 4. MLX-C's handle layout: an `mlx_array`'s context is a heap
    `mlx::core::array` (pinned by a test in `mlx_perf_c_api_test`).
+5. `mlx::core::fast::CustomKernel`'s `state()` holding the kernel's name
+   first (read through a checked `dynamic_cast`; without it, custom kernels
+   simply get no `kernel_name`).
 
 ## Run
 
@@ -265,30 +268,42 @@ mlx_perf_compare_to_report(&stock, &custom, "My projection", "build", "projectio
 - **Checks the two outputs agree** in count, shape and dtype before timing
   anything, and reports the largest value difference (never enforced: a
   custom kernel may differ in the last bits).
-- **Interleaves the passes:** 7 job-wall rounds and 5 timeline rounds, each
-  running both variants with the order flipped every round, so drift on a
-  machine doing other work lands on both.
-- **Judges each difference against the spread** for job duration, GPU
-  execution and host submission (host time inside `async_eval`), on the
-  per-round differences (candidate − baseline). Drift both variants share
-  within a round cancels in the difference. A difference counts only when
-  the middle half of those differences (25th to 75th percentile) lies
-  entirely on one side of zero, so one disturbed round cannot decide it.
+- **Interleaves the passes:** 12 rounds, each running both variants
+  uninstrumented (one `async_eval`, as a plain eval submits the job) with
+  the order flipped every round, so drift on a machine doing other work
+  lands on both and each variant runs first exactly half the time.
+- **Measures three things per round, all uninstrumented:** job duration;
+  host submission (host time inside that single `async_eval`); and GPU span
+  (12 more rounds that time the whole job as one unit per stream, from its
+  first command buffer starting to its last one ending).
+- **Judges each metric on the per-round differences** (candidate −
+  baseline), so drift both variants share within a round cancels. A
+  difference counts only when the whole 96% interval for the median
+  per-round difference lies on one side of zero: the candidate won (or
+  lost) at least 10 of the 12 rounds. One or two disturbed rounds cannot
+  decide it, and two identical variants are called different under 4% of
+  the time per metric. The exact sign-test p-value is in the JSON.
+
+Then one per-node timeline per variant draws the DAG, Gantt and task table.
+It is instrumented (each node submitted on its own) and is never used for
+the verdict.
 
 Why pairing matters, measured on the Qwen3.5 decode step: job wall stepped
 up by about 1 ms part-way through each run. Measured one variant after the
 other, compiled read 4.2 ms against eager's 3.2 ms, because it ran later and
-absorbed the step. Interleaved, compiled was faster in 7 of 7 rounds.
+absorbed the step. Interleaved, compiled is faster in every round.
 
 The comparison page opens with one sentence. For the Qwen3.5 decode step,
-eager against compiled: *"compiled is 5.7% faster than eager (178.6 µs of
-3.11 ms). Middle half of the per-round differences: −192.4 µs to −74.7 µs.
-The difference exceeds the spread."* When the differences straddle zero it
-says the difference is inside the spread and is not a result. It writes
-`<base>.html` and `<base>.json`, plus a report and a measurement file per
-variant. The test suite's acceptance
-test compares exactly that pair: one 4-bit quantized projection, computed
-by `quantized_matmul` against `dequantize` followed by `matmul`.
+eager against compiled: *"compiled is 5.6% faster than eager (175.2 µs of
+3.11 ms, faster in 12 of 12 rounds). 96% interval for the per-round
+difference: −188.8 µs to −164.4 µs. The difference exceeds the spread."*
+When the interval includes zero, it says the difference is not a result.
+It writes `<base>.html` and `<base>.json`, plus a report and a measurement
+file per variant.
+
+The suite's acceptance test is a separate example: one 4-bit quantized
+projection, computed by `quantized_matmul` against `dequantize` followed by
+`matmul`. The fused kernel wins beyond the spread.
 
 ## Per-node measurements as data
 

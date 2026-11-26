@@ -15,12 +15,16 @@ Additive: the next release is a minor one (0.2.0) under `VERSIONING.md`.
   graph-building code per pass, and the command buffers the timeline pass
   observed.
 - Custom Metal kernels are told apart by name (`kernel_name`).
+- Graphviz runs without a shell, so report and variant names are never
+  interpreted; NaN outputs are reported as unmeasurable agreement, not zero.
+- Serial-pass peak memory is counted above what was already allocated.
 - Comparing two implementations of one job (#12): the C function
   `mlx_perf_compare_to_report` (and `measure_pair` in C++) checks the two
-  outputs agree, interleaves the passes with the order flipped every round,
-  and judges job duration, GPU execution and host submission on the
-  per-round differences (their middle half must lie on one side of zero).
-  The comparison page opens with the verdict; `<base>.json` records it.
+  outputs agree, runs 12 uninstrumented rounds with the order flipped every
+  round, and judges job duration, GPU span and host submission on the
+  per-round differences: a result only when the 96% interval for the median
+  difference excludes zero (at least 10 of 12 rounds). The comparison page
+  opens with the verdict; `<base>.json` records it.
 - `hello_world` and `qwen35_profile` measure eager vs compiled this way.
 
 ## 0.1.0 (2026-11-26)

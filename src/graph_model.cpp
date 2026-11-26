@@ -36,14 +36,15 @@ void describe_output(const array& node, GraphNode& captured_node) {
 }
 
 // The author's name for a custom Metal kernel lives in the primitive's
-// state, not in name(); matching on name() first keeps the cast safe.
+// state, not in name(). A checked cast: a caller's own primitive may also
+// call itself "CustomKernel" without being MLX's class.
 std::string read_kernel_name(const mlx::core::Primitive& node_primitive) {
   if (CUSTOM_KERNEL_PRIMITIVE_NAME != node_primitive.name()) {
     return "";
   }
-  const auto& custom_kernel =
-      static_cast<const mlx::core::fast::CustomKernel&>(node_primitive);
-  return std::get<0>(custom_kernel.state());
+  const auto* custom_kernel =
+      dynamic_cast<const mlx::core::fast::CustomKernel*>(&node_primitive);
+  return custom_kernel != nullptr ? std::get<0>(custom_kernel->state()) : "";
 }
 
 GraphNode build_node(const array& node, NodeNamer& plan_namer) {

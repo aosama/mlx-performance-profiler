@@ -394,6 +394,15 @@ void should_report_an_unwritable_comparison_directory() {
               std::string::npos);
 }
 
+// The same sizes the Rust example's FFI test asserts with size_of: a field
+// added on one side only changes one of the two and fails.
+void should_keep_the_c_struct_sizes_the_rust_mirror_expects() {
+  EXPECT_TRUE(sizeof(mlx_perf_job_summary) == 72);
+  EXPECT_TRUE(sizeof(mlx_perf_metric_comparison) == 144);
+  EXPECT_TRUE(sizeof(mlx_perf_comparison_summary) == 584);
+  EXPECT_TRUE(sizeof(mlx_perf_variant) == 24);
+}
+
 void should_reject_a_null_mlx_c_vector() {
   bool has_thrown = false;
   try {
@@ -428,6 +437,7 @@ int main() {
       TEST_CASE(should_refuse_variants_whose_names_would_collide_or_escape),
       TEST_CASE(should_refuse_a_comparison_with_a_null_callback_or_title),
       TEST_CASE(should_report_an_unwritable_comparison_directory),
+      TEST_CASE(should_keep_the_c_struct_sizes_the_rust_mirror_expects),
       TEST_CASE(should_reject_a_null_mlx_c_vector),
   });
 }

@@ -16,8 +16,6 @@ namespace {
 using Object = JsonValue::Object;
 using Array = JsonValue::Array;
 
-JsonValue json_number(double number_value) { return JsonValue(number_value); }
-JsonValue json_text(const std::string& text_value) { return JsonValue(text_value); }
 
 JsonValue number_or_null(bool is_measured, double number_value) {
   return is_measured ? JsonValue(number_value) : JsonValue();
@@ -187,7 +185,9 @@ JsonValue build_stream_records(const GpuTimeline& gpu_timeline) {
     stream_records.push_back(JsonValue(Object{
         {"stream_index", json_number(stream_timeline.stream_index)},
         {"is_gpu", JsonValue(stream_timeline.is_gpu)},
-        {"timed_unit_count", json_number(stream_timeline.node_count)},
+        // Nodes on the stream, whichever unit timed them (a stage task
+        // covers several): not a count of timed units.
+        {"node_count", json_number(stream_timeline.node_count)},
         {"first_issue_us", json_number(stream_timeline.first_issue_microseconds)},
         {"last_completion_us", json_number(stream_timeline.last_completion_microseconds)},
         {"wall_us", json_number(stream_timeline.wall_microseconds)},

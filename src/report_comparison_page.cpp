@@ -75,7 +75,7 @@ std::string render_comparison_metrics(
   table_html << "<div class=\"table-wrap\"><table><thead><tr><th>Metric</th><th>"
              << escape_html_text(baseline.variant_name) << "</th><th>"
              << escape_html_text(candidate.variant_name)
-             << "</th><th>Change</th></tr></thead><tbody>";
+             << "</th><th>Change (not judged)</th></tr></thead><tbody>";
   for (const MetricRow& metric_row : collect_metric_rows(baseline, candidate)) {
     table_html << "<tr><td>" << metric_row.metric_name << "</td><td class=\"number\">"
                << escape_html_text(format_metric(metric_row.baseline_value,
@@ -88,8 +88,12 @@ std::string render_comparison_metrics(
                << "</td></tr>";
   }
   table_html << "</tbody></table></div><p class=\"note\">Lower is better for every"
-             << " row; a negative change is an improvement. Each variant ran the"
-             << " same four passes on the same materialized inputs. Timeline pass: "
+             << " row; a negative change is an improvement. These are single figures with"
+             << " no spread to judge them against: job duration is each variant's median,"
+             << " the GPU, stall and instrumented rows come from one per-node timeline per"
+             << " variant (instrumented: each node submitted on its own), and the sum of"
+             << " stages from one serial pass. Where a Verdict section is shown, it is the"
+             << " judged comparison. Timeline pass: "
              << escape_html_text(baseline.variant_name) << " timed "
              << granularity_name(baseline.gpu_timeline.granularity) << ", "
              << escape_html_text(candidate.variant_name) << " timed "

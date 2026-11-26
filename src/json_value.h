@@ -52,6 +52,11 @@ class JsonValue {
       value_;
 };
 
+// Leaf builders for documents written with json_writer; shorter than the
+// explicit constructors in the long object literals the writers build.
+inline JsonValue json_number(double number_value) { return JsonValue(number_value); }
+inline JsonValue json_text(const std::string& text_value) { return JsonValue(text_value); }
+
 // Throws std::runtime_error with the byte offset on malformed input.
 JsonValue parse_json(const std::string& json_text);
 JsonValue parse_json_file(const std::string& file_path);

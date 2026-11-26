@@ -165,6 +165,11 @@ void should_time_stage_tasks_and_null_member_node_timing() {
     EXPECT_TRUE(member.find(node_field.first) != nullptr);
   }
   EXPECT_TRUE(document.at("job").at("command_buffers").at("is_lower_bound").as_bool());
+  // Streams count their nodes, whichever unit timed them.
+  for (const JsonValue& stream_record : document.at("streams").as_array()) {
+    EXPECT_TRUE(stream_record.find("node_count") != nullptr);
+    EXPECT_TRUE(stream_record.find("timed_unit_count") == nullptr);
+  }
 }
 
 void should_describe_an_empty_measurement_as_empty_lists() {

@@ -11,8 +11,6 @@ namespace {
 using Object = JsonValue::Object;
 using Array = JsonValue::Array;
 
-JsonValue json_number(double number_value) { return JsonValue(number_value); }
-JsonValue json_text(const std::string& text_value) { return JsonValue(text_value); }
 
 JsonValue sample_record(const SampleSummary& sample_summary,
                         const std::vector<double>& samples) {
