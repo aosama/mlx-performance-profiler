@@ -1,7 +1,7 @@
 # mlx_perf package: the mlx-performance-profiler static library and its C API.
 #
 #   cmake -DMLX_PREFIX=/path/to/mlx/prefix -DCMAKE_PREFIX_PATH=/path/to/mlx_perf ...
-#   find_package(mlx_perf 0.5 REQUIRED)
+#   find_package(mlx_perf 0.6 REQUIRED)
 #   target_link_libraries(my_test PRIVATE mlx_perf::mlx_perf)
 #
 # MLX comes from the consumer's own MLX_PREFIX, so the final binary links

@@ -1,6 +1,6 @@
 # C API reference
 
-Every declaration in `include/mlx_perf/mlx_perf_c_api.h` and `include/mlx_perf/mlx_perf_version.h`, as of 0.5.0. A test fails if this page misses a function, struct or constant from the header, or quotes a prototype that no longer matches it.
+Every declaration in `include/mlx_perf/mlx_perf_c_api.h` and `include/mlx_perf/mlx_perf_version.h`, as of 0.6.0. A test fails if this page misses a function, struct or constant from the header, or quotes a prototype that no longer matches it.
 
 ```c
 #include "mlx_perf/mlx_perf_c_api.h"   /* also includes mlx/c/vector.h and mlx_perf_version.h */
@@ -329,9 +329,9 @@ The value of `mlx_perf_metric_comparison.verdict`. Lower time is better. `MLX_PE
 
 ```c
 #define MLX_PERF_VERSION_MAJOR 0
-#define MLX_PERF_VERSION_MINOR 5
+#define MLX_PERF_VERSION_MINOR 6
 #define MLX_PERF_VERSION_PATCH 0
-#define MLX_PERF_VERSION_STRING "0.5.0"
+#define MLX_PERF_VERSION_STRING "0.6.0"
 ```
 
 From `mlx_perf/mlx_perf_version.h`, generated from the project version, so the header, the library and the installed package agree. Before 1.0, a minor version may change the C API; the release notes say how.

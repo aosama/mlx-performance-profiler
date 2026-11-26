@@ -8,7 +8,7 @@ project(mlx_perf_source_consumer LANGUAGES C CXX)
 include(FetchContent)
 FetchContent_Declare(mlx_perf
   GIT_REPOSITORY https://github.com/aosama/mlx-performance-profiler.git
-  GIT_TAG v0.5.0)
+  GIT_TAG v0.6.0)
 FetchContent_MakeAvailable(mlx_perf)
 
 # From source, the consumer gets the library alone ...
