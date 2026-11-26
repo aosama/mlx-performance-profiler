@@ -13,7 +13,6 @@
 #include "paired_measurement.h"
 #include "report_verdict_section.h"
 #include "server_options.h"
-#include "text_format.h"
 
 #include "mlx/memory.h"
 
