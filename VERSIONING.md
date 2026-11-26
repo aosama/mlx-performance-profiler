@@ -1,7 +1,6 @@
 # Versioning
 
-**Status: proposed, awaiting the maintainer's agreement.** Until it is
-agreed, no release is tagged.
+**Status: agreed with the maintainer on 2026-11-26.**
 
 ## In one paragraph
 
