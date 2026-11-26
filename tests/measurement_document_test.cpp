@@ -7,6 +7,7 @@
 #include "json_writer.h"
 #include "measurement_document.h"
 #include "report_fixture.h"
+#include "wired_memory_fixture.h"
 #include "test_harness.h"
 
 #include <cmath>
@@ -146,7 +147,24 @@ void should_name_every_classification_in_the_reports_vocabulary() {
   }
 }
 
+void should_carry_the_serial_passs_wired_memory_track() {
+  VariantMeasurement variant_measurement;
+  report_fixture::populate_two_stream_run(variant_measurement);
+  variant_measurement.serial_telemetry.wired_memory_samples = wired_memory_fixture::release_then_unwire();
+  const JsonValue measurement_document = written_and_parsed(variant_measurement);
+  const JsonValue& wired_memory = measurement_document.at("job").at("wired_memory");
+  EXPECT_TRUE(wired_memory.at("sample_count").as_number() == 8);
+  EXPECT_TRUE(wired_memory.at("release_events").as_array().size() == 1);
+}
+
 // --- edge / boundary ---
+
+void should_write_null_wired_memory_when_nothing_was_sampled() {
+  VariantMeasurement variant_measurement;
+  report_fixture::populate_two_stream_run(variant_measurement);
+  variant_measurement.serial_telemetry.wired_memory_samples.clear();
+  EXPECT_TRUE(written_and_parsed(variant_measurement).at("job").at("wired_memory").is_null());
+}
 
 void should_null_the_gpu_window_of_a_node_that_has_none() {
   VariantMeasurement variant_measurement;
@@ -270,6 +288,8 @@ void should_null_launches_when_the_serial_node_does_not_match() {
 int main() {
   return test_harness::run_all({
       TEST_CASE(should_describe_every_node_with_its_identity_and_timing),
+      TEST_CASE(should_carry_the_serial_passs_wired_memory_track),
+      TEST_CASE(should_write_null_wired_memory_when_nothing_was_sampled),
       TEST_CASE(should_measure_the_gpu_gap_between_consecutive_nodes_on_one_stream),
       TEST_CASE(should_carry_job_samples_build_times_and_buffer_count),
       TEST_CASE(should_join_each_node_to_its_serial_measurement),

@@ -73,6 +73,31 @@ td.underfills-gpu, .underfills-gpu { color: var(--slice-scheduling); font-weight
 .gantt .lane { fill: var(--lane); }
 .gantt .grid { stroke: var(--rule); stroke-width: 1; }
 .gantt .dependency-arrow { stroke: var(--slice-stalled); stroke-width: 1; fill: none; opacity: .55; }
+.wired-chart { width: 100%; max-width: 1100px; height: auto; display: block; background: var(--panel);
+  border: 1px solid var(--rule); border-radius: 6px; }
+.wired-chart .grid { stroke: var(--rule); stroke-width: 1; }
+.wired-chart .axis { fill: var(--muted); font-size: 10px; }
+.wired-chart polyline { fill: none; stroke-width: 1.6; stroke-linejoin: round; }
+.wired-chart .system-wired { stroke: var(--slice-queued); }
+.wired-chart .mlx-held { stroke: var(--slice-compute); stroke-dasharray: 5 3; }
+.wired-chart .outside-mlx { stroke: var(--slice-scheduling); }
+.wired-chart .limit { stroke: var(--slice-stalled); stroke-width: 1.2; stroke-dasharray: 2 3; }
+.wired-chart .release { stroke: var(--slice-compute); stroke-width: 1; stroke-dasharray: 3 3; }
+.wired-chart .unwired { stroke: var(--slice-queued); stroke-width: 1; stroke-dasharray: 3 3; }
+.wired-chart .pending-unwire { fill: var(--slice-stalled); }
+.wired-chart .transient { fill: none; stroke: var(--slice-stalled); stroke-width: 1.6; }
+.wired-chart .boundary { stroke: var(--muted); stroke-width: 1; }
+.wired-legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 11px; color: var(--muted); margin: 6px 0 8px; }
+.wired-legend .key::before { content: ""; display: inline-block; width: 14px; height: 3px; margin-right: 5px;
+  vertical-align: middle; background: currentColor; }
+.wired-legend .system-wired::before { background: var(--slice-queued); }
+.wired-legend .mlx-held::before { background: var(--slice-compute); }
+.wired-legend .outside-mlx::before { background: var(--slice-scheduling); }
+.wired-legend .pending-unwire::before { width: 6px; height: 6px; border-radius: 3px; background: var(--slice-stalled); }
+.wired-legend .transient::before { width: 8px; height: 8px; border-radius: 5px; background: none;
+  border: 1.6px solid var(--slice-stalled); }
+.wired-legend .boundary::before { width: 1px; height: 8px; background: var(--muted); }
+table.wired-summary { max-width: 720px; }
 .line-compute { stroke: var(--slice-compute); }
 .line-scheduling { stroke: var(--slice-scheduling); stroke-dasharray: 4 3; }
 .line-result { stroke: var(--slice-result); }

@@ -178,6 +178,186 @@
             }
           },
           "description": "The observed run's launches grouped by Metal function."
+        },
+        "wired_memory": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "description": "The system's wired memory beside MLX's (#45); null when no samples were taken.",
+          "required": [
+            "has_crossed_wire_limit",
+            "largest_release_lag_inflation_bytes",
+            "largest_release_lag_us",
+            "lowest_wire_headroom_bytes",
+            "lowest_wired_outside_mlx_bytes",
+            "median_release_lag_us",
+            "peak_mlx_held_bytes",
+            "peak_system_wired_bytes",
+            "peak_wired_outside_mlx_bytes",
+            "release_events",
+            "release_lag_inflated_sample_indices",
+            "sample_count",
+            "samples",
+            "transient_jump_sample_indices",
+            "wire_limit_bytes"
+          ],
+          "properties": {
+            "wire_limit_bytes": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "sample_count": {
+              "type": "integer"
+            },
+            "peak_system_wired_bytes": {
+              "type": "number"
+            },
+            "peak_mlx_held_bytes": {
+              "type": "number"
+            },
+            "peak_wired_outside_mlx_bytes": {
+              "type": "number"
+            },
+            "lowest_wired_outside_mlx_bytes": {
+              "type": "number"
+            },
+            "lowest_wire_headroom_bytes": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "has_crossed_wire_limit": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "release_events": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "release_lag_us",
+                  "released_bytes",
+                  "released_sample_index",
+                  "unwired_sample_index"
+                ],
+                "properties": {
+                  "released_sample_index": {
+                    "type": "integer",
+                    "description": "The first sample that saw MLX's holding fall."
+                  },
+                  "released_bytes": {
+                    "type": "number"
+                  },
+                  "unwired_sample_index": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "description": "The first sample whose wired total had fallen by half the release; null when none did."
+                  },
+                  "release_lag_us": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "description": "From released_sample_index to unwired_sample_index; null when unresolved."
+                  }
+                }
+              }
+            },
+            "median_release_lag_us": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "largest_release_lag_us": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "release_lag_inflated_sample_indices": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              }
+            },
+            "largest_release_lag_inflation_bytes": {
+              "type": "number"
+            },
+            "transient_jump_sample_indices": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              }
+            },
+            "samples": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "mlx_active_bytes",
+                  "mlx_cache_bytes",
+                  "sample_point",
+                  "system_wired_bytes",
+                  "time_us",
+                  "wire_headroom_bytes",
+                  "wire_limit_bytes",
+                  "wired_outside_mlx_bytes"
+                ],
+                "properties": {
+                  "time_us": {
+                    "type": "number",
+                    "description": "Microseconds since the first sample."
+                  },
+                  "sample_point": {
+                    "enum": [
+                      "run_start",
+                      "evaluation_boundary",
+                      "interval",
+                      "run_end",
+                      "after_run"
+                    ]
+                  },
+                  "system_wired_bytes": {
+                    "type": "number",
+                    "description": "The system's wired total (vm.page_wired_count times the page size)."
+                  },
+                  "wire_limit_bytes": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "description": "vm.global_user_wire_limit; null when unknown."
+                  },
+                  "mlx_active_bytes": {
+                    "type": "number"
+                  },
+                  "mlx_cache_bytes": {
+                    "type": "number"
+                  },
+                  "wired_outside_mlx_bytes": {
+                    "type": "number",
+                    "description": "system_wired_bytes - (mlx_active_bytes + mlx_cache_bytes); may be negative."
+                  },
+                  "wire_headroom_bytes": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "description": "wire_limit_bytes - system_wired_bytes; null when the limit is unknown."
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -319,6 +499,186 @@
             }
           },
           "description": "The observed run's launches grouped by Metal function."
+        },
+        "wired_memory": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "description": "The system's wired memory beside MLX's (#45); null when no samples were taken.",
+          "required": [
+            "has_crossed_wire_limit",
+            "largest_release_lag_inflation_bytes",
+            "largest_release_lag_us",
+            "lowest_wire_headroom_bytes",
+            "lowest_wired_outside_mlx_bytes",
+            "median_release_lag_us",
+            "peak_mlx_held_bytes",
+            "peak_system_wired_bytes",
+            "peak_wired_outside_mlx_bytes",
+            "release_events",
+            "release_lag_inflated_sample_indices",
+            "sample_count",
+            "samples",
+            "transient_jump_sample_indices",
+            "wire_limit_bytes"
+          ],
+          "properties": {
+            "wire_limit_bytes": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "sample_count": {
+              "type": "integer"
+            },
+            "peak_system_wired_bytes": {
+              "type": "number"
+            },
+            "peak_mlx_held_bytes": {
+              "type": "number"
+            },
+            "peak_wired_outside_mlx_bytes": {
+              "type": "number"
+            },
+            "lowest_wired_outside_mlx_bytes": {
+              "type": "number"
+            },
+            "lowest_wire_headroom_bytes": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "has_crossed_wire_limit": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "release_events": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "release_lag_us",
+                  "released_bytes",
+                  "released_sample_index",
+                  "unwired_sample_index"
+                ],
+                "properties": {
+                  "released_sample_index": {
+                    "type": "integer",
+                    "description": "The first sample that saw MLX's holding fall."
+                  },
+                  "released_bytes": {
+                    "type": "number"
+                  },
+                  "unwired_sample_index": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "description": "The first sample whose wired total had fallen by half the release; null when none did."
+                  },
+                  "release_lag_us": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "description": "From released_sample_index to unwired_sample_index; null when unresolved."
+                  }
+                }
+              }
+            },
+            "median_release_lag_us": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "largest_release_lag_us": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "release_lag_inflated_sample_indices": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              }
+            },
+            "largest_release_lag_inflation_bytes": {
+              "type": "number"
+            },
+            "transient_jump_sample_indices": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              }
+            },
+            "samples": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "mlx_active_bytes",
+                  "mlx_cache_bytes",
+                  "sample_point",
+                  "system_wired_bytes",
+                  "time_us",
+                  "wire_headroom_bytes",
+                  "wire_limit_bytes",
+                  "wired_outside_mlx_bytes"
+                ],
+                "properties": {
+                  "time_us": {
+                    "type": "number",
+                    "description": "Microseconds since the first sample."
+                  },
+                  "sample_point": {
+                    "enum": [
+                      "run_start",
+                      "evaluation_boundary",
+                      "interval",
+                      "run_end",
+                      "after_run"
+                    ]
+                  },
+                  "system_wired_bytes": {
+                    "type": "number",
+                    "description": "The system's wired total (vm.page_wired_count times the page size)."
+                  },
+                  "wire_limit_bytes": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "description": "vm.global_user_wire_limit; null when unknown."
+                  },
+                  "mlx_active_bytes": {
+                    "type": "number"
+                  },
+                  "mlx_cache_bytes": {
+                    "type": "number"
+                  },
+                  "wired_outside_mlx_bytes": {
+                    "type": "number",
+                    "description": "system_wired_bytes - (mlx_active_bytes + mlx_cache_bytes); may be negative."
+                  },
+                  "wire_headroom_bytes": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "description": "wire_limit_bytes - system_wired_bytes; null when the limit is unknown."
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },

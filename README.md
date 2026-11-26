@@ -383,6 +383,22 @@ neither side can run ahead. The page shows them per run, with every kernel
 launch grouped by Metal function. The full example and guide:
 [Comparing procedures](docs/comparing-procedures.md).
 
+## Wired memory: how much room the GPU has
+
+On Apple silicon the GPU's memory is wired, and macOS keeps wired memory
+under a system-wide limit (`vm.global_user_wire_limit`). Every report and
+procedure comparison now has a **Wired memory** lane: the system's wired
+total, MLX's own holding and the part wired outside MLX, against the limit,
+with each MLX release and how long macOS took to un-wire it.
+
+Measured with it on one Apple silicon Mac: memory MLX releases stays wired about 0.2 s
+longer, so the "wired outside MLX" figure an engine sizes against jumps by
+the released amount for that long. Memory MLX still holds is un-wired after
+about a second without GPU use, so that figure also reads low while memory
+sits idle. `mlx_perf_read_wired_memory` takes the same reading from your own
+code after any evaluation, and `mlx_perf_measure_wire_release_lag` measures
+the release lag on your Mac. Guide: [Wired memory](docs/wired-memory.md).
+
 ## Quiet output for library use
 
 The library prints progress and file lines to stdout and errors to stderr.

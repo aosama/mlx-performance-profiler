@@ -17,6 +17,7 @@ struct SubmissionRecordingScope::RecordingState {
   std::vector<MTL::CommandBuffer*> committed_buffers;
   int blocking_wait_count = 0;
   double blocking_wait_microseconds = 0.0;
+  EvaluationBoundaryListener* evaluation_boundary_listener = nullptr;
 };
 
 namespace {
@@ -41,9 +42,18 @@ void count_blocking_wait(double wait_started_seconds) {
   const double wait_finished_seconds = current_metal_host_seconds();
   const ActiveRecording active_recording;
   if (active_recording.recording_state() != nullptr) {
-    ++active_recording.recording_state()->blocking_wait_count;
-    active_recording.recording_state()->blocking_wait_microseconds +=
-        (wait_finished_seconds - wait_started_seconds) * 1e6;
+    RecordingState& recording_state = *active_recording.recording_state();
+    ++recording_state.blocking_wait_count;
+    recording_state.blocking_wait_microseconds += (wait_finished_seconds - wait_started_seconds) * 1e6;
+    // Under the recording's lock, so the listener cannot be detached while
+    // it runs. It only reads counters (see evaluation_boundary_listener.h);
+    // the wired memory sampler takes MLX's allocator lock, which is safe
+    // because MLX's allocator never calls a hooked Metal method while
+    // holding it (mlx/backend/metal/allocator.cpp unlocks around newBuffer
+    // and release).
+    if (recording_state.evaluation_boundary_listener != nullptr) {
+      recording_state.evaluation_boundary_listener->on_evaluation_boundary();
+    }
   }
 }
 
@@ -123,6 +133,14 @@ SubmissionRecordingScope::~SubmissionRecordingScope() {
   }
 }
 
+// Paused while attached, like a take, so no hook reads the pointer mid-write.
+void SubmissionRecordingScope::set_evaluation_boundary_listener(
+    EvaluationBoundaryListener* evaluation_boundary_listener) {
+  SubmissionSlots::swap_open_recording(recording_reach_, nullptr);
+  recording_state_->evaluation_boundary_listener = evaluation_boundary_listener;
+  SubmissionSlots::swap_open_recording(recording_reach_, recording_state_.get());
+}
+
 SubmissionRecord SubmissionRecordingScope::finish_and_take_record() {
   // The profiler's own waits below are not the procedure's: recording
   // pauses while they run (and, process-wide, while the record is read).
@@ -137,7 +155,9 @@ SubmissionRecord SubmissionRecordingScope::finish_and_take_record() {
   }
   submission_record.blocking_wait_count = recording_state_->blocking_wait_count;
   submission_record.blocking_wait_microseconds = recording_state_->blocking_wait_microseconds;
+  EvaluationBoundaryListener* evaluation_boundary_listener = recording_state_->evaluation_boundary_listener;
   *recording_state_ = RecordingState{};
+  recording_state_->evaluation_boundary_listener = evaluation_boundary_listener;
   SubmissionSlots::swap_open_recording(recording_reach_, recording_state_.get());
   return submission_record;
 }

@@ -15,6 +15,7 @@
 // calling thread (MLX submits and waits on the thread that evaluates), or on
 // every thread, for a procedure that evaluates on a worker thread (#44).
 
+#include "evaluation_boundary_listener.h"
 #include "gpu_busy_time.h"
 #include "recording_slots.h"
 
@@ -45,6 +46,11 @@ class SubmissionRecordingScope {
   ~SubmissionRecordingScope();
   SubmissionRecordingScope(const SubmissionRecordingScope&) = delete;
   SubmissionRecordingScope& operator=(const SubmissionRecordingScope&) = delete;
+
+  // Tells `evaluation_boundary_listener` (nullptr detaches) about every
+  // blocking wait this scope records, as it returns. It must outlive the
+  // scope or be detached first.
+  void set_evaluation_boundary_listener(EvaluationBoundaryListener* evaluation_boundary_listener);
 
   // Waits for every command buffer committed so far to complete (without
   // counting that wait as the procedure's), then returns what was recorded

@@ -5,13 +5,14 @@
 // rounds with the order flipped every round, so drift on the machine lands on
 // both. Each run is timed whole, and the command buffers and blocking waits
 // MLX issues inside it are recorded (metal_submission_recorder). One extra
-// run per procedure records its kernel launches (metal_dispatch_recorder),
-// outside the judged rounds.
+// run per procedure records its kernel launches (metal_dispatch_recorder)
+// and its wired memory (wired_memory_sampler), outside the judged rounds.
 
 #include "dispatch_occupancy.h"
 #include "gpu_device_facts.h"
 #include "procedure_job.h"
 #include "sample_statistics.h"
+#include "wired_memory_sample.h"
 
 #include <string>
 #include <vector>
@@ -38,6 +39,9 @@ struct ProcedureMeasurement {
   // The extra run that recorded kernel launches (not judged).
   ProcedureRun observed_run;
   std::vector<KernelDispatch> observed_launches;
+  // The observed run's wired memory, sampled at its evaluation boundaries
+  // and on a fine interval, then until macOS un-wired what it released (#45).
+  std::vector<WiredMemorySample> observed_wired_memory;
 };
 
 struct PairedProcedureMeasurement {

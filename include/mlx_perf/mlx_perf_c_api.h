@@ -24,6 +24,8 @@
  */
 #pragma once
 
+#include <stdint.h>
+
 #include "mlx/c/vector.h"
 #include "mlx_perf/mlx_perf_version.h"
 
@@ -192,6 +194,53 @@ int mlx_perf_compare_procedures_to_report(const mlx_perf_procedure* baseline,
                                           const char* output_directory,
                                           const char* report_file_base,
                                           mlx_perf_procedure_comparison_summary* summary);
+
+/* One instant's wired memory: the system's wired total and the line macOS
+ * keeps it under (vm.global_user_wire_limit), beside MLX's own holding
+ * (active arrays plus buffer cache). On Apple silicon the GPU's memory is
+ * wired, so `wire_headroom_bytes` is the room left before macOS stops keeping
+ * more of it wired. `wired_outside_mlx_bytes` is the figure an engine sizes
+ * against. macOS wires memory when the GPU uses it, un-wires memory MLX
+ * released a fraction of a second later (see
+ * mlx_perf_measure_wire_release_lag), and un-wires memory MLX still holds
+ * after about a second without GPU use, wiring it again on its next use. So
+ * that figure is too high just after a release and too low while MLX's
+ * memory sits idle. */
+typedef struct mlx_perf_wired_memory {
+  uint64_t system_wired_bytes;
+  uint64_t wire_limit_bytes;      /* 0 when unknown */
+  uint64_t mlx_active_bytes;
+  uint64_t mlx_cache_bytes;
+  int64_t wired_outside_mlx_bytes; /* system wired − (MLX active + cache) */
+  int64_t wire_headroom_bytes;     /* limit − system wired; 0 when the limit is unknown */
+} mlx_perf_wired_memory;
+
+/* Reads the wired memory now: two system calls and MLX's two counters, cheap
+ * enough to call after every evaluation. Fails when the kernel refuses the
+ * read. Thread-safe. */
+int mlx_perf_read_wired_memory(mlx_perf_wired_memory* reading);
+
+/* How long macOS takes, on this Mac, to un-wire memory after MLX releases
+ * it. Lags are NaN when no repetition resolved. */
+typedef struct mlx_perf_wire_release_lag {
+  uint64_t allocation_bytes;     /* as measured: rounded down to float32 elements */
+  uint64_t wire_limit_bytes;     /* 0 when unknown */
+  int64_t median_wired_rise_bytes; /* how far the system's wired total rose per allocation */
+  double median_release_lag_us;
+  double largest_release_lag_us;
+  int repetition_count;
+  int resolved_count;            /* repetitions whose un-wiring was seen in time */
+} mlx_perf_wire_release_lag;
+
+/* Allocates and evaluates `allocation_bytes` (under 8 GiB) on the GPU,
+ * releases it and clears MLX's cache, then times from MLX's holding falling
+ * to the system's wired total falling by at least half the allocation;
+ * `repetition_count` times (a fraction of a second each). Each
+ * repetition first waits for the wired total to settle (at most 3 s) and
+ * then for the lag, so the library prints progress with an ETA. Run it with
+ * nothing else using MLX. */
+int mlx_perf_measure_wire_release_lag(uint64_t allocation_bytes, int repetition_count,
+                                      mlx_perf_wire_release_lag* result);
 
 /* Switches the library's console output on (non-zero, the default) or off
  * (0): progress and file lines on stdout, error lines on stderr. Off, the

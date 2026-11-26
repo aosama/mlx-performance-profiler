@@ -21,6 +21,9 @@ void should_format_byte_sizes_with_binary_units() {
   EXPECT_TRUE(format_bytes(512) == "512 B");
   EXPECT_TRUE(format_bytes(3584) == "3.5 KiB");
   EXPECT_TRUE(format_bytes(1258291) == "1.2 MiB");
+  EXPECT_TRUE(format_bytes(40716289966ull) == "37.92 GiB");
+  EXPECT_TRUE(format_bytes((1ull << 30) - 1) == "1024.0 MiB");
+  EXPECT_TRUE(format_bytes(1ull << 30) == "1.00 GiB");
 }
 
 void should_escape_every_html_special_character() {

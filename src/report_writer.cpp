@@ -7,6 +7,7 @@
 #include "report_stage_table_section.h"
 #include "report_summary_section.h"
 #include "report_task_table_section.h"
+#include "report_wired_memory_section.h"
 #include "text_format.h"
 
 #include <fstream>
@@ -88,6 +89,12 @@ std::string build_report_document(
               << render_page_header(report_inputs.report_title)
               << render_summary_section(report_inputs)
               << render_gantt_section(report_inputs)
+              << render_wired_memory_section(
+                     {"wired-memory", "Wired memory",
+                      "Sampled in the serial pass: once as it began, then after each node's evaluation and"
+                      " synchronize. That pass keeps every intermediate alive, so MLX's holding only grows here;"
+                      " the lane shows how close the job runs to the wire limit."},
+                     report_inputs.serial_telemetry.wired_memory_samples)
               << render_tasks_section(report_inputs)
               << render_dag_section(measurement_document_json)
               << render_method_section(report_inputs.gpu_timeline.granularity)

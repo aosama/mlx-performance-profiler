@@ -14,6 +14,7 @@ Every C program and CMake project on these pages is a file in [`examples/`](exam
 | Profile your own MLX graph from C or C++ | [Profiling a job](profiling-a-job.md) |
 | Know whether your kernel or rewrite is really faster | [Comparing two implementations](comparing-implementations.md) |
 | Compare two loops or pipelines that evaluate many graphs (a token loop, a sampler) | [Comparing procedures](comparing-procedures.md) |
+| Know how much room the GPU has under macOS's wire limit, and when "wired outside MLX" misleads | [Wired memory](wired-memory.md) |
 | Measure inside a test, benchmark or CI job, silently | [Measuring from code](measuring-from-code.md) |
 | Read per-node numbers as data (Python, jq, any language) | [The measurement file](measurement-file.md) |
 | Understand the report: the six slices, the timeline, the graph | [Reading the report](reading-the-report.md) |

@@ -9,6 +9,7 @@
 #include "dispatch_occupancy.h"
 #include "gpu_device_facts.h"
 #include "graph_model.h"
+#include "wired_memory_sample.h"
 
 #include "mlx/stream.h"
 
@@ -46,6 +47,12 @@ struct RunTelemetry {
   // The GPU the pass ran on: its core count turns each recorded kernel
   // launch's threadgroups into the share of the GPU the launch could use.
   GpuDeviceFacts gpu_device_facts;
+  // The system's wired memory beside MLX's (#45): one sample as the pass
+  // began, then one after each node, so sample k + 1 follows the node at
+  // position k. The pass keeps every intermediate alive, so MLX's holding
+  // only grows here; the samples show how close the job runs to the wire
+  // limit, not what an engine's releases look like.
+  std::vector<WiredMemorySample> wired_memory_samples;
 };
 
 // `stream_index_to_stream` supplies the MLX Stream handles the graph was built
