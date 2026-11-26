@@ -18,3 +18,9 @@ build/
 
 # Rust example build output
 rust/**/target/
+
+# Reports and measurement files that tests write into their working
+# directory; CTest runs them in build/, but a test run by hand from the
+# repository root writes here.
+/c_api_*
+/measurement_file_*
