@@ -38,6 +38,8 @@ cmake --build build
 ./build/hello_world                                    # then open build/hello_world.html
 ```
 
+**Documentation:** [the guides](docs/README.md) answer one question each (profile a job, compare two implementations, read the JSON, link it into your build, fix an error), with complete C, CMake, Rust and Python examples the test suite builds and runs. They are also published on [Context7](https://context7.com/aosama/mlx-performance-profiler) for coding agents.
+
 It is an observer: it never changes MLX semantics. Formerly named `mlx-visual-plan`; in code it uses the short prefix `mlx_perf`. See [`PHASED_PLAN.md`](PHASED_PLAN.md) for the roadmap, [`AGENTS.md`](AGENTS.md) for contributor conventions and [`VERSIONING.md`](VERSIONING.md) for how versions relate to MLX's. The images above are the profiler's own reports, captured with [`capture_report_visual.py`](.claude/skills/release-notes/scripts/capture_report_visual.py); the numbers are from single runs on one Apple-silicon Mac and vary from run to run.
 
 ## Build

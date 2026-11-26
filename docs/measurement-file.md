@@ -12,6 +12,11 @@ The HTML report and this file are built from the same measurement in the same
 call, so they never disagree. Any JSON reader works: Python's `json`, Rust's
 `serde_json`, `jq`, a browser.
 
+Both formats have a JSON Schema (draft 2020-12), checked against real output
+by the test suite:
+[`schema/measurement-file.schema.json`](schema/measurement-file.schema.json) and
+[`schema/comparison-record.schema.json`](schema/comparison-record.schema.json).
+
 ## Conventions
 
 - **Times** are microseconds (`_us`). Instants such as `issue_started_us`
@@ -161,6 +166,107 @@ to its last one's end, summed over streams. It includes GPU gaps while the
 host is still encoding, and its end is bounded by an empty marker buffer
 (an upper bound by the marker's small scheduling gap, the same for both
 variants). The order of the two variants flips every round.
+
+## Example: where did the time go?
+
+A complete reader, standard library only. It refuses a comparison record or
+another schema version instead of misreading it, and treats `null` as "not
+measured". Run it on any measurement file:
+`python3 read_measurements.py softmax_matmul.json 5`.
+
+<!-- example: docs/examples/read_measurements.py -->
+```python
+#!/usr/bin/env python3
+"""Read a measurement file (schema version 1) and answer: where did the time go?
+
+Standard library only. Usage:
+    python3 read_measurements.py softmax_matmul.json [how_many_nodes]
+
+Prints the job's headline numbers, the most expensive nodes by GPU compute,
+and how much of each node's wall time was spent waiting rather than computing.
+"""
+
+import json
+import sys
+
+SUPPORTED_SCHEMA_VERSION = 1
+WAITING_SLICES = ("wait_on_host_us", "wait_on_own_stream_us", "wait_on_other_stream_us",
+                  "gpu_scheduling_us")
+
+
+def load_measurements(measurement_path):
+    with open(measurement_path, encoding="utf-8") as measurement_file:
+        measurements = json.load(measurement_file)
+    if measurements.get("kind") == "comparison":
+        sys.exit("this is a comparison record; read one of the variant files it names "
+                 "(baseline.measurement_file, candidate.measurement_file)")
+    if measurements.get("schema_version") != SUPPORTED_SCHEMA_VERSION:
+        sys.exit(f"schema_version {measurements.get('schema_version')} is not "
+                 f"{SUPPORTED_SCHEMA_VERSION}; fields may have changed meaning")
+    return measurements
+
+
+def node_cost_microseconds(node_record):
+    """A node's own GPU compute, or None when it was not measured on its own.
+
+    In a per_stage run nodes are timed as part of their stage, so compute_us
+    is null and the stage's record holds the time; serial_duration_us is the
+    node run alone. null always means "not measured", never zero.
+    """
+    return node_record["compute_us"]
+
+
+def print_job_headline(measurements):
+    job = measurements["job"]
+    print(f"{measurements['variant_name']}: {job['executed_node_count']} nodes on "
+          f"{job['stream_count']} streams, {measurements['granularity']} timing")
+    print(f"  job duration {job['job_wall_us']['median']:.1f} us median "
+          f"({job['job_wall_us']['min']:.1f} to {job['job_wall_us']['max']:.1f})")
+    print(f"  GPU execution {job['measured_gpu_execution_us']:.1f} us, "
+          f"cross-stream stall {job['cross_stream_stall_us']:.1f} us")
+
+
+def print_most_expensive_nodes(measurements, how_many_nodes):
+    timed_nodes = [node for node in measurements["nodes"] if node_cost_microseconds(node) is not None]
+    if not timed_nodes:
+        print("  no node was timed on its own (a per_stage run): see measurements['stages']")
+        return
+    timed_nodes.sort(key=node_cost_microseconds, reverse=True)
+    print(f"  most expensive {min(how_many_nodes, len(timed_nodes))} nodes by GPU compute:")
+    for node in timed_nodes[:how_many_nodes]:
+        waiting_microseconds = sum(node[slice_name] or 0.0 for slice_name in WAITING_SLICES)
+        kernel = f" ({node['kernel_name']})" if node["kernel_name"] else ""
+        print(f"    {node['label']:>4} {node['op_name']}{kernel}: compute {node['compute_us']:.1f} us, "
+              f"waiting {waiting_microseconds:.1f} us, mostly {node['classification']}")
+
+
+def main():
+    if len(sys.argv) < 2:
+        sys.exit(__doc__)
+    measurements = load_measurements(sys.argv[1])
+    how_many_nodes = int(sys.argv[2]) if len(sys.argv) > 2 else 5
+    print_job_headline(measurements)
+    print_most_expensive_nodes(measurements, how_many_nodes)
+
+
+if __name__ == "__main__":
+    main()
+```
+
+For `softmax(x @ x)` it prints, for example:
+
+```text
+eager: 2 nodes on 1 streams, per_node timing
+  job duration 733.9 us median (675.2 to 1229.4)
+  GPU execution 586.8 us, cross-stream stall 0.0 us
+  most expensive 2 nodes by GPU compute:
+       B Matmul: compute 515.7 us, waiting 67.5 us, mostly compute
+       C Softmax: compute 71.0 us, waiting 564.9 us, mostly wait_on_own_stream
+```
+
+The Softmax node spends most of its wall time queued behind the Matmul on the
+same stream: in the timeline pass each node is submitted on its own, so the
+next node waits for the previous one to finish.
 
 ## Example: each node's GPU compute and the gaps between nodes
 

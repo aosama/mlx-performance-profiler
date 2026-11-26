@@ -1,0 +1,642 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/aosama/mlx-performance-profiler/blob/main/docs/schema/measurement-file.schema.json",
+  "title": "mlx-performance-profiler measurement file, schema version 1",
+  "description": "One measured variant, as written by mlx_perf_profile_to_report and mlx_perf_profile_to_measurements. Times are microseconds; null means not measured, never zero. New fields may appear without a version change: ignore fields you do not know.",
+  "type": "object",
+  "required": [
+    "backend",
+    "granularity",
+    "job",
+    "mlx_perf_version",
+    "mlx_version",
+    "nodes",
+    "schema_version",
+    "stages",
+    "streams",
+    "time_origin",
+    "variant_name"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "mlx_perf_version": {
+      "type": "string",
+      "description": "The library version that wrote the file."
+    },
+    "mlx_version": {
+      "type": "string",
+      "description": "The MLX release the job ran on."
+    },
+    "backend": {
+      "const": "metal"
+    },
+    "variant_name": {
+      "type": "string",
+      "description": "The caller's name for this run."
+    },
+    "granularity": {
+      "enum": [
+        "per_node",
+        "per_stage"
+      ],
+      "description": "per_node: every node timed alone. per_stage: stage tasks timed; see stages."
+    },
+    "time_origin": {
+      "type": "string",
+      "description": "What instants count from."
+    },
+    "job": {
+      "type": "object",
+      "required": [
+        "command_buffers",
+        "cross_stream_stall_us",
+        "executed_node_count",
+        "gpu_measured_node_count",
+        "graph_build",
+        "job_wall_us",
+        "measured_gpu_execution_us",
+        "peak_memory_bytes",
+        "stream_count",
+        "sum_of_stages_us",
+        "timed_unit_count",
+        "timeline_wall_us"
+      ],
+      "properties": {
+        "job_wall_us": {
+          "type": "object",
+          "required": [
+            "max",
+            "median",
+            "min",
+            "samples"
+          ],
+          "properties": {
+            "median": {
+              "type": "number"
+            },
+            "min": {
+              "type": "number"
+            },
+            "max": {
+              "type": "number"
+            },
+            "samples": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          },
+          "description": "Uninstrumented job duration over warm runs: median, min, max and every sample."
+        },
+        "timeline_wall_us": {
+          "type": "number",
+          "description": "The instrumented timeline pass, first issue to last completion."
+        },
+        "sum_of_stages_us": {
+          "type": "number",
+          "description": "The serial pass: each node run alone and synchronised, summed."
+        },
+        "measured_gpu_execution_us": {
+          "type": "number",
+          "description": "Sum of GPU-measured compute."
+        },
+        "cross_stream_stall_us": {
+          "type": "number",
+          "description": "Sum of wait_on_other_stream_us; can exceed the wall."
+        },
+        "executed_node_count": {
+          "type": "integer"
+        },
+        "gpu_measured_node_count": {
+          "type": "integer"
+        },
+        "timed_unit_count": {
+          "type": "integer"
+        },
+        "stream_count": {
+          "type": "integer"
+        },
+        "peak_memory_bytes": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Highest per-node peak in the serial pass, above memory already allocated when it began."
+        },
+        "command_buffers": {
+          "type": "object",
+          "required": [
+            "is_lower_bound",
+            "timeline_pass_observed"
+          ],
+          "properties": {
+            "timeline_pass_observed": {
+              "type": "integer",
+              "description": "MLX command buffers seen to complete in the timeline pass."
+            },
+            "is_lower_bound": {
+              "type": "boolean",
+              "description": "true when MLX may have committed buffers the probe never held (per_stage runs)."
+            }
+          }
+        },
+        "graph_build": {
+          "type": "array",
+          "description": "Time inside the job's own graph-building code, per pass; outside every pass clock.",
+          "items": {
+            "type": "object",
+            "required": [
+              "calls_us",
+              "pass",
+              "total_us"
+            ],
+            "properties": {
+              "pass": {
+                "type": "string",
+                "enum": [
+                  "stream_discovery",
+                  "warm_up",
+                  "job_wall",
+                  "timeline",
+                  "serial",
+                  "gpu_span"
+                ]
+              },
+              "calls_us": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                }
+              },
+              "total_us": {
+                "type": "number"
+              }
+            }
+          }
+        }
+      }
+    },
+    "streams": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "busy_us",
+          "first_issue_us",
+          "is_gpu",
+          "last_completion_us",
+          "node_count",
+          "stream_index",
+          "wait_on_other_stream_us",
+          "wall_us"
+        ],
+        "properties": {
+          "stream_index": {
+            "type": "integer",
+            "description": "MLX stream index."
+          },
+          "is_gpu": {
+            "type": "boolean",
+            "description": "true for a GPU stream."
+          },
+          "node_count": {
+            "type": "integer",
+            "description": "Nodes on the stream."
+          },
+          "first_issue_us": {
+            "type": "number",
+            "description": "First issue on the stream."
+          },
+          "last_completion_us": {
+            "type": "number",
+            "description": "Last completion on the stream."
+          },
+          "wall_us": {
+            "type": "number",
+            "description": "last_completion_us - first_issue_us."
+          },
+          "busy_us": {
+            "type": "number",
+            "description": "Compute summed over the stream."
+          },
+          "wait_on_other_stream_us": {
+            "type": "number",
+            "description": "Time the stream stalled on other streams' data."
+          }
+        }
+      }
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "description": "One executed primitive, in execution order.",
+        "required": [
+          "classification",
+          "completed_us",
+          "compute_us",
+          "cross_stream_input_positions",
+          "dtype",
+          "gpu_finished_us",
+          "gpu_idle_before_us",
+          "gpu_scheduling_us",
+          "gpu_started_us",
+          "input_positions",
+          "is_compute_gpu_measured",
+          "issue_finished_us",
+          "issue_started_us",
+          "kernel_name",
+          "label",
+          "memory_added_bytes",
+          "op_name",
+          "output_bytes",
+          "position",
+          "previous_on_stream_position",
+          "result_latency_us",
+          "serial_duration_us",
+          "shape",
+          "stage_position",
+          "stream_index",
+          "wait_on_host_us",
+          "wait_on_other_stream_us",
+          "wait_on_own_stream_us",
+          "wall_us"
+        ],
+        "properties": {
+          "position": {
+            "type": "integer",
+            "description": "Execution order, 0-based; other records refer to nodes by position."
+          },
+          "label": {
+            "type": "string",
+            "description": "The plan's variable name (A, B, ...), as in the report's graph."
+          },
+          "op_name": {
+            "type": "string",
+            "description": "MLX primitive name, e.g. \"Matmul\"; \"CustomKernel\" for a custom Metal kernel."
+          },
+          "kernel_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "For a custom Metal kernel, MLX's name for it (\"custom_kernel_\" + the author's name); otherwise null."
+          },
+          "stream_index": {
+            "type": "integer",
+            "description": "The MLX stream the node ran on."
+          },
+          "shape": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Output shape."
+          },
+          "dtype": {
+            "type": "string",
+            "description": "Output dtype, e.g. \"float32\"."
+          },
+          "output_bytes": {
+            "type": "integer",
+            "description": "Bytes the node's output occupies."
+          },
+          "input_positions": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Every producer the node reads."
+          },
+          "cross_stream_input_positions": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "The producers that ran on other streams."
+          },
+          "previous_on_stream_position": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "The node before it on its stream, or null."
+          },
+          "stage_position": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Its stage task in a per_stage run, otherwise null."
+          },
+          "issue_started_us": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Host entered async_eval for this unit (µs since time_origin)."
+          },
+          "issue_finished_us": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Host left async_eval for this unit."
+          },
+          "gpu_started_us": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "GPU start of the unit's Metal command buffer; null without a GPU window."
+          },
+          "gpu_finished_us": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "GPU end of the unit's Metal command buffer."
+          },
+          "completed_us": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "When the host observed the unit complete."
+          },
+          "wait_on_host_us": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Slice: host time issuing the unit."
+          },
+          "wait_on_own_stream_us": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Slice: earlier work on the same stream still running."
+          },
+          "wait_on_other_stream_us": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Slice: an input from another stream not ready yet."
+          },
+          "gpu_scheduling_us": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Slice: committed, but the GPU had not started it."
+          },
+          "compute_us": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Slice: GPU execution (host-time fallback on CPU streams)."
+          },
+          "result_latency_us": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Slice: from the GPU finishing to the host noticing."
+          },
+          "wall_us": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "completed_us - issue_started_us; equals the six slices summed."
+          },
+          "is_compute_gpu_measured": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "true when compute_us comes from the GPU window."
+          },
+          "classification": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "compute",
+              "wait_on_host",
+              "wait_on_own_stream",
+              "wait_on_other_stream",
+              "gpu_scheduling",
+              null
+            ],
+            "description": "The largest of the six slices; null where the unit was not timed on its own."
+          },
+          "gpu_idle_before_us": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "This unit's GPU start minus the previous unit's GPU end on the same stream; null for the first."
+          },
+          "serial_duration_us": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "The node run alone and synchronised (serial pass); null when that pass's node differed."
+          },
+          "memory_added_bytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Active memory the node added in the serial pass; null when unmatched."
+          }
+        }
+      }
+    },
+    "stages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "description": "One stage task (per_stage runs): a job-named group of nodes on one stream, timed as one unit.",
+        "required": [
+          "classification",
+          "completed_us",
+          "compute_us",
+          "cross_stream_input_stage_positions",
+          "gpu_finished_us",
+          "gpu_idle_before_us",
+          "gpu_scheduling_us",
+          "gpu_started_us",
+          "is_compute_gpu_measured",
+          "issue_finished_us",
+          "issue_started_us",
+          "node_positions",
+          "result_latency_us",
+          "stage_index",
+          "stage_name",
+          "stage_position",
+          "stream_index",
+          "wait_on_host_us",
+          "wait_on_other_stream_us",
+          "wait_on_own_stream_us",
+          "wall_us"
+        ],
+        "properties": {
+          "stage_position": {
+            "type": "integer",
+            "description": "Position in stages[], dispatch order."
+          },
+          "stage_index": {
+            "type": "integer",
+            "description": "Index into the job's stage plan."
+          },
+          "stage_name": {
+            "type": "string",
+            "description": "The job's name for the stage, e.g. \"layer 3\"."
+          },
+          "stream_index": {
+            "type": "integer",
+            "description": "The stream this task ran on."
+          },
+          "node_positions": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Member nodes, by position."
+          },
+          "cross_stream_input_stage_positions": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Earlier stage tasks on other streams this one reads."
+          },
+          "issue_started_us": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Host entered async_eval for this unit (µs since time_origin)."
+          },
+          "issue_finished_us": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Host left async_eval for this unit."
+          },
+          "gpu_started_us": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "GPU start of the unit's Metal command buffer; null without a GPU window."
+          },
+          "gpu_finished_us": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "GPU end of the unit's Metal command buffer."
+          },
+          "completed_us": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "When the host observed the unit complete."
+          },
+          "wait_on_host_us": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Slice: host time issuing the unit."
+          },
+          "wait_on_own_stream_us": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Slice: earlier work on the same stream still running."
+          },
+          "wait_on_other_stream_us": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Slice: an input from another stream not ready yet."
+          },
+          "gpu_scheduling_us": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Slice: committed, but the GPU had not started it."
+          },
+          "compute_us": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Slice: GPU execution (host-time fallback on CPU streams)."
+          },
+          "result_latency_us": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Slice: from the GPU finishing to the host noticing."
+          },
+          "wall_us": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "completed_us - issue_started_us; equals the six slices summed."
+          },
+          "is_compute_gpu_measured": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "true when compute_us comes from the GPU window."
+          },
+          "classification": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "compute",
+              "wait_on_host",
+              "wait_on_own_stream",
+              "wait_on_other_stream",
+              "gpu_scheduling",
+              null
+            ],
+            "description": "The largest of the six slices; null where the unit was not timed on its own."
+          },
+          "gpu_idle_before_us": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "This unit's GPU start minus the previous unit's GPU end on the same stream; null for the first."
+          }
+        }
+      },
+      "description": "Empty in a per_node run."
+    }
+  }
+}

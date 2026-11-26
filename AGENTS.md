@@ -44,6 +44,17 @@ sidecar: it observes, it never changes MLX semantics.
   reach tools and tests only through `mlx_perf_internal` (link it, or a
   support library, never `src/` directly). New sources go into the target
   whose job they do (`CMakeLists.txt`).
+- Documentation lives in `docs/` (indexed by Context7 through
+  `context7.json`): one question per page, with complete examples. Every C,
+  CMake and Python example is a file in `docs/examples/`, copied into the
+  pages verbatim between `<!-- example: <path> -->` markers; edit the file,
+  then run `python3 tests/docs/docs_check.py sync .`. CTest's `docs_*` tests
+  fail when a copy drifts, a link or anchor breaks, the C API reference
+  misses a header declaration, troubleshooting quotes a message the code
+  cannot produce, a release pin names another version, `context7.json`
+  breaks Context7's limits, or a real measurement file disagrees with
+  `docs/schema/`. A new JSON field needs its schema entry; a new error
+  message needs its troubleshooting entry.
 - Releases: write `release-notes/vX.Y.Z.md` with the `release-notes` skill
   (`.claude/skills/release-notes/`) in the release pull request; the
   release workflow publishes it and refuses a tag without it.

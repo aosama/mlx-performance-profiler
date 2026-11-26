@@ -80,6 +80,10 @@ mlx_perf_add_test(qwen35_layer_stages_test mlx_perf_qwen35)
 # Acceptance: a whole behaviour end to end, on the Metal GPU.
 mlx_perf_add_test(paired_comparison_acceptance_test)
 
+# Documentation: the published docs against the code, and their examples
+# built and run as a reader would (see tests/docs/CMakeLists.txt).
+add_subdirectory(docs)
+
 # Packaging: the installed library as another repository's build sees it.
 # Needs the install rules, so it follows MLX_PERF_INSTALL.
 if(MLX_PERF_INSTALL)
