@@ -102,7 +102,11 @@ target_link_libraries(mlx_perf PUBLIC
     "-framework Metal"
     "-framework Foundation"
     "-framework QuartzCore"
-    "-framework Accelerate")
+    "-framework Accelerate"
+    # MLX 0.32.5 reads the GPU core count through the IOKit registry
+    # (metal::gpu_core_count); without it every executable fails to link.
+    # A system framework, so listing it is harmless on 0.32.4.
+    "-framework IOKit")
 
 target_compile_options(mlx_perf PUBLIC -Wall -Wextra)
 
