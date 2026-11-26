@@ -3,32 +3,52 @@
 Versions follow [`VERSIONING.md`](VERSIONING.md). Each release lists the
 MLX releases it was built and tested against.
 
-## Unreleased
+## 0.2.0 (2026-11-26)
 
-Additive: the next release is a minor one (0.2.0) under `VERSIONING.md`.
+Tested MLX releases: 0.32.4, 0.32.5 (Metal, macOS).
 
-- Per-node measurements as JSON beside every report (schema version 1,
-  [`docs/measurement-file.md`](docs/measurement-file.md)), and the new C
-  function `mlx_perf_profile_to_measurements` that writes only that file
-  (#11).
-- The file records each job-wall sample, the time spent inside the job's
-  graph-building code per pass, and the command buffers the timeline pass
-  observed.
+A minor release under `VERSIONING.md`: the C API only gains functions, and
+0.1.0 calls keep their signatures and structs. Consumers pinning `0.1`
+move to `find_package(mlx_perf 0.2)`.
+
+### Added
+- **Per-node measurements as data (#11).** Every profile writes JSON beside
+  its report: one record per node in execution order, and a job record with
+  every job-wall sample, graph-build time per pass and the command buffers
+  observed. Schema version 1, in
+  [`docs/measurement-file.md`](docs/measurement-file.md). The new
+  `mlx_perf_profile_to_measurements` writes the file alone.
+- **Comparing two implementations of one job (#12).**
+  `mlx_perf_compare_to_report` (`measure_pair` in C++):
+  - checks the two outputs agree;
+  - runs 12 uninstrumented rounds, flipping which variant goes first;
+  - judges job duration, GPU span and host submission on the per-round
+    differences. A result requires the 96% interval for the median
+    difference to exclude zero, i.e. at least 10 of 12 rounds, so two
+    identical variants are called different under 4% of the time.
+  - The comparison page opens with the verdict; `<base>.json` records it.
+- **`mlx_perf_set_console_output` (#24)** silences everything the library
+  prints.
 - Custom Metal kernels are told apart by name (`kernel_name`).
+
+### Changed
+- `mlx_perf_profile_to_report` also writes `<base>.json`.
+- `hello_world`, `qwen35_profile` and the live server measure eager against
+  compiled as an interleaved pair. The live Job tab opens with the verdict
+  (#25).
+- Serial-pass peak memory is counted above what was already allocated when
+  the pass began.
+- Consumers building from source see only the C API's headers, and the
+  library is optimised even when they set no build type.
+- The release workflow refuses a tag that is not on `main`.
+
+### Fixed
 - Graphviz runs without a shell, so report and variant names are never
-  interpreted; NaN outputs are reported as unmeasurable agreement, not zero.
-- Serial-pass peak memory is counted above what was already allocated.
-- Comparing two implementations of one job (#12): the C function
-  `mlx_perf_compare_to_report` (and `measure_pair` in C++) checks the two
-  outputs agree, runs 12 uninstrumented rounds with the order flipped every
-  round, and judges job duration, GPU span and host submission on the
-  per-round differences: a result only when the 96% interval for the median
-  difference excludes zero (at least 10 of 12 rounds). The comparison page
-  opens with the verdict; `<base>.json` records it.
-- `hello_world`, `qwen35_profile` and the live server measure eager vs
-  compiled this way; the live Job tab opens with the verdict (#25).
-- `mlx_perf_set_console_output` silences everything the library prints
-  (#24).
+  interpreted as shell syntax.
+- NaN or infinite outputs are reported as unmeasurable agreement, not as
+  perfect agreement.
+- Two variant names differing only in case are refused instead of
+  overwriting each other's files.
 
 ## 0.1.0 (2026-11-26)
 
