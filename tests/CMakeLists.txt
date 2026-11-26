@@ -21,11 +21,14 @@ endfunction()
 
 # Unit and component: pure arithmetic, text and HTML, no GPU needed.
 mlx_perf_add_test(latency_breakdown_test)
+mlx_perf_add_test(sample_statistics_test)
 mlx_perf_add_test(text_format_test)
 mlx_perf_add_test(latency_slices_test)
 mlx_perf_add_test(report_components_test)
 mlx_perf_add_test(report_writer_test)
 mlx_perf_add_test(report_comparison_page_test)
+mlx_perf_add_test(report_verdict_section_test)
+mlx_perf_add_test(comparison_record_test)
 mlx_perf_add_test(json_value_test)
 mlx_perf_add_test(json_writer_test)
 mlx_perf_add_test(graph_build_timer_test)
@@ -49,7 +52,9 @@ mlx_perf_add_test(graph_model_test)
 mlx_perf_add_test(telemetry_test)
 mlx_perf_add_test(metal_command_buffer_probe_test)
 mlx_perf_add_test(demo_model_test mlx_perf_demo_model)
+mlx_perf_add_test(output_agreement_test)
 mlx_perf_add_test(measurement_session_test)
+mlx_perf_add_test(paired_measurement_test)
 mlx_perf_add_test(measurement_file_test)
 mlx_perf_add_test(mlx_perf_c_api_test)
 mlx_perf_add_test(qwen35_decode_step_test mlx_perf_qwen35)
@@ -57,6 +62,9 @@ mlx_perf_add_test(gpu_timeline_test)
 mlx_perf_add_test(stage_timeline_test)
 mlx_perf_add_test(timeline_dependencies_test)
 mlx_perf_add_test(qwen35_layer_stages_test mlx_perf_qwen35)
+
+# Acceptance: a whole behaviour end to end, on the Metal GPU.
+mlx_perf_add_test(paired_comparison_acceptance_test)
 
 # Packaging: the installed library as another repository's build sees it.
 # Needs the install rules, so it follows MLX_PERF_INSTALL.

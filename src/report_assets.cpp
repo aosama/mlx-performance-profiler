@@ -36,6 +36,11 @@ nav a:hover { color: var(--ink); }
 section { padding: 14px 24px 6px; }
 h2 { font-size: 15px; margin: 6px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--rule); }
 .note { color: var(--muted); font-size: 12px; max-width: 980px; }
+.verdict { font-size: 15px; font-weight: 600; max-width: 980px; margin: 4px 0 12px;
+  background: var(--panel); border: 1px solid var(--rule); border-left: 4px solid var(--slice-compute);
+  border-radius: 6px; padding: 10px 14px; }
+.verdict.slower { border-left-color: var(--slice-stalled); }
+.verdict.within-spread { border-left-color: var(--muted); }
 .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
 .card { background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 14px; }
 .card-value { font-size: 21px; font-weight: 650; font-variant-numeric: tabular-nums; }

@@ -6,13 +6,17 @@
 
 namespace mlx_perf {
 
+std::string write_json_file(const JsonValue& document, const std::string& output_directory,
+                            const std::string& file_base) {
+  const std::string json_path = output_directory + "/" + file_base + ".json";
+  return write_text_file(json_path, write_json(document)) ? json_path : std::string();
+}
+
 std::string write_measurement_file(const VariantMeasurement& variant_measurement,
                                    const std::string& output_directory,
                                    const std::string& file_base) {
-  const std::string measurement_path = output_directory + "/" + file_base + ".json";
-  const bool is_written = write_text_file(
-      measurement_path, write_json(build_measurement_document(variant_measurement)));
-  return is_written ? measurement_path : std::string();
+  return write_json_file(build_measurement_document(variant_measurement), output_directory,
+                         file_base);
 }
 
 } // namespace mlx_perf

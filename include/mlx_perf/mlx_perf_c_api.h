@@ -69,6 +69,69 @@ int mlx_perf_profile_to_measurements(mlx_perf_build_graph_fn build_graph,
                                      const char* measurements_file_base,
                                      mlx_perf_job_summary* summary);
 
+/* One implementation to compare: a name for the reports (also part of its
+ * file names, so it must be non-empty, contain no '/', and differ from the
+ * other variant's) and its graph callback with that callback's payload. */
+typedef struct mlx_perf_variant {
+  const char* variant_name;
+  mlx_perf_build_graph_fn build_graph;
+  void* builder_payload;
+} mlx_perf_variant;
+
+/* Values of mlx_perf_metric_comparison.verdict. Lower is better. The verdict
+ * is judged on the per-round differences (candidate − baseline): other than
+ * "within spread" only when the middle half of those differences (lower to
+ * upper quartile) lies entirely below (or above) zero, so drift shared
+ * within a round cancels and a single disturbed round cannot decide it. */
+enum {
+  MLX_PERF_VERDICT_CANDIDATE_FASTER = -1,
+  MLX_PERF_VERDICT_WITHIN_SPREAD = 0,
+  MLX_PERF_VERDICT_CANDIDATE_SLOWER = 1
+};
+
+/* One metric across the paired rounds, in microseconds. */
+typedef struct mlx_perf_metric_comparison {
+  double baseline_median_us;
+  double baseline_min_us;
+  double baseline_max_us;
+  double baseline_lower_quartile_us;
+  double baseline_upper_quartile_us;
+  double candidate_median_us;
+  double candidate_min_us;
+  double candidate_max_us;
+  double candidate_lower_quartile_us;
+  double candidate_upper_quartile_us;
+  double median_difference_us; /* median per-round candidate − baseline: negative is faster */
+  double difference_lower_quartile_us;
+  double difference_upper_quartile_us;
+  double relative_difference;  /* median_difference_us / baseline median */
+  int verdict;                 /* an MLX_PERF_VERDICT_* value */
+  int rounds_candidate_faster;
+  int round_count;
+} mlx_perf_metric_comparison;
+
+typedef struct mlx_perf_comparison_summary {
+  mlx_perf_job_summary baseline;
+  mlx_perf_job_summary candidate;
+  mlx_perf_metric_comparison job_wall;
+  mlx_perf_metric_comparison gpu_execution;
+  mlx_perf_metric_comparison host_submission; /* host time inside async_eval */
+  double max_absolute_output_difference;
+} mlx_perf_comparison_summary;
+
+/* Measures two implementations of one job with their passes interleaved
+ * (order flipped every round) and writes `<report_file_base>.html` (the
+ * comparison, opening with its verdict), `<report_file_base>.json` (the
+ * comparison as data) and, per variant, `<report_file_base>_<name>.html`
+ * and `.json`. Fails, writing nothing, when the two jobs' outputs differ in
+ * count, shape or dtype. `summary` may be NULL. */
+int mlx_perf_compare_to_report(const mlx_perf_variant* baseline,
+                               const mlx_perf_variant* candidate,
+                               const char* report_title,
+                               const char* output_directory,
+                               const char* report_file_base,
+                               mlx_perf_comparison_summary* summary);
+
 /* The library version, "MAJOR.MINOR.PATCH" (MLX_PERF_VERSION_STRING of the
  * build that produced the library). Compare it with the header's macro to
  * catch a header and an archive from different releases. Static storage. */

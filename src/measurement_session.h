@@ -1,8 +1,10 @@
 #pragma once
 
 // Measurement session: one concern only — run the four passes (warm-up,
-// job wall, timeline at the chosen granularity, serial) for one job variant and keep everything the
-// reports need alive together.
+// job wall, timeline at the chosen granularity, serial) for one job variant
+// and keep everything the reports need alive together. The passes are also
+// exposed one call at a time, so paired_measurement can interleave two
+// variants pass by pass.
 
 #include "gpu_timeline.h"
 #include "graph_build_timer.h"
@@ -16,6 +18,7 @@
 
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 namespace mlx_perf {
 
@@ -56,6 +59,50 @@ class MeasurementObserver {
 struct TimelineOptions {
   GranularityChoice granularity_choice = GranularityChoice::automatic;
 };
+
+// Seven fresh runs per variant: enough for a median that resists one slow
+// run, few enough that a millisecond job measures in well under a second.
+inline constexpr int JOB_WALL_SAMPLE_COUNT = 7;
+
+// One timeline pass's graph and timeline, kept together. Move-only for the
+// same reason as VariantMeasurement: gpu_timeline points into
+// timeline_graph.nodes.
+struct TimelineCapture {
+  CapturedGraph timeline_graph;
+  GpuTimeline gpu_timeline;
+
+  TimelineCapture() = default;
+  TimelineCapture(TimelineCapture&&) = default;
+  TimelineCapture& operator=(TimelineCapture&&) = default;
+  TimelineCapture(const TimelineCapture&) = delete;
+  TimelineCapture& operator=(const TimelineCapture&) = delete;
+};
+
+// Builds and evaluates one fresh graph and returns its outputs, evaluated.
+// Its cost is not job cost: the first eval pays Metal kernel compilation
+// (and, for a compiled variant, tracing and fused-kernel JIT).
+std::vector<mlx::core::array> run_warm_up(const GraphFactory& graph_factory);
+
+// One uninstrumented job-wall sample on a fresh graph, in microseconds.
+double sample_job_wall_once(const GraphFactory& graph_factory);
+
+// Median, range and the samples themselves (in measured order) into
+// `job_totals`. Throws std::invalid_argument on no samples.
+void record_job_wall_samples(const std::vector<double>& job_wall_samples,
+                             JobTotals& job_totals);
+
+// One timeline pass on a fresh graph, at the granularity the options and
+// the job's stage cuts choose.
+TimelineCapture capture_timeline(
+    const GraphFactory& graph_factory,
+    const std::unordered_map<int, mlx::core::Stream>& stream_index_to_stream,
+    const TimelineOptions& timeline_options);
+
+// The serial pass on its own fresh graph: fills serial_graph,
+// serial_telemetry and the sum of stages.
+void run_serial_pass(const GraphFactory& graph_factory,
+                     const std::unordered_map<int, mlx::core::Stream>& stream_index_to_stream,
+                     VariantMeasurement& variant_measurement);
 
 VariantMeasurement measure_variant(
     const std::string& variant_name,

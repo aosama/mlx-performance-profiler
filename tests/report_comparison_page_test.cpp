@@ -52,6 +52,34 @@ void should_render_metrics_plans_shared_timelines_and_primitive_mix() {
   EXPECT_TRUE(document.find("<svg id=\"a\">") != std::string::npos);
 }
 
+void should_open_with_the_callers_verdict_and_subtitle() {
+  VariantMeasurement stock_measurement;
+  VariantMeasurement custom_measurement;
+  populate_variant(stock_measurement, "stock", 200);
+  populate_variant(custom_measurement, "custom", 100);
+  const std::string document = build_comparison_document(
+      "Job", {stock_measurement, "", "stock.html"}, {custom_measurement, "", "custom.html"},
+      {"Quantized projection, two kernels", "<p class=\"verdict faster\">VERDICT</p>"});
+  EXPECT_TRUE(document.find("Quantized projection, two kernels") != std::string::npos);
+  EXPECT_TRUE(document.find("id=\"verdict\"") < document.find("id=\"compare\""));
+  EXPECT_TRUE(document.find("VERDICT") != std::string::npos);
+}
+
+// Without a verdict (no rounds to judge) the page has no verdict section, and
+// the default subtitle names both implementations.
+void should_omit_the_verdict_and_the_fused_column_when_there_is_nothing_to_show() {
+  VariantMeasurement stock_measurement;
+  VariantMeasurement custom_measurement;
+  populate_variant(stock_measurement, "stock", 200);
+  populate_variant(custom_measurement, "custom", 100);
+  const std::string document = build_comparison_document(
+      "Job", {stock_measurement, "", "stock.html"}, {custom_measurement, "", "custom.html"});
+  EXPECT_TRUE(document.find("id=\"verdict\"") == std::string::npos);
+  EXPECT_TRUE(document.find("Same job, two implementations: stock vs custom") !=
+              std::string::npos);
+  EXPECT_TRUE(document.find("<th>Fuses</th>") == std::string::npos);
+}
+
 // A stage-timed variant has no per-node GPU time: its primitive mix must
 // come from the serial pass (labeled), and the page must say the two
 // variants were timed at different granularities.
@@ -116,6 +144,8 @@ int main() {
   return test_harness::run_all({
       TEST_CASE(should_split_a_compiled_name_into_its_fused_primitives),
       TEST_CASE(should_render_metrics_plans_shared_timelines_and_primitive_mix),
+      TEST_CASE(should_open_with_the_callers_verdict_and_subtitle),
+      TEST_CASE(should_omit_the_verdict_and_the_fused_column_when_there_is_nothing_to_show),
       TEST_CASE(should_flag_mixed_granularities_and_tally_stage_timed_primitives_from_serial),
       TEST_CASE(should_leave_a_bare_compiled_name_and_single_primitive_sensible),
       TEST_CASE(should_show_dash_for_change_when_baseline_is_zero),

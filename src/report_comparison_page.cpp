@@ -173,9 +173,34 @@ void append_tally_cells(
            << "</td>";
 }
 
+// True when either variant ran a fused kernel, the only case where the
+// "Fuses" column says anything (a custom-kernel comparison has none).
+bool has_fused_primitives(const std::map<std::string, bool>& all_op_names) {
+  for (const auto& [op_name, is_present] : all_op_names) {
+    if (!describe_fused_primitives(op_name).empty()) {
+      return true;
+    }
+  }
+  return false;
+}
+
+std::string render_primitive_mix_header(const VariantMeasurement& baseline,
+                                        const VariantMeasurement& candidate,
+                                        bool shows_fused_column) {
+  std::ostringstream header_html;
+  header_html << "<div class=\"table-wrap\"><table class=\"sortable\"><thead><tr>"
+              << "<th>Primitive</th>" << (shows_fused_column ? "<th>Fuses</th>" : "")
+              << "<th>" << escape_html_text(baseline.variant_name) << " nodes</th><th>"
+              << escape_html_text(baseline.variant_name) << primitive_time_label(baseline)
+              << "</th><th>" << escape_html_text(candidate.variant_name) << " nodes</th><th>"
+              << escape_html_text(candidate.variant_name) << primitive_time_label(candidate)
+              << "</th></tr></thead><tbody>";
+  return header_html.str();
+}
+
 // Spark's "planned vs executed": which primitives each variant actually ran,
 // and how much measured GPU time each kind took. Fused kernels exist only on
-// the compiled side; the primitives they absorbed shrink or vanish.
+// a compiled side; the primitives they absorbed shrink or vanish.
 std::string render_primitive_mix(
     const VariantMeasurement& baseline, const VariantMeasurement& candidate) {
   const auto baseline_tallies = tally_primitives(baseline);
@@ -187,17 +212,14 @@ std::string render_primitive_mix(
   for (const auto& [op_name, tally] : candidate_tallies) {
     all_op_names[op_name] = true;
   }
+  const bool shows_fused_column = has_fused_primitives(all_op_names);
   std::ostringstream table_html;
-  table_html << "<div class=\"table-wrap\"><table class=\"sortable\"><thead><tr>"
-             << "<th>Primitive</th><th>Fuses</th><th>" << escape_html_text(baseline.variant_name)
-             << " nodes</th><th>" << escape_html_text(baseline.variant_name)
-             << primitive_time_label(baseline) << "</th><th>"
-             << escape_html_text(candidate.variant_name) << " nodes</th><th>"
-             << escape_html_text(candidate.variant_name) << primitive_time_label(candidate)
-             << "</th></tr></thead><tbody>";
+  table_html << render_primitive_mix_header(baseline, candidate, shows_fused_column);
   for (const auto& [op_name, is_present] : all_op_names) {
-    table_html << "<tr><td>" << escape_html_text(op_name) << "</td><td>"
-               << escape_html_text(describe_fused_primitives(op_name)) << "</td>";
+    table_html << "<tr><td>" << escape_html_text(op_name) << "</td>";
+    if (shows_fused_column) {
+      table_html << "<td>" << escape_html_text(describe_fused_primitives(op_name)) << "</td>";
+    }
     append_tally_cells(table_html, baseline_tallies, op_name);
     append_tally_cells(table_html, candidate_tallies, op_name);
     table_html << "</tr>";
@@ -249,18 +271,26 @@ std::string describe_fused_primitives(const std::string& compiled_op_name) {
 std::string build_comparison_document(
     const std::string& page_title,
     const ComparedVariant& baseline_variant,
-    const ComparedVariant& candidate_variant) {
+    const ComparedVariant& candidate_variant,
+    const ComparisonPageText& page_text) {
   const VariantMeasurement& baseline = baseline_variant.variant_measurement;
   const VariantMeasurement& candidate = candidate_variant.variant_measurement;
+  const std::string subtitle = !page_text.subtitle.empty()
+      ? page_text.subtitle
+      : "Same job, two implementations: " + baseline.variant_name + " vs " +
+            candidate.variant_name;
   std::ostringstream page_html;
   page_html << "<!DOCTYPE html>\n<html lang=\"en\"><head><meta charset=\"utf-8\">"
             << "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
             << "<title>" << escape_html_text(page_title) << "</title><style>"
             << report_stylesheet() << "</style></head><body><header><h1>"
-            << escape_html_text(page_title) << "</h1><p>Same job, two plans: "
-            << escape_html_text(baseline.variant_name) << " vs "
-            << escape_html_text(candidate.variant_name) << "</p></header>"
-            << "<section id=\"compare\"><h2>Job metrics</h2>"
+            << escape_html_text(page_title) << "</h1><p>" << escape_html_text(subtitle)
+            << "</p></header>";
+  if (!page_text.verdict_html.empty()) {
+    page_html << "<section id=\"verdict\"><h2>Verdict</h2>" << page_text.verdict_html
+              << "</section>";
+  }
+  page_html << "<section id=\"compare\"><h2>Job metrics</h2>"
             << render_comparison_metrics(baseline, candidate) << "</section>"
             << "<section id=\"plans\"><h2>Plans side by side</h2><div class=\"variant-grid\">"
             << render_variant_column(baseline_variant)

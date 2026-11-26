@@ -37,6 +37,11 @@ std::vector<StreamTimeline> summarize_streams(
 // Sums every unit's slices: the job-level "what was the work doing".
 LatencyBreakdown aggregate_breakdown(const std::vector<TimedUnit>& timed_units);
 
+// Host time spent inside async_eval for every unit (issue_finished −
+// issue_started, summed): encoding and committing the work. The host-side
+// cost a comparison of two implementations of the same job should show.
+double sum_host_submission_microseconds(const std::vector<TimedUnit>& timed_units);
+
 // "node" or "stage" — the noun the reports use for one timed unit.
 const char* timed_unit_noun(const GpuTimeline& gpu_timeline);
 

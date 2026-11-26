@@ -5,6 +5,8 @@ Every profile writes its measurements as JSON beside the HTML report:
 - `mlx_perf_profile_to_report` writes `<report_file_base>.json` next to the `.html`.
 - `mlx_perf_profile_to_measurements` writes only `<measurements_file_base>.json`.
 - `hello_world` and `qwen35_profile` write `<base>_<variant>.json` for each variant.
+- A comparison (`mlx_perf_compare_to_report`, `hello_world`, `qwen35_profile`)
+  also writes `<base>.json`, the comparison record described at the end.
 
 The HTML report and this file are built from the same measurement in the same
 call, so they never disagree. Any JSON reader works: Python's `json`, Rust's
@@ -124,6 +126,33 @@ granularity** section explains what that window includes.
 `stream_index`, `is_gpu`, `timed_unit_count`, `first_issue_us`,
 `last_completion_us`, `wall_us`, `busy_us` (compute summed) and
 `wait_on_other_stream_us`.
+
+## The comparison record (`"kind": "comparison"`)
+
+Written as `<base>.json` beside a comparison page. Per-node detail stays in
+each variant's own file, which the record names.
+
+| Field | Meaning |
+|---|---|
+| `schema_version`, `kind` | `1`, `"comparison"` |
+| `baseline`, `candidate` | `variant_name`, and `measurement_file`: that variant's measurement file, relative to this one |
+| `metrics.job_wall_us`, `metrics.gpu_execution_us`, `metrics.host_submission_us` | one record per metric, below |
+| `output_agreement` | `output_count`, and `max_absolute_difference` between the two variants' outputs (float32) |
+
+Each metric record:
+
+| Field | Meaning |
+|---|---|
+| `baseline`, `candidate` | `median`, `min`, `max`, `lower_quartile`, `upper_quartile`, and every `samples` value in round order |
+| `round_difference_us` | the per-round differences (candidate − baseline): `median`, `min`, `max`, `lower_quartile`, `upper_quartile` |
+| `median_difference_us` | the median per-round difference; negative means the candidate is faster |
+| `relative_difference` | `median_difference_us` / the baseline median (0 when that is 0) |
+| `verdict` | `candidate_faster` when the middle half of the per-round differences (lower to upper quartile) lies entirely below zero, `candidate_slower` when entirely above, otherwise `within_spread` |
+| `rounds_candidate_faster`, `round_count` | rounds, paired by index, in which the candidate's sample was lower |
+
+Job wall has 7 rounds; GPU execution and host submission come from 5
+timeline rounds. Host submission is the host time spent inside `async_eval`
+over the whole job: encoding and committing the work.
 
 ## Example: each node's GPU time and the gaps between nodes
 

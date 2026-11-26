@@ -24,3 +24,5 @@ rust/**/target/
 # repository root writes here.
 /c_api_*
 /measurement_file_*
+/bundle_test*
+/acceptance_*

@@ -83,6 +83,30 @@ int build_single_node_graph(mlx_vector_array fresh_outputs, void* builder_payloa
   return status;
 }
 
+// The two-stream matmul, finished on the main stream by a caller-chosen
+// unary MLX-C operation: two implementations with equal output shapes.
+struct UnaryVariantPayload {
+  TwoStreamPayload streams;
+  int (*finishing_operation)(mlx_array*, const mlx_array, const mlx_stream);
+};
+
+int build_unary_variant_graph(mlx_vector_array fresh_outputs, void* builder_payload) {
+  auto* payload = static_cast<UnaryVariantPayload*>(builder_payload);
+  ++payload->streams.build_count;
+  const int shape[] = {128, 128};
+  mlx_array square_ones = mlx_array_new();
+  mlx_array product = mlx_array_new();
+  mlx_array finished = mlx_array_new();
+  int status = mlx_ones(&square_ones, shape, 2, MLX_FLOAT32, payload->streams.side_stream);
+  status |= mlx_matmul(&product, square_ones, square_ones, payload->streams.side_stream);
+  status |= payload->finishing_operation(&finished, product, payload->streams.main_stream);
+  status |= mlx_vector_array_append_value(fresh_outputs, finished);
+  mlx_array_free(square_ones);
+  mlx_array_free(product);
+  mlx_array_free(finished);
+  return status;
+}
+
 int build_nothing(mlx_vector_array, void*) { return 0; }
 int build_failure(mlx_vector_array, void*) { return 7; }
 
@@ -93,6 +117,16 @@ struct ApiFixture {
     mlx_stream_free(payload.side_stream);
     mlx_stream_free(payload.main_stream);
   }
+};
+
+// Two variants on their own streams, sin and cos: same shapes, other values.
+struct CompareFixture {
+  ApiFixture sin_streams;
+  ApiFixture cos_streams;
+  UnaryVariantPayload sin_payload{sin_streams.payload, mlx_sin};
+  UnaryVariantPayload cos_payload{cos_streams.payload, mlx_cos};
+  mlx_perf_variant sin_variant{"sin", build_unary_variant_graph, &sin_payload};
+  mlx_perf_variant cos_variant{"cos", build_unary_variant_graph, &cos_payload};
 };
 
 // --- positive ---
@@ -201,6 +235,34 @@ void should_write_the_measurements_beside_the_report() {
   EXPECT_TRUE(document.at("variant_name").as_string() == "c-api");
 }
 
+void should_compare_two_mlx_c_jobs_and_write_the_verdict_page() {
+  CompareFixture fixture;
+  mlx_perf_comparison_summary summary{};
+  EXPECT_TRUE(mlx_perf_compare_to_report(&fixture.sin_variant, &fixture.cos_variant,
+                                         "sin vs cos", ".", "c_api_compare", &summary) == 0);
+  for (const char* written_file :
+       {"c_api_compare.html", "c_api_compare.json", "c_api_compare_sin.html",
+        "c_api_compare_cos.html", "c_api_compare_sin.json", "c_api_compare_cos.json"}) {
+    EXPECT_TRUE(std::ifstream(written_file).good());
+  }
+  EXPECT_TRUE(summary.job_wall.round_count == 7);
+  EXPECT_TRUE(summary.gpu_execution.round_count == 5);
+  EXPECT_TRUE(summary.host_submission.round_count == 5);
+  EXPECT_TRUE(summary.job_wall.verdict >= MLX_PERF_VERDICT_CANDIDATE_FASTER &&
+              summary.job_wall.verdict <= MLX_PERF_VERDICT_CANDIDATE_SLOWER);
+  EXPECT_TRUE(summary.job_wall.baseline_min_us <= summary.job_wall.baseline_lower_quartile_us);
+  EXPECT_TRUE(summary.job_wall.baseline_lower_quartile_us <= summary.job_wall.baseline_median_us);
+  EXPECT_TRUE(summary.gpu_execution.candidate_upper_quartile_us <=
+              summary.gpu_execution.candidate_max_us);
+  EXPECT_TRUE(summary.max_absolute_output_difference > 0.0);  // sin and cos differ
+  EXPECT_TRUE(summary.baseline.stream_count == 2);
+  // stream discovery 1 + warm-up 1 + job wall 7 + timeline 5 + serial 1.
+  EXPECT_TRUE(fixture.sin_payload.streams.build_count == 15);
+  EXPECT_TRUE(fixture.cos_payload.streams.build_count == 15);
+  const mlx_perf::JsonValue record = mlx_perf::parse_json_file("c_api_compare.json");
+  EXPECT_TRUE(record.at("candidate").at("variant_name").as_string() == "cos");
+}
+
 // --- edge / boundary ---
 
 void should_leave_the_gap_empty_for_a_single_node_job() {
@@ -275,6 +337,31 @@ void should_report_an_unwritable_measurements_directory() {
               std::string::npos);
 }
 
+void should_refuse_to_compare_jobs_with_different_outputs_writing_nothing() {
+  CompareFixture fixture;
+  mlx_perf_variant single_node_variant{"single", build_single_node_graph,
+                                       &fixture.cos_streams.payload};
+  EXPECT_TRUE(mlx_perf_compare_to_report(&fixture.sin_variant, &single_node_variant, "t", ".",
+                                         "c_api_compare_mismatch", nullptr) != 0);
+  EXPECT_TRUE(std::string(mlx_perf_last_error()).find("(128,128)") != std::string::npos);
+  EXPECT_TRUE(!std::ifstream("c_api_compare_mismatch.html").good());
+}
+
+void should_refuse_variants_whose_names_would_collide_or_escape() {
+  CompareFixture fixture;
+  mlx_perf_variant same_name_variant{"sin", build_unary_variant_graph, &fixture.cos_payload};
+  EXPECT_TRUE(mlx_perf_compare_to_report(&fixture.sin_variant, &same_name_variant, "t", ".",
+                                         "x", nullptr) != 0);
+  EXPECT_TRUE(std::string(mlx_perf_last_error()).find("both variants are named") !=
+              std::string::npos);
+  mlx_perf_variant path_variant{"../cos", build_unary_variant_graph, &fixture.cos_payload};
+  EXPECT_TRUE(mlx_perf_compare_to_report(&fixture.sin_variant, &path_variant, "t", ".", "x",
+                                         nullptr) != 0);
+  EXPECT_TRUE(mlx_perf_compare_to_report(nullptr, &fixture.cos_variant, "t", ".", "x",
+                                         nullptr) != 0);
+  EXPECT_TRUE(std::string(mlx_perf_last_error()).find("null variant") != std::string::npos);
+}
+
 void should_reject_a_null_mlx_c_vector() {
   bool has_thrown = false;
   try {
@@ -296,6 +383,7 @@ int main() {
       TEST_CASE(should_account_for_every_call_into_the_build_callback),
       TEST_CASE(should_write_the_measurements_beside_the_report),
       TEST_CASE(should_leave_the_gap_empty_for_a_single_node_job),
+      TEST_CASE(should_compare_two_mlx_c_jobs_and_write_the_verdict_page),
       TEST_CASE(should_leave_the_last_error_untouched_when_asked_for_the_version),
       TEST_CASE(should_accept_a_null_summary),
       TEST_CASE(should_reject_a_callback_that_produces_no_outputs),
@@ -304,6 +392,8 @@ int main() {
       TEST_CASE(should_report_an_unwritable_output_directory),
       TEST_CASE(should_reject_null_arguments_to_the_measurements_entry_point),
       TEST_CASE(should_report_an_unwritable_measurements_directory),
+      TEST_CASE(should_refuse_to_compare_jobs_with_different_outputs_writing_nothing),
+      TEST_CASE(should_refuse_variants_whose_names_would_collide_or_escape),
       TEST_CASE(should_reject_a_null_mlx_c_vector),
   });
 }

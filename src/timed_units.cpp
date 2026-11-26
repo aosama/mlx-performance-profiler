@@ -108,4 +108,13 @@ const char* timed_unit_noun(const GpuTimeline& gpu_timeline) {
   return gpu_timeline.granularity == TimelineGranularity::per_stage ? "stage" : "node";
 }
 
+double sum_host_submission_microseconds(const std::vector<TimedUnit>& timed_units) {
+  double host_submission_microseconds = 0.0;
+  for (const TimedUnit& timed_unit : timed_units) {
+    host_submission_microseconds += timed_unit.timestamps->issue_finished_microseconds -
+                                    timed_unit.timestamps->issue_started_microseconds;
+  }
+  return host_submission_microseconds;
+}
+
 } // namespace mlx_perf
