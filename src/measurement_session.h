@@ -31,6 +31,7 @@ struct VariantMeasurement {
   JobTotals job_totals;
   // Time spent inside the job's own graph-building code, per pass
   // ("warm_up", "job_wall", "timeline", "serial"), outside every pass clock.
+  // The C API puts its own "stream_discovery" build first.
   std::vector<GraphBuildPass> graph_build_passes;
 
   VariantMeasurement() = default;

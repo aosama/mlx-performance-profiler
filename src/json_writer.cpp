@@ -13,17 +13,28 @@ void append_indent(std::string& json_text, int nesting_depth) {
   json_text.append(static_cast<std::size_t>(nesting_depth * INDENT_SPACES_PER_LEVEL), ' ');
 }
 
-// std::to_chars without a precision gives the shortest text that parses back
-// to the same double ("12.5", "3", "1e-06"), unlike printf's %.17g, which
-// writes 12.499999999999998 for values a reader expects to be round.
+// Integers up to 2^53 are exact in a double, so whole values in that range
+// (byte counts, shapes, counts) are written as plain digits: the shortest
+// form of 1000000 is "1e+06", which strict readers refuse for an integer
+// field (serde_json for a u64) and Python reads as a float.
+constexpr double LARGEST_EXACT_INTEGER_IN_DOUBLE = 9007199254740992.0;  // 2^53
+
+// Fractional values use std::to_chars without a precision: the shortest text
+// that parses back to the same double ("12.5", "0.1"), unlike printf's
+// %.17g, which writes 12.499999999999998 for values a reader expects round.
 void append_number(std::string& json_text, double number_value) {
   if (!std::isfinite(number_value)) {
     json_text += "null";
     return;
   }
   char number_text[32];
+  const bool is_exact_whole_number = number_value == std::trunc(number_value) &&
+                                     std::abs(number_value) <= LARGEST_EXACT_INTEGER_IN_DOUBLE;
   const auto conversion =
-      std::to_chars(number_text, number_text + sizeof(number_text), number_value);
+      is_exact_whole_number
+          ? std::to_chars(number_text, number_text + sizeof(number_text),
+                          static_cast<long long>(number_value))
+          : std::to_chars(number_text, number_text + sizeof(number_text), number_value);
   json_text.append(number_text, conversion.ptr);
 }
 

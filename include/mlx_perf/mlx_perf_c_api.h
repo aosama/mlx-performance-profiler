@@ -8,8 +8,9 @@
  * demo does, and writes `<output_directory>/<report_file_base>.html` plus the
  * same measurement as data in `<report_file_base>.json` (one record per node,
  * in execution order; schema in docs/measurement-file.md). Callers that only
- * want the data use mlx_perf_profile_to_measurements. Paths are the only
- * thing that crosses the boundary: no arrays, no ownership.
+ * want the data use mlx_perf_profile_to_measurements. Results come back as
+ * files plus the plain summary struct, so no result arrays and no ownership
+ * cross the boundary.
  *
  * Ownership never crosses the boundary: the library creates and frees the
  * vector; the callback only appends (MLX-C copies array handles on append).

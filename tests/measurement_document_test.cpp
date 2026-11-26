@@ -11,6 +11,7 @@
 
 #include <cmath>
 #include <string>
+#include <utility>
 
 namespace {
 
@@ -107,6 +108,24 @@ void should_join_each_node_to_its_serial_measurement() {
   EXPECT_TRUE(node_records[0].at("memory_added_bytes").as_number() == 4096);
 }
 
+void should_name_every_classification_in_the_reports_vocabulary() {
+  using mlx_perf::NodeClass;
+  const std::pair<NodeClass, const char*> class_to_name[] = {
+      {NodeClass::compute, "compute"},
+      {NodeClass::wait_on_cpu, "wait_on_host"},
+      {NodeClass::wait_on_gpu, "wait_on_own_stream"},
+      {NodeClass::wait_on_dependency, "wait_on_other_stream"},
+      {NodeClass::scheduler_delay, "gpu_scheduling"}};
+  for (const auto& [node_class, expected_name] : class_to_name) {
+    VariantMeasurement variant_measurement;
+    report_fixture::populate_two_stream_run(variant_measurement);
+    variant_measurement.gpu_timeline.nodes[0].breakdown.classification = node_class;
+    const JsonValue document = written_and_parsed(variant_measurement);
+    EXPECT_TRUE(document.at("nodes").as_array()[0].at("classification").as_string() ==
+                expected_name);
+  }
+}
+
 // --- edge / boundary ---
 
 void should_null_the_gpu_window_of_a_node_that_has_none() {
@@ -136,6 +155,15 @@ void should_time_stage_tasks_and_null_member_node_timing() {
   EXPECT_TRUE(member.at("compute_us").is_null());
   EXPECT_TRUE(member.at("gpu_idle_before_us").is_null());
   EXPECT_TRUE(member.at("stage_position").as_number() == 0);
+  // Stage members carry exactly the keys a per-node record does.
+  VariantMeasurement node_timed_measurement;
+  report_fixture::populate_two_stream_run(node_timed_measurement);
+  const JsonValue node_timed_document = written_and_parsed(node_timed_measurement);
+  const auto& node_timed_member = node_timed_document.at("nodes").as_array()[0].as_object();
+  EXPECT_TRUE(member.as_object().size() == node_timed_member.size());
+  for (const auto& node_field : node_timed_member) {
+    EXPECT_TRUE(member.find(node_field.first) != nullptr);
+  }
   EXPECT_TRUE(document.at("job").at("command_buffers").at("is_lower_bound").as_bool());
 }
 
@@ -172,6 +200,7 @@ int main() {
       TEST_CASE(should_measure_the_gpu_gap_between_consecutive_nodes_on_one_stream),
       TEST_CASE(should_carry_job_samples_build_times_and_buffer_count),
       TEST_CASE(should_join_each_node_to_its_serial_measurement),
+      TEST_CASE(should_name_every_classification_in_the_reports_vocabulary),
       TEST_CASE(should_null_the_gpu_window_of_a_node_that_has_none),
       TEST_CASE(should_time_stage_tasks_and_null_member_node_timing),
       TEST_CASE(should_describe_an_empty_measurement_as_empty_lists),

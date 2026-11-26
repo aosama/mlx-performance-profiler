@@ -68,6 +68,20 @@ void should_pass_utf8_text_through_unchanged() {
   EXPECT_TRUE(round_trip(JsonValue(kernel_name)).as_string() == kernel_name);
 }
 
+void should_write_large_whole_numbers_as_plain_digits() {
+  // Byte counts and shapes must read back as integers in strict readers.
+  EXPECT_TRUE(write_json(JsonValue(1000000.0)) == "1000000\n");
+  EXPECT_TRUE(write_json(JsonValue(1e12)) == "1000000000000\n");
+  EXPECT_TRUE(write_json(JsonValue(9007199254740992.0)) == "9007199254740992\n");
+  EXPECT_TRUE(write_json(JsonValue(-4096.0)) == "-4096\n");
+}
+
+void should_keep_the_shortest_form_beyond_exact_integers() {
+  // Past 2^53 a double is no longer an exact integer: shortest form it is.
+  EXPECT_TRUE(round_trip(JsonValue(1e300)).as_number() == 1e300);
+  EXPECT_TRUE(write_json(JsonValue(0.000001)) == "1e-06\n");
+}
+
 void should_write_zero_and_negative_numbers() {
   EXPECT_TRUE(write_json(JsonValue(0.0)) == "0\n");
   EXPECT_TRUE(round_trip(JsonValue(-42.25)).as_number() == -42.25);
@@ -92,6 +106,8 @@ int main() {
       TEST_CASE(should_write_empty_containers_compactly),
       TEST_CASE(should_escape_quotes_backslashes_and_control_characters),
       TEST_CASE(should_pass_utf8_text_through_unchanged),
+      TEST_CASE(should_write_large_whole_numbers_as_plain_digits),
+      TEST_CASE(should_keep_the_shortest_form_beyond_exact_integers),
       TEST_CASE(should_write_zero_and_negative_numbers),
       TEST_CASE(should_write_non_finite_numbers_as_null),
   });

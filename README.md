@@ -117,6 +117,10 @@ latency breakdown per variant, and writes three reports:
 - `build/hello_world_eager.html` and `build/hello_world_compiled.html`: the
   full Spark-style report for each variant.
 
+Beside each variant's report it writes the same measurement as data,
+`build/hello_world_eager.json` and `build/hello_world_compiled.json` (see
+**Per-node measurements as data**).
+
 The four passes per variant:
 
 | Pass | What it measures |
@@ -181,7 +185,8 @@ Gated DeltaNet update.
 It **first proves the math**: greedy decoding of "The capital of France is"
 must continue with " Paris", or the tool refuses to profile. Then it measures
 one decode step at the given context length, eager vs compiled, and writes
-`build/qwen35_decode.html` plus a report per variant.
+`build/qwen35_decode.html` plus a report and a measurement file
+(`build/qwen35_decode_<variant>.json`) per variant.
 
 ### Stage granularity
 

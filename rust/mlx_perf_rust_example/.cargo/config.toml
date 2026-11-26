@@ -6,6 +6,7 @@
 #      (build.rs links ../../build/libmlx_perf.a and fails with this hint if
 #      it is missing.)
 #   2. cargo profile-job     → measures the job, writes ../../build/rust_example.html
+#                              and the per-node measurements, rust_example.json
 #   3. cargo test            → unit tests of the FFI summary formatting
 #
 # Release mode so the Rust-side graph building is not what gets measured.
