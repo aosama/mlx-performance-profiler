@@ -30,4 +30,7 @@ void require_strings(std::initializer_list<const char*> required_strings, const 
 void fill_metric_comparison(const PairedComparison& paired_comparison,
                             mlx_perf_metric_comparison& metric_comparison);
 
+void fill_memory_comparison(const PairedComparison& paired_comparison,
+                            mlx_perf_memory_comparison& memory_comparison);
+
 } // namespace mlx_perf

@@ -58,6 +58,28 @@ void should_copy_every_field_and_map_each_verdict() {
   EXPECT_TRUE(metric_comparison.verdict == MLX_PERF_VERDICT_WITHIN_SPREAD);
 }
 
+void should_copy_a_memory_comparison_in_bytes() {
+  PairedComparison paired_comparison;
+  paired_comparison.baseline.median = 64.0 * 1048576.0;
+  paired_comparison.candidate.median = 320.0 * 1048576.0;
+  paired_comparison.median_difference = 256.0 * 1048576.0;
+  paired_comparison.difference_interval_low = 250.0 * 1048576.0;
+  paired_comparison.difference_interval_high = 260.0 * 1048576.0;
+  paired_comparison.relative_difference = 4.0;
+  paired_comparison.verdict = ComparisonVerdict::candidate_slower;
+  paired_comparison.rounds_candidate_faster = 0;
+  paired_comparison.round_count = 12;
+  mlx_perf_memory_comparison memory_comparison{};
+  fill_memory_comparison(paired_comparison, memory_comparison);
+  EXPECT_TRUE(memory_comparison.baseline_median_bytes == 64.0 * 1048576.0);
+  EXPECT_TRUE(memory_comparison.median_difference_bytes == 256.0 * 1048576.0);
+  EXPECT_TRUE(memory_comparison.difference_interval_low_bytes == 250.0 * 1048576.0);
+  EXPECT_TRUE(memory_comparison.relative_difference == 4.0);
+  EXPECT_TRUE(memory_comparison.verdict == MLX_PERF_VERDICT_CANDIDATE_SLOWER);
+  EXPECT_TRUE(memory_comparison.rounds_candidate_less == 0);
+  EXPECT_TRUE(memory_comparison.round_count == 12);
+}
+
 // --- edge / boundary ---
 
 void should_keep_each_threads_last_error_its_own() {
@@ -100,6 +122,7 @@ int main() {
   return test_harness::run_all({
       TEST_CASE(should_record_the_message_of_the_exception_in_flight),
       TEST_CASE(should_copy_every_field_and_map_each_verdict),
+      TEST_CASE(should_copy_a_memory_comparison_in_bytes),
       TEST_CASE(should_keep_each_threads_last_error_its_own),
       TEST_CASE(should_accept_an_empty_list_of_strings),
       TEST_CASE(should_name_the_entry_point_for_a_null_string),

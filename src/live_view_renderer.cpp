@@ -64,7 +64,8 @@ RenderedViews render_live_views(const std::string& job_title,
       render_verdict_section(paired_measurement.baseline.variant_name,
                              paired_measurement.candidate.variant_name,
                              compare_pair(paired_measurement),
-                             paired_measurement.output_agreement) +
+                             paired_measurement.output_agreement, &paired_measurement.baseline_rounds,
+                             &paired_measurement.candidate_rounds) +
       "</section>" + rendered_views.job_html;
   return rendered_views;
 }

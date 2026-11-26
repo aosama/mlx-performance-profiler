@@ -24,6 +24,7 @@
     "Comparison variant names become file names: non-empty, no '/', and distinct from each other ignoring case. Both variants must produce the same number of outputs with the same shapes and dtypes.",
     "Enable C++ in a C consumer's CMake project (LANGUAGES C CXX) and link mlx_perf::mlx_perf; the library is C++ inside. Requires macOS on Apple silicon with MLX's Metal backend.",
     "To find why a kernel is slow, read kernel_dispatches[] in the measurement JSON: can_fill_gpu false (gpu_core_coverage below 1) means fewer threadgroups than GPU cores, so cores sat idle. Coverage 1 does not prove the launch efficient.",
-    "Apple silicon GPU memory is wired; macOS un-wires released memory ~0.2 s late and held memory after ~1 s idle. Read mlx_perf_read_wired_memory; treat wired_outside_mlx_bytes as unreliable just after a release."
+    "Apple silicon GPU memory is wired; macOS un-wires released memory ~0.2 s late and held memory after ~1 s idle. Read mlx_perf_read_wired_memory; treat wired_outside_mlx_bytes as unreliable just after a release.",
+    "Comparisons judge memory too: peak MLX working set (peak active less start), what a run left behind, wired at its end. A note counts rounds that crossed the wire limit or compressed memory: such slow rounds aren't the code's."
   ]
 }

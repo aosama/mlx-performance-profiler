@@ -52,8 +52,8 @@ void should_write_a_pair_of_empty_variants_without_failing() {
   PairedMeasurement paired_measurement;
   paired_measurement.baseline.variant_name = "first";
   paired_measurement.candidate.variant_name = "second";
-  paired_measurement.baseline_rounds = {{1}, {0}, {1}};
-  paired_measurement.candidate_rounds = {{1}, {0}, {1}};
+  paired_measurement.baseline_rounds = {{1}, {0}, {1}, {}};
+  paired_measurement.candidate_rounds = {{1}, {0}, {1}, {}};
   const ReportBundleRequest bundle_request{"Empty", ".", "bundle_test_empty"};
   EXPECT_TRUE(mlx_perf::write_report_bundle(bundle_request, paired_measurement));
   EXPECT_TRUE(

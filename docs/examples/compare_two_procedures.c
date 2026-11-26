@@ -10,8 +10,8 @@
  * mlx_perf_compare_procedures_to_report can.
  *
  * Run:    ./compare_two_procedures <output directory>
- * Writes: token_loop.html (the verdict, the hand-offs per run, the kernel
- *         launches) and token_loop.json (every round, as data).
+ * Writes: token_loop.html (the verdict, the hand-offs per run, memory per
+ *         run, the kernel launches) and token_loop.json (every round, as data).
  */
 #include "mlx/c/array.h"
 #include "mlx/c/ops.h"
@@ -71,6 +71,14 @@ static const char* describe_verdict(int verdict) {
   return "within the spread: no result either way";
 }
 
+/* Memory verdicts use the same values; lower is better, so "faster" reads
+ * as "uses less". */
+static const char* describe_memory_verdict(int verdict) {
+  if (verdict == MLX_PERF_VERDICT_CANDIDATE_FASTER) return "candidate uses less";
+  if (verdict == MLX_PERF_VERDICT_CANDIDATE_SLOWER) return "candidate uses more";
+  return "within the spread: no result either way";
+}
+
 int main(int argument_count, char** arguments) {
   const char* output_directory = argument_count > 1 ? arguments[1] : ".";
   const int weights_shape[] = {256, 256};
@@ -93,6 +101,12 @@ int main(int argument_count, char** arguments) {
     printf("GPU idle: %.1f us vs %.1f us per run; blocking waits: %.0f vs %.0f per run\n",
            summary.gpu_idle.baseline_median_us, summary.gpu_idle.candidate_median_us,
            summary.baseline.median_blocking_wait_count, summary.candidate.median_blocking_wait_count);
+    /* Memory, judged on the same rounds: the run's own peak MLX working set. */
+    printf("peak MLX working set: %s, %.1f KiB vs %.1f KiB; rounds over the wire limit: %d vs %d\n",
+           describe_memory_verdict(summary.peak_mlx_active_added.verdict),
+           summary.peak_mlx_active_added.baseline_median_bytes / 1024.0,
+           summary.peak_mlx_active_added.candidate_median_bytes / 1024.0,
+           summary.baseline_rounds_crossing_wire_limit, summary.candidate_rounds_crossing_wire_limit);
   } else {
     fprintf(stderr, "comparison failed: %s\n", mlx_perf_last_error());
   }

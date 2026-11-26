@@ -62,7 +62,7 @@ In a stage-timed report:
 
 ## The comparison page
 
-`mlx_perf_compare_to_report` writes a page that opens with the **verdict**, then the metric table (each variant's median and middle half, the per-round difference and its interval), both execution graphs side by side, both timelines on one shared time scale, and the primitive mix: how many of each operation each variant ran, and which operations `mlx::core::compile` fused. See [Comparing two implementations](comparing-implementations.md).
+`mlx_perf_compare_to_report` writes a page that opens with the **verdict** (with a note when rounds crossed the wire limit or saw the system compress memory), then the metric table, the memory table (each variant's median and middle half, the per-round difference and its interval), both execution graphs side by side, both timelines on one shared time scale, and the primitive mix: how many of each operation each variant ran, and which operations `mlx::core::compile` fused. See [Comparing two implementations](comparing-implementations.md).
 
 ## The wired memory lane
 

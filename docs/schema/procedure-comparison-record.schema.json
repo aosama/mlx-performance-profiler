@@ -89,6 +89,83 @@
               "blocking_wait_us": {
                 "type": "number",
                 "description": "Host time spent in those waits."
+              },
+              "memory": {
+                "type": "object",
+                "required": [
+                  "compressed_bytes",
+                  "has_compressed_memory",
+                  "has_crossed_wire_limit",
+                  "mlx_held_at_end_bytes",
+                  "mlx_held_change_bytes",
+                  "peak_mlx_active_added_bytes",
+                  "peak_mlx_active_bytes",
+                  "swap_used_change_bytes",
+                  "system_wired_at_end_bytes",
+                  "wire_limit_bytes",
+                  "wire_requests_over_limit_count"
+                ],
+                "description": "Read just before and just after the run, outside its timing (#46).",
+                "properties": {
+                  "peak_mlx_active_bytes": {
+                    "type": "number",
+                    "description": "MLX's peak active memory during the run."
+                  },
+                  "peak_mlx_active_added_bytes": {
+                    "type": "number",
+                    "description": "That peak less MLX's active memory at the run's start: the run's own working set."
+                  },
+                  "mlx_held_at_end_bytes": {
+                    "type": "number",
+                    "description": "MLX active + cache at the end."
+                  },
+                  "mlx_held_change_bytes": {
+                    "type": "number",
+                    "description": "MLX active + cache at the end less at the start: what the run left behind; may be negative."
+                  },
+                  "system_wired_at_end_bytes": {
+                    "type": "number"
+                  },
+                  "wire_limit_bytes": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "wire_requests_over_limit_count": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "description": "Wire requests the kernel refused over the limit during the run; null when unreadable."
+                  },
+                  "compressed_bytes": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "description": "Bytes the system compressed during the run (any program's); null when unreadable."
+                  },
+                  "swap_used_change_bytes": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "description": "Change in swap in use; null when unreadable."
+                  },
+                  "has_crossed_wire_limit": {
+                    "type": [
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "has_compressed_memory": {
+                    "type": [
+                      "boolean",
+                      "null"
+                    ]
+                  }
+                }
               }
             }
           },
@@ -128,6 +205,83 @@
             "blocking_wait_us": {
               "type": "number",
               "description": "Host time spent in those waits."
+            },
+            "memory": {
+              "type": "object",
+              "required": [
+                "compressed_bytes",
+                "has_compressed_memory",
+                "has_crossed_wire_limit",
+                "mlx_held_at_end_bytes",
+                "mlx_held_change_bytes",
+                "peak_mlx_active_added_bytes",
+                "peak_mlx_active_bytes",
+                "swap_used_change_bytes",
+                "system_wired_at_end_bytes",
+                "wire_limit_bytes",
+                "wire_requests_over_limit_count"
+              ],
+              "description": "Read just before and just after the run, outside its timing (#46).",
+              "properties": {
+                "peak_mlx_active_bytes": {
+                  "type": "number",
+                  "description": "MLX's peak active memory during the run."
+                },
+                "peak_mlx_active_added_bytes": {
+                  "type": "number",
+                  "description": "That peak less MLX's active memory at the run's start: the run's own working set."
+                },
+                "mlx_held_at_end_bytes": {
+                  "type": "number",
+                  "description": "MLX active + cache at the end."
+                },
+                "mlx_held_change_bytes": {
+                  "type": "number",
+                  "description": "MLX active + cache at the end less at the start: what the run left behind; may be negative."
+                },
+                "system_wired_at_end_bytes": {
+                  "type": "number"
+                },
+                "wire_limit_bytes": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "wire_requests_over_limit_count": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "description": "Wire requests the kernel refused over the limit during the run; null when unreadable."
+                },
+                "compressed_bytes": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "description": "Bytes the system compressed during the run (any program's); null when unreadable."
+                },
+                "swap_used_change_bytes": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "description": "Change in swap in use; null when unreadable."
+                },
+                "has_crossed_wire_limit": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                },
+                "has_compressed_memory": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                }
+              }
             }
           },
           "description": "The extra run that recorded kernel launches; not judged."
@@ -358,6 +512,12 @@
               }
             }
           }
+        },
+        "rounds_crossing_wire_limit": {
+          "type": "integer"
+        },
+        "rounds_with_compression": {
+          "type": "integer"
         }
       }
     },
@@ -410,6 +570,83 @@
               "blocking_wait_us": {
                 "type": "number",
                 "description": "Host time spent in those waits."
+              },
+              "memory": {
+                "type": "object",
+                "required": [
+                  "compressed_bytes",
+                  "has_compressed_memory",
+                  "has_crossed_wire_limit",
+                  "mlx_held_at_end_bytes",
+                  "mlx_held_change_bytes",
+                  "peak_mlx_active_added_bytes",
+                  "peak_mlx_active_bytes",
+                  "swap_used_change_bytes",
+                  "system_wired_at_end_bytes",
+                  "wire_limit_bytes",
+                  "wire_requests_over_limit_count"
+                ],
+                "description": "Read just before and just after the run, outside its timing (#46).",
+                "properties": {
+                  "peak_mlx_active_bytes": {
+                    "type": "number",
+                    "description": "MLX's peak active memory during the run."
+                  },
+                  "peak_mlx_active_added_bytes": {
+                    "type": "number",
+                    "description": "That peak less MLX's active memory at the run's start: the run's own working set."
+                  },
+                  "mlx_held_at_end_bytes": {
+                    "type": "number",
+                    "description": "MLX active + cache at the end."
+                  },
+                  "mlx_held_change_bytes": {
+                    "type": "number",
+                    "description": "MLX active + cache at the end less at the start: what the run left behind; may be negative."
+                  },
+                  "system_wired_at_end_bytes": {
+                    "type": "number"
+                  },
+                  "wire_limit_bytes": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "wire_requests_over_limit_count": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "description": "Wire requests the kernel refused over the limit during the run; null when unreadable."
+                  },
+                  "compressed_bytes": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "description": "Bytes the system compressed during the run (any program's); null when unreadable."
+                  },
+                  "swap_used_change_bytes": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "description": "Change in swap in use; null when unreadable."
+                  },
+                  "has_crossed_wire_limit": {
+                    "type": [
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "has_compressed_memory": {
+                    "type": [
+                      "boolean",
+                      "null"
+                    ]
+                  }
+                }
               }
             }
           },
@@ -449,6 +686,83 @@
             "blocking_wait_us": {
               "type": "number",
               "description": "Host time spent in those waits."
+            },
+            "memory": {
+              "type": "object",
+              "required": [
+                "compressed_bytes",
+                "has_compressed_memory",
+                "has_crossed_wire_limit",
+                "mlx_held_at_end_bytes",
+                "mlx_held_change_bytes",
+                "peak_mlx_active_added_bytes",
+                "peak_mlx_active_bytes",
+                "swap_used_change_bytes",
+                "system_wired_at_end_bytes",
+                "wire_limit_bytes",
+                "wire_requests_over_limit_count"
+              ],
+              "description": "Read just before and just after the run, outside its timing (#46).",
+              "properties": {
+                "peak_mlx_active_bytes": {
+                  "type": "number",
+                  "description": "MLX's peak active memory during the run."
+                },
+                "peak_mlx_active_added_bytes": {
+                  "type": "number",
+                  "description": "That peak less MLX's active memory at the run's start: the run's own working set."
+                },
+                "mlx_held_at_end_bytes": {
+                  "type": "number",
+                  "description": "MLX active + cache at the end."
+                },
+                "mlx_held_change_bytes": {
+                  "type": "number",
+                  "description": "MLX active + cache at the end less at the start: what the run left behind; may be negative."
+                },
+                "system_wired_at_end_bytes": {
+                  "type": "number"
+                },
+                "wire_limit_bytes": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "wire_requests_over_limit_count": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "description": "Wire requests the kernel refused over the limit during the run; null when unreadable."
+                },
+                "compressed_bytes": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "description": "Bytes the system compressed during the run (any program's); null when unreadable."
+                },
+                "swap_used_change_bytes": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "description": "Change in swap in use; null when unreadable."
+                },
+                "has_crossed_wire_limit": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                },
+                "has_compressed_memory": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                }
+              }
             }
           },
           "description": "The extra run that recorded kernel launches; not judged."
@@ -679,6 +993,12 @@
               }
             }
           }
+        },
+        "rounds_crossing_wire_limit": {
+          "type": "integer"
+        },
+        "rounds_with_compression": {
+          "type": "integer"
         }
       }
     },
@@ -1140,6 +1460,459 @@
             },
             "round_count": {
               "type": "integer"
+            }
+          }
+        },
+        "peak_mlx_active_added_bytes": {
+          "type": "object",
+          "required": [
+            "baseline",
+            "candidate",
+            "difference_interval_bytes",
+            "median_difference_bytes",
+            "relative_difference",
+            "round_count",
+            "round_difference_bytes",
+            "rounds_candidate_faster",
+            "sign_test_p_value",
+            "verdict"
+          ],
+          "properties": {
+            "baseline": {
+              "type": "object",
+              "required": [
+                "lower_quartile",
+                "max",
+                "median",
+                "min",
+                "samples",
+                "upper_quartile"
+              ],
+              "properties": {
+                "median": {
+                  "type": "number"
+                },
+                "min": {
+                  "type": "number"
+                },
+                "max": {
+                  "type": "number"
+                },
+                "lower_quartile": {
+                  "type": "number"
+                },
+                "upper_quartile": {
+                  "type": "number"
+                },
+                "samples": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                }
+              }
+            },
+            "candidate": {
+              "type": "object",
+              "required": [
+                "lower_quartile",
+                "max",
+                "median",
+                "min",
+                "samples",
+                "upper_quartile"
+              ],
+              "properties": {
+                "median": {
+                  "type": "number"
+                },
+                "min": {
+                  "type": "number"
+                },
+                "max": {
+                  "type": "number"
+                },
+                "lower_quartile": {
+                  "type": "number"
+                },
+                "upper_quartile": {
+                  "type": "number"
+                },
+                "samples": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                }
+              }
+            },
+            "sign_test_p_value": {
+              "type": "number",
+              "description": "Exact two-sided sign test over non-zero per-round differences."
+            },
+            "relative_difference": {
+              "type": "number",
+              "description": "median_difference_us / baseline median (0 when that is 0)."
+            },
+            "verdict": {
+              "enum": [
+                "candidate_faster",
+                "candidate_slower",
+                "within_spread"
+              ],
+              "description": "candidate_faster when the whole interval lies below zero, candidate_slower when above, otherwise within_spread: no result."
+            },
+            "rounds_candidate_faster": {
+              "type": "integer"
+            },
+            "round_count": {
+              "type": "integer"
+            },
+            "round_difference_bytes": {
+              "type": "object",
+              "required": [
+                "max",
+                "median",
+                "min"
+              ],
+              "properties": {
+                "median": {
+                  "type": "number"
+                },
+                "min": {
+                  "type": "number"
+                },
+                "max": {
+                  "type": "number"
+                }
+              },
+              "description": "Per-round candidate - baseline differences."
+            },
+            "difference_interval_bytes": {
+              "type": "object",
+              "required": [
+                "coverage",
+                "high",
+                "low"
+              ],
+              "properties": {
+                "low": {
+                  "type": "number"
+                },
+                "high": {
+                  "type": "number"
+                },
+                "coverage": {
+                  "type": "number"
+                }
+              },
+              "description": "Distribution-free interval for the median per-round difference (12 rounds: 3rd and 10th smallest, coverage 0.961)."
+            },
+            "median_difference_bytes": {
+              "type": "number",
+              "description": "Median per-round difference; negative means the candidate is faster."
+            }
+          }
+        },
+        "mlx_held_change_bytes": {
+          "type": "object",
+          "required": [
+            "baseline",
+            "candidate",
+            "difference_interval_bytes",
+            "median_difference_bytes",
+            "relative_difference",
+            "round_count",
+            "round_difference_bytes",
+            "rounds_candidate_faster",
+            "sign_test_p_value",
+            "verdict"
+          ],
+          "properties": {
+            "baseline": {
+              "type": "object",
+              "required": [
+                "lower_quartile",
+                "max",
+                "median",
+                "min",
+                "samples",
+                "upper_quartile"
+              ],
+              "properties": {
+                "median": {
+                  "type": "number"
+                },
+                "min": {
+                  "type": "number"
+                },
+                "max": {
+                  "type": "number"
+                },
+                "lower_quartile": {
+                  "type": "number"
+                },
+                "upper_quartile": {
+                  "type": "number"
+                },
+                "samples": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                }
+              }
+            },
+            "candidate": {
+              "type": "object",
+              "required": [
+                "lower_quartile",
+                "max",
+                "median",
+                "min",
+                "samples",
+                "upper_quartile"
+              ],
+              "properties": {
+                "median": {
+                  "type": "number"
+                },
+                "min": {
+                  "type": "number"
+                },
+                "max": {
+                  "type": "number"
+                },
+                "lower_quartile": {
+                  "type": "number"
+                },
+                "upper_quartile": {
+                  "type": "number"
+                },
+                "samples": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                }
+              }
+            },
+            "sign_test_p_value": {
+              "type": "number",
+              "description": "Exact two-sided sign test over non-zero per-round differences."
+            },
+            "relative_difference": {
+              "type": "number",
+              "description": "median_difference_us / baseline median (0 when that is 0)."
+            },
+            "verdict": {
+              "enum": [
+                "candidate_faster",
+                "candidate_slower",
+                "within_spread"
+              ],
+              "description": "candidate_faster when the whole interval lies below zero, candidate_slower when above, otherwise within_spread: no result."
+            },
+            "rounds_candidate_faster": {
+              "type": "integer"
+            },
+            "round_count": {
+              "type": "integer"
+            },
+            "round_difference_bytes": {
+              "type": "object",
+              "required": [
+                "max",
+                "median",
+                "min"
+              ],
+              "properties": {
+                "median": {
+                  "type": "number"
+                },
+                "min": {
+                  "type": "number"
+                },
+                "max": {
+                  "type": "number"
+                }
+              },
+              "description": "Per-round candidate - baseline differences."
+            },
+            "difference_interval_bytes": {
+              "type": "object",
+              "required": [
+                "coverage",
+                "high",
+                "low"
+              ],
+              "properties": {
+                "low": {
+                  "type": "number"
+                },
+                "high": {
+                  "type": "number"
+                },
+                "coverage": {
+                  "type": "number"
+                }
+              },
+              "description": "Distribution-free interval for the median per-round difference (12 rounds: 3rd and 10th smallest, coverage 0.961)."
+            },
+            "median_difference_bytes": {
+              "type": "number",
+              "description": "Median per-round difference; negative means the candidate is faster."
+            }
+          }
+        },
+        "system_wired_at_end_bytes": {
+          "type": "object",
+          "required": [
+            "baseline",
+            "candidate",
+            "difference_interval_bytes",
+            "median_difference_bytes",
+            "relative_difference",
+            "round_count",
+            "round_difference_bytes",
+            "rounds_candidate_faster",
+            "sign_test_p_value",
+            "verdict"
+          ],
+          "properties": {
+            "baseline": {
+              "type": "object",
+              "required": [
+                "lower_quartile",
+                "max",
+                "median",
+                "min",
+                "samples",
+                "upper_quartile"
+              ],
+              "properties": {
+                "median": {
+                  "type": "number"
+                },
+                "min": {
+                  "type": "number"
+                },
+                "max": {
+                  "type": "number"
+                },
+                "lower_quartile": {
+                  "type": "number"
+                },
+                "upper_quartile": {
+                  "type": "number"
+                },
+                "samples": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                }
+              }
+            },
+            "candidate": {
+              "type": "object",
+              "required": [
+                "lower_quartile",
+                "max",
+                "median",
+                "min",
+                "samples",
+                "upper_quartile"
+              ],
+              "properties": {
+                "median": {
+                  "type": "number"
+                },
+                "min": {
+                  "type": "number"
+                },
+                "max": {
+                  "type": "number"
+                },
+                "lower_quartile": {
+                  "type": "number"
+                },
+                "upper_quartile": {
+                  "type": "number"
+                },
+                "samples": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                }
+              }
+            },
+            "sign_test_p_value": {
+              "type": "number",
+              "description": "Exact two-sided sign test over non-zero per-round differences."
+            },
+            "relative_difference": {
+              "type": "number",
+              "description": "median_difference_us / baseline median (0 when that is 0)."
+            },
+            "verdict": {
+              "enum": [
+                "candidate_faster",
+                "candidate_slower",
+                "within_spread"
+              ],
+              "description": "candidate_faster when the whole interval lies below zero, candidate_slower when above, otherwise within_spread: no result."
+            },
+            "rounds_candidate_faster": {
+              "type": "integer"
+            },
+            "round_count": {
+              "type": "integer"
+            },
+            "round_difference_bytes": {
+              "type": "object",
+              "required": [
+                "max",
+                "median",
+                "min"
+              ],
+              "properties": {
+                "median": {
+                  "type": "number"
+                },
+                "min": {
+                  "type": "number"
+                },
+                "max": {
+                  "type": "number"
+                }
+              },
+              "description": "Per-round candidate - baseline differences."
+            },
+            "difference_interval_bytes": {
+              "type": "object",
+              "required": [
+                "coverage",
+                "high",
+                "low"
+              ],
+              "properties": {
+                "low": {
+                  "type": "number"
+                },
+                "high": {
+                  "type": "number"
+                },
+                "coverage": {
+                  "type": "number"
+                }
+              },
+              "description": "Distribution-free interval for the median per-round difference (12 rounds: 3rd and 10th smallest, coverage 0.961)."
+            },
+            "median_difference_bytes": {
+              "type": "number",
+              "description": "Median per-round difference; negative means the candidate is faster."
             }
           }
         }

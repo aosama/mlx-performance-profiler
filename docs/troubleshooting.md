@@ -186,6 +186,14 @@ Expected for small inputs: an element-wise operation on one token's vector forms
 
 Both are macOS, not the profiler. Memory MLX releases stays wired for a fraction of a second, so "outside MLX" rises by the released amount until macOS un-wires it; the wired memory lane marks those samples. Memory MLX still holds is un-wired after about a second without GPU use, so "outside MLX" falls, and it rises again when the GPU next uses that memory. See [Wired memory](wired-memory.md).
 
+### The memory verdict's working set is smaller than the arrays the run made
+
+The peak MLX working set is MLX's peak active memory during the run less its active memory as the run began. Memory already active at the start, such as weights or the other side's arrays, is not part of it. The raw peak is in each run's `memory.peak_mlx_active_bytes`.
+
+### A note says rounds crossed the wire limit or compressed memory
+
+In those rounds the kernel refused wire requests over `vm.global_user_wire_limit`, the wired total ended over it, or the system compressed memory. Such rounds are slow for a reason outside the code, so a timing verdict that rests on them says more about the machine than the change. Compression is counted system-wide: close other memory-heavy programs and compare again. Each round's figures are in the JSON under `memory`.
+
 ### A release lag is `null`
 
 macOS had not un-wired the released memory before sampling stopped (3 s after a procedure's observed run; the end of the serial pass for a report). The lag is longer than the profiler waited, or something else wired memory at the same moment. Run `mlx_perf_measure_wire_release_lag` on a quiet machine to measure it alone.

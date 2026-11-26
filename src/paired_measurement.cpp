@@ -77,7 +77,10 @@ void run_uninstrumented_rounds(PairSide& baseline_side, PairSide& candidate_side
                      "uninstrumented rounds: job wall and host submission, alternating");
   for (int round_index = 0; round_index < PAIRED_ROUND_COUNT; ++round_index) {
     for (PairSide* pair_side : order_for_round(round_index, baseline_side, candidate_side)) {
+      RunMemoryMeter run_memory_meter;
+      run_memory_meter.start();
       const PipelinePassTiming pipeline_timing = sample_job_wall_once(pair_side->timed_factory);
+      pair_side->variant_rounds.memory_figures.push_back(run_memory_meter.finish());
       pair_side->variant_rounds.job_wall_microseconds.push_back(
           pipeline_timing.job_wall_microseconds);
       pair_side->variant_rounds.host_submission_microseconds.push_back(
@@ -160,6 +163,23 @@ PairedMeasurement measure_pair(
   return paired_measurement;
 }
 
+namespace {
+
+// Unmeasured (round_count 0, the page leaves the memory table out) when the
+// rounds carry no memory figures, as a pair built by hand or before #46.
+template <typename ByteField>
+PairedComparison compare_round_memory(const VariantRounds& baseline_rounds, const VariantRounds& candidate_rounds,
+                                      ByteField byte_field) {
+  if (baseline_rounds.memory_figures.empty() ||
+      baseline_rounds.memory_figures.size() != candidate_rounds.memory_figures.size()) {
+    return PairedComparison{};
+  }
+  return compare_paired_samples(collect_run_bytes(baseline_rounds.memory_figures, byte_field),
+                                collect_run_bytes(candidate_rounds.memory_figures, byte_field));
+}
+
+} // namespace
+
 PairComparisons compare_pair(const PairedMeasurement& paired_measurement) {
   const VariantRounds& baseline_rounds = paired_measurement.baseline_rounds;
   const VariantRounds& candidate_rounds = paired_measurement.candidate_rounds;
@@ -168,7 +188,10 @@ PairComparisons compare_pair(const PairedMeasurement& paired_measurement) {
           compare_paired_samples(baseline_rounds.gpu_span_microseconds,
                                  candidate_rounds.gpu_span_microseconds),
           compare_paired_samples(baseline_rounds.host_submission_microseconds,
-                                 candidate_rounds.host_submission_microseconds)};
+                                 candidate_rounds.host_submission_microseconds),
+          compare_round_memory(baseline_rounds, candidate_rounds, &RunMemoryFigures::peak_mlx_active_added_bytes),
+          compare_round_memory(baseline_rounds, candidate_rounds, &RunMemoryFigures::mlx_held_change_bytes),
+          compare_round_memory(baseline_rounds, candidate_rounds, &RunMemoryFigures::system_wired_at_end_bytes)};
 }
 
 } // namespace mlx_perf

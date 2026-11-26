@@ -48,6 +48,22 @@ void should_compare_launches_by_metal_function() {
   EXPECT_TRUE(contains(page_html, "gemv_float32"));
 }
 
+void should_judge_memory_per_run_in_its_own_section() {
+  const std::string page_html = page_for(procedure_fixture::make_chatty_vs_batched());
+  EXPECT_TRUE(contains(page_html, "<section id=\"memory\"><h2>Memory per run</h2>"));
+  EXPECT_TRUE(contains(page_html, "Rounds batched used less"));
+  EXPECT_TRUE(!contains(page_html, "memory-pressure"));
+}
+
+void should_note_rounds_that_crossed_the_wire_limit_beside_the_timing_verdict() {
+  PairedProcedureMeasurement paired_measurement = procedure_fixture::make_chatty_vs_batched();
+  paired_measurement.candidate.rounds[4].memory_figures.wire_requests_over_limit_count = 2;
+  const std::string page_html = page_for(paired_measurement);
+  const std::size_t note_at = page_html.find("class=\"note memory-pressure\"");
+  EXPECT_TRUE(note_at != std::string::npos && note_at < page_html.find("id=\"handoffs\""));
+  EXPECT_TRUE(contains(page_html, "batched crossed the wire limit in 1 of 12 rounds"));
+}
+
 // --- edge / boundary ---
 
 void should_show_zero_percent_busy_for_a_zero_length_run() {
@@ -104,6 +120,8 @@ int main() {
       TEST_CASE(should_lead_with_the_duration_verdict_and_judge_three_metrics),
       TEST_CASE(should_show_each_procedures_hand_offs_per_run),
       TEST_CASE(should_compare_launches_by_metal_function),
+      TEST_CASE(should_judge_memory_per_run_in_its_own_section),
+      TEST_CASE(should_note_rounds_that_crossed_the_wire_limit_beside_the_timing_verdict),
       TEST_CASE(should_show_zero_percent_busy_for_a_zero_length_run),
       TEST_CASE(should_describe_a_tie_as_within_spread),
       TEST_CASE(should_draw_a_wired_memory_lane_only_for_a_procedure_with_samples),

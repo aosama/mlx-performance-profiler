@@ -1,6 +1,7 @@
 #include "procedure_comparison_record.h"
 
 #include "comparison_record.h"
+#include "run_memory_record.h"
 #include "kernel_launch_summary.h"
 #include "measurement_document.h"
 #include "wired_memory_record.h"
@@ -13,6 +14,7 @@ using Array = JsonValue::Array;
 
 JsonValue run_record(const ProcedureRun& procedure_run) {
   return JsonValue(Object{
+      {"memory", build_run_memory_record(procedure_run.memory_figures)},
       {"duration_us", json_number(procedure_run.duration_microseconds)},
       {"gpu_busy_us", json_number(procedure_run.gpu_busy_microseconds)},
       {"gpu_idle_us", json_number(procedure_run.gpu_idle_microseconds)},
@@ -51,6 +53,8 @@ JsonValue procedure_record(const ProcedureMeasurement& procedure_measurement, in
       {"observed_run", run_record(procedure_measurement.observed_run)},
       {"kernel_launch_count", json_number(static_cast<double>(procedure_measurement.observed_launches.size()))},
       {"kernel_launches", JsonValue(std::move(launch_records))},
+      {"rounds_crossing_wire_limit", json_number(count_rounds_crossing_wire_limit(procedure_measurement))},
+      {"rounds_with_compression", json_number(count_rounds_with_compression(procedure_measurement))},
       {"wired_memory", build_wired_memory_record(procedure_measurement.observed_wired_memory)}});
 }
 
@@ -58,6 +62,13 @@ JsonValue metric_record(const PairedComparison& paired_comparison, const PairedP
                  double ProcedureRun::*round_field) {
   return build_metric_record(paired_comparison, collect_round_values(paired_measurement.baseline, round_field),
                              collect_round_values(paired_measurement.candidate, round_field));
+}
+
+template <typename ByteField>
+JsonValue memory_metric_record(const PairedComparison& paired_comparison,
+                               const PairedProcedureMeasurement& paired_measurement, ByteField byte_field) {
+  return build_metric_record(paired_comparison, collect_round_bytes(paired_measurement.baseline, byte_field),
+                             collect_round_bytes(paired_measurement.candidate, byte_field), "_bytes");
 }
 
 } // namespace
@@ -80,7 +91,15 @@ JsonValue build_procedure_comparison_record(const PairedProcedureMeasurement& pa
           {"gpu_busy_us", metric_record(procedure_comparisons.gpu_busy, paired_measurement,
                                  &ProcedureRun::gpu_busy_microseconds)},
           {"gpu_idle_us", metric_record(procedure_comparisons.gpu_idle, paired_measurement,
-                                 &ProcedureRun::gpu_idle_microseconds)}})}});
+                                 &ProcedureRun::gpu_idle_microseconds)},
+          {"peak_mlx_active_added_bytes",
+           memory_metric_record(procedure_comparisons.peak_mlx_active_added, paired_measurement,
+                                &RunMemoryFigures::peak_mlx_active_added_bytes)},
+          {"mlx_held_change_bytes", memory_metric_record(procedure_comparisons.mlx_held_change, paired_measurement,
+                                                         &RunMemoryFigures::mlx_held_change_bytes)},
+          {"system_wired_at_end_bytes",
+           memory_metric_record(procedure_comparisons.system_wired_at_end, paired_measurement,
+                                &RunMemoryFigures::system_wired_at_end_bytes)}})}});
 }
 
 } // namespace mlx_perf

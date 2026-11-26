@@ -250,10 +250,35 @@ typedef struct mlx_perf_procedure_comparison_summary {
   mlx_perf_metric_comparison duration;
   mlx_perf_metric_comparison gpu_busy;
   mlx_perf_metric_comparison gpu_idle;
+  mlx_perf_memory_comparison peak_mlx_active_added;
+  mlx_perf_memory_comparison mlx_held_change;
+  mlx_perf_memory_comparison system_wired_at_end;
+  int baseline_rounds_crossing_wire_limit;
+  int candidate_rounds_crossing_wire_limit;
+  int baseline_rounds_with_compression;
+  int candidate_rounds_with_compression;
 } mlx_perf_procedure_comparison_summary;
 ```
 
-`duration` is the run until its GPU work completed (the headline), `gpu_busy` the time inside it when at least one of its command buffers was on the GPU, `gpu_idle` the rest: the GPU waiting on the host. 496 bytes.
+`duration` is the run until its GPU work completed (the headline), `gpu_busy` the time inside it when at least one of its command buffers was on the GPU, `gpu_idle` the rest: the GPU waiting on the host. The three memory comparisons are judged on the same rounds, from figures read just before and just after each run. `peak_mlx_active_added` is MLX's peak active memory during the run less its active memory at the start. `mlx_held_change` is MLX's active memory plus cache at the end less at the start. `system_wired_at_end` is the system's wired total as the run ended. The four counts say in how many of the 12 rounds each side's run crossed the wire limit (the kernel refused wire requests over it, or the wired total ended over it) and saw the system compress memory (any program's). 704 bytes; 0.5.0's was 496.
+
+### mlx_perf_memory_comparison
+
+```c
+typedef struct mlx_perf_memory_comparison {
+  double baseline_median_bytes;
+  double candidate_median_bytes;
+  double median_difference_bytes;
+  double difference_interval_low_bytes;
+  double difference_interval_high_bytes;
+  double relative_difference;
+  int verdict;
+  int rounds_candidate_less;
+  int round_count;
+} mlx_perf_memory_comparison;
+```
+
+One memory figure across the paired rounds, in bytes, judged like time: lower is better. `median_difference_bytes` is the median per-round candidate − baseline, negative when the candidate used less; the interval and `verdict` work exactly as in `mlx_perf_metric_comparison`, where `MLX_PERF_VERDICT_CANDIDATE_FASTER` means the candidate used less. 64 bytes.
 
 ### mlx_perf_wired_memory
 

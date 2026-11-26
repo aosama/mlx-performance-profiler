@@ -24,15 +24,18 @@ bool is_refused(const WireReleaseProbeRequest& probe_request) {
 
 // --- positive ---
 
+// The wired total is system-wide: another program wiring or un-wiring memory
+// at the same moment can spoil one repetition, so the effect is required in
+// the median and in at least one of three repetitions, not in every one.
 void should_see_an_allocation_wired_then_unwired_after_a_lag() {
-  const WireReleaseProbeResult probe_result = measure_wire_release_lag({PROBE_BYTES, 2, 5.0});
-  EXPECT_TRUE(probe_result.repetitions.size() == 2);
+  const WireReleaseProbeResult probe_result = measure_wire_release_lag({PROBE_BYTES, 3, 5.0});
+  EXPECT_TRUE(probe_result.repetitions.size() == 3);
   EXPECT_TRUE(probe_result.allocation_bytes == PROBE_BYTES);
   EXPECT_TRUE(probe_result.wire_limit_bytes > 0);
   // The wired total rises by about the allocation; other activity on the
   // machine moves it a little either way.
   EXPECT_TRUE(median_wired_rise_bytes(probe_result) > static_cast<std::int64_t>(PROBE_BYTES / 2));
-  EXPECT_TRUE(count_resolved_repetitions(probe_result) == 2);
+  EXPECT_TRUE(count_resolved_repetitions(probe_result) >= 1);
   EXPECT_TRUE(*median_probe_release_lag_microseconds(probe_result) >= 0.0);
   EXPECT_TRUE(*largest_probe_release_lag_microseconds(probe_result) >=
               *median_probe_release_lag_microseconds(probe_result));

@@ -20,6 +20,18 @@ inline mlx_perf::KernelDispatch launch_of(const std::string& metal_function_name
   return kernel_dispatch;
 }
 
+// One run's memory: `working_set_mib` of peak MLX working set, nothing left
+// behind, 3 GiB wired at the end under a 40 GiB limit, readable counters.
+inline mlx_perf::RunMemoryFigures memory_of(std::uint64_t working_set_mib) {
+  mlx_perf::RunMemoryFigures memory_figures;
+  memory_figures.peak_mlx_active_added_bytes = working_set_mib << 20;
+  memory_figures.peak_mlx_active_bytes = working_set_mib << 20;
+  memory_figures.system_wired_at_end_bytes = 3ull << 30;
+  memory_figures.wire_limit_bytes = 40ull << 30;
+  memory_figures.are_pressure_counters_readable = true;
+  return memory_figures;
+}
+
 // Busy 100 µs of each run on both sides; only the idle time differs.
 inline mlx_perf::ProcedureRun run_of(double duration_microseconds, int blocking_wait_count) {
   mlx_perf::ProcedureRun procedure_run;
@@ -34,7 +46,8 @@ inline mlx_perf::ProcedureRun run_of(double duration_microseconds, int blocking_
 
 // Baseline 400 µs per round with 8 waits, candidate 150 µs with 1 wait: the
 // candidate is faster on duration and idle time in every round, and the GPU
-// busy time is identical (within spread).
+// busy time is identical (within spread). Memory: the candidate's working
+// set is 256 MiB more in every round (the batched loop holds every step).
 inline mlx_perf::PairedProcedureMeasurement make_chatty_vs_batched(int round_count = 12) {
   mlx_perf::PairedProcedureMeasurement paired_measurement;
   paired_measurement.gpu_device_facts = {"Apple M5 Pro", 16};
@@ -42,7 +55,9 @@ inline mlx_perf::PairedProcedureMeasurement make_chatty_vs_batched(int round_cou
   paired_measurement.candidate.procedure_name = "batched";
   for (int round_index = 0; round_index < round_count; ++round_index) {
     paired_measurement.baseline.rounds.push_back(run_of(400.0 + round_index, 8));
+    paired_measurement.baseline.rounds.back().memory_figures = memory_of(64 + round_index);
     paired_measurement.candidate.rounds.push_back(run_of(150.0 + round_index, 1));
+    paired_measurement.candidate.rounds.back().memory_figures = memory_of(320 + round_index);
   }
   paired_measurement.baseline.observed_run = run_of(400.0, 8);
   paired_measurement.candidate.observed_run = run_of(150.0, 1);

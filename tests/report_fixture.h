@@ -129,12 +129,32 @@ inline void populate_pair(mlx_perf::PairedMeasurement& paired_measurement) {
   paired_measurement.baseline_rounds = {
       {100, 104, 102, 101, 103, 99, 105, 100, 102, 101, 104, 103},
       {9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9},
-      {50, 52, 51, 50, 52, 51, 50, 52, 51, 50, 52, 51}};
+      {50, 52, 51, 50, 52, 51, 50, 52, 51, 50, 52, 51},
+      {}};
   paired_measurement.candidate_rounds = {
       {105, 94, 107, 98, 107, 93, 107, 99, 105, 99, 105, 99},
       {7, 7, 8, 7, 7, 8, 7, 7, 8, 7, 7, 8},
-      {40, 42, 41, 40, 42, 41, 40, 42, 41, 40, 42, 41}};
+      {40, 42, 41, 40, 42, 41, 40, 42, 41, 40, 42, 41},
+      {}};
   paired_measurement.output_agreement = {1, 0.25};
+}
+
+// populate_pair, with memory around every round: the custom variant's
+// working set is 256 MiB larger, and its third round crossed the wire limit.
+inline void populate_pair_with_memory(mlx_perf::PairedMeasurement& paired_measurement) {
+  populate_pair(paired_measurement);
+  for (int round_index = 0; round_index < 12; ++round_index) {
+    mlx_perf::RunMemoryFigures stock_memory;
+    stock_memory.peak_mlx_active_added_bytes = (64ull + round_index) << 20;
+    stock_memory.system_wired_at_end_bytes = 3ull << 30;
+    stock_memory.wire_limit_bytes = 40ull << 30;
+    stock_memory.are_pressure_counters_readable = true;
+    mlx_perf::RunMemoryFigures custom_memory = stock_memory;
+    custom_memory.peak_mlx_active_added_bytes += 256ull << 20;
+    custom_memory.wire_requests_over_limit_count = round_index == 2 ? 1 : 0;
+    paired_measurement.baseline_rounds.memory_figures.push_back(stock_memory);
+    paired_measurement.candidate_rounds.memory_figures.push_back(custom_memory);
+  }
 }
 
 // The page without its <script> elements. Pages embed the graph view's

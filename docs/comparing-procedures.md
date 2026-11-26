@@ -20,8 +20,8 @@ A procedure is a `run` callback and an optional `prepare` callback, both called 
  * mlx_perf_compare_procedures_to_report can.
  *
  * Run:    ./compare_two_procedures <output directory>
- * Writes: token_loop.html (the verdict, the hand-offs per run, the kernel
- *         launches) and token_loop.json (every round, as data).
+ * Writes: token_loop.html (the verdict, the hand-offs per run, memory per
+ *         run, the kernel launches) and token_loop.json (every round, as data).
  */
 #include "mlx/c/array.h"
 #include "mlx/c/ops.h"
@@ -81,6 +81,14 @@ static const char* describe_verdict(int verdict) {
   return "within the spread: no result either way";
 }
 
+/* Memory verdicts use the same values; lower is better, so "faster" reads
+ * as "uses less". */
+static const char* describe_memory_verdict(int verdict) {
+  if (verdict == MLX_PERF_VERDICT_CANDIDATE_FASTER) return "candidate uses less";
+  if (verdict == MLX_PERF_VERDICT_CANDIDATE_SLOWER) return "candidate uses more";
+  return "within the spread: no result either way";
+}
+
 int main(int argument_count, char** arguments) {
   const char* output_directory = argument_count > 1 ? arguments[1] : ".";
   const int weights_shape[] = {256, 256};
@@ -103,6 +111,12 @@ int main(int argument_count, char** arguments) {
     printf("GPU idle: %.1f us vs %.1f us per run; blocking waits: %.0f vs %.0f per run\n",
            summary.gpu_idle.baseline_median_us, summary.gpu_idle.candidate_median_us,
            summary.baseline.median_blocking_wait_count, summary.candidate.median_blocking_wait_count);
+    /* Memory, judged on the same rounds: the run's own peak MLX working set. */
+    printf("peak MLX working set: %s, %.1f KiB vs %.1f KiB; rounds over the wire limit: %d vs %d\n",
+           describe_memory_verdict(summary.peak_mlx_active_added.verdict),
+           summary.peak_mlx_active_added.baseline_median_bytes / 1024.0,
+           summary.peak_mlx_active_added.candidate_median_bytes / 1024.0,
+           summary.baseline_rounds_crossing_wire_limit, summary.candidate_rounds_crossing_wire_limit);
   } else {
     fprintf(stderr, "comparison failed: %s\n", mlx_perf_last_error());
   }
@@ -116,11 +130,14 @@ int main(int argument_count, char** arguments) {
 On an Apple-silicon Mac it prints, for example:
 
 ```text
-duration: candidate faster, median difference -4940.2 us (-88.5%)
-GPU idle: 4731.2 us vs 218.8 us per run; blocking waits: 32 vs 1 per run
+duration: candidate faster, median difference -5559.8 us (-89.6%)
+GPU idle: 4737.0 us vs 219.0 us per run; blocking waits: 32 vs 1 per run
+peak MLX working set: candidate uses more, 5.0 KiB vs 33.0 KiB; rounds over the wire limit: 0 vs 0
 ```
 
-Both loops do the same 32 matrix products. The one that reads back every step takes about 5.6 ms, of which the GPU is idle for 4.7 ms: each read stops the host until the GPU finishes, then the GPU waits while the host builds and submits the next step. The table of hand-offs on the page, `token_loop.html`, shows the cause directly: 32 blocking waits and 32 command buffers per run, against 1.
+The last line is the price of the speed-up: evaluating once keeps every step's intermediate alive until the end, so its peak working set is larger, small here and large for a real model.
+
+Both loops do the same 32 matrix products. The one that reads back every step takes about 6.2 ms, of which the GPU is idle for 4.7 ms: each read stops the host until the GPU finishes, then the GPU waits while the host builds and submits the next step. The table of hand-offs on the page, `token_loop.html`, shows the cause directly: 32 blocking waits and 32 command buffers per run, against 1.
 
 ## The procedure contract
 
@@ -160,6 +177,20 @@ The number of blocking waits is often the finding. A loop that must read each st
 
 Under the table, the page lists the kernel launches of both procedures side by side, grouped by Metal function, with ⚠ where a launch leaves GPU cores without work, as on [the graph comparison page](comparing-implementations.md#why-the-slower-one-is-slower-kernel-launches-side-by-side).
 
+## Memory, judged on the same rounds
+
+Under the hand-offs, **Memory per run** judges three memory figures exactly as the times are judged, on the same 12 rounds. Each is read just before and just after every run, never during it, so the timing pays nothing for it:
+
+| Metric (summary field) | What it measures |
+|---|---|
+| Peak MLX working set (`peak_mlx_active_added`) | MLX's peak active memory during the run, less its active memory as the run began. MLX's counters are process-wide, so the raw peak would include memory the other procedure keeps alive between its runs |
+| Left behind (`mlx_held_change`) | MLX's active memory plus cache at the end, less at the start: what one run keeps, such as a cache that is never trimmed |
+| System wired at the run's end (`system_wired_at_end`) | the system's wired total as the run ended. Its true peak needs sampling inside the run, which the judged rounds never do; the [wired memory](wired-memory.md) lane has it for the observed run |
+
+The verdict reads "less" or "more" instead of "faster" or "slower", and the table's last column counts the rounds the candidate used less. A change that trades memory for time shows both sides on one page.
+
+**When a round crossed the line, the page says so beside the timing verdict.** If a run crossed the wire limit, or the system compressed memory during it, a note under the verdict counts those rounds for each procedure. A run crossed the limit when the kernel refused a wire request over it (`vm.add_wire_count_over_global_limit` rose) or the wired total ended over it. Past the limit, macOS stops keeping part of the GPU's memory wired, compresses it and may swap it, and the run slows for a reason outside the code. A timing verdict built on such rounds is not the code's doing. Compression is counted system-wide, so another program's memory pressure shows too; the note says so. The summary carries the same counts (`baseline_rounds_crossing_wire_limit` and the others), and every round's figures are in the JSON.
+
 ## When to use which comparison
 
 | Your two implementations are… | Use |
@@ -173,7 +204,7 @@ A procedure comparison does not see inside the run node by node; it sees the run
 
 | File | Contents |
 |---|---|
-| `<base>.html` | the verdict and its metric table, the hand-offs per run, a [wired memory](wired-memory.md) lane for each procedure's observed run, the kernel launches by Metal function |
+| `<base>.html` | the verdict and its metric table, the hand-offs per run, memory per run, a [wired memory](wired-memory.md) lane for each procedure's observed run, the kernel launches by Metal function |
 | `<base>.json` | the procedure comparison record: every round of both procedures, the verdicts and the launches ([format](measurement-file.md#the-procedure-comparison-record-kind-procedure_comparison)) |
 
 Procedure names follow the rules of [variant names](comparing-implementations.md#naming-variants): non-empty, no `/`, distinct ignoring case.

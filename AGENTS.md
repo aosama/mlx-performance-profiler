@@ -90,6 +90,12 @@ sidecar: it observes, it never changes MLX semantics.
   blocking wait); `wired_memory_record` and `report_wired_memory_section`
   present them; `wire_release_probe` is the probe. Sample only runs whose
   timing is not judged.
+- Memory comparisons (#46): `run_memory_meter` reads a run's memory just
+  before and just after it (never inside a judged run), from MLX's counters,
+  `system_wired_memory` and `system_memory_pressure` (live sysctl counters);
+  `run_memory_record` and `report_memory_verdict` present it for both
+  comparison kinds. Judged figures use `MetricUnit::bytes` in the verdict
+  section ("less"/"more") and `_bytes` field suffixes in the JSON.
 - Model-specific code lives under `src/qwen35/` (config, weights, decode
   step, generation, token text). The generic profiler in `src/` never
   depends on it; `qwen35_profile.cpp` only orchestrates.

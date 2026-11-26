@@ -34,6 +34,14 @@ void should_open_the_job_tab_of_a_pair_with_the_verdict() {
 
 // --- edge / boundary ---
 
+void should_judge_memory_and_note_pressure_in_the_live_verdict() {
+  PairedMeasurement paired_measurement;
+  report_fixture::populate_pair_with_memory(paired_measurement);
+  const RenderedViews rendered_views = render_live_views("Job", paired_measurement);
+  EXPECT_TRUE(rendered_views.job_html.find("Memory per run") != std::string::npos);
+  EXPECT_TRUE(rendered_views.job_html.find("custom crossed the wire limit in 1 of 12 rounds") != std::string::npos);
+}
+
 void should_render_a_single_variant_without_comparison_or_verdict() {
   VariantMeasurement variant_measurement;
   report_fixture::populate_two_stream_run(variant_measurement);
@@ -63,6 +71,7 @@ void should_escape_variant_names_in_every_tab() {
 int main() {
   return test_harness::run_all({
       TEST_CASE(should_open_the_job_tab_of_a_pair_with_the_verdict),
+      TEST_CASE(should_judge_memory_and_note_pressure_in_the_live_verdict),
       TEST_CASE(should_render_a_single_variant_without_comparison_or_verdict),
       TEST_CASE(should_escape_variant_names_in_every_tab),
   });

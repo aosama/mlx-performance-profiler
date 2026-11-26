@@ -94,7 +94,7 @@ void should_say_when_output_agreement_cannot_be_measured() {
   const std::string section_html = render_verdict_section(
       "stock", "custom",
       {compare_paired_samples({10}, {8}), compare_paired_samples({10}, {8}),
-       compare_paired_samples({10}, {8})},
+       compare_paired_samples({10}, {8}), {}, {}, {}},
       {1, std::nan("")});
   EXPECT_TRUE(contains(section_html, "not finite (NaN or infinity)"));
   EXPECT_TRUE(!contains(section_html, "largest element-wise difference is"));
@@ -106,11 +106,45 @@ void should_escape_variant_names() {
   const std::string section_html = render_verdict_section(
       "<b>stock</b>", "custom & co",
       {compare_paired_samples({10}, {8}), compare_paired_samples({10}, {8}),
-       compare_paired_samples({10}, {8})},
+       compare_paired_samples({10}, {8}), {}, {}, {}},
       {1, 0.0});
   EXPECT_TRUE(!contains(section_html, "<b>stock</b>"));
   EXPECT_TRUE(contains(section_html, "&lt;b&gt;stock&lt;/b&gt;"));
   EXPECT_TRUE(contains(section_html, "custom &amp; co"));
+}
+
+// --- memory (#46) ---
+
+void should_word_a_memory_verdict_in_bytes() {
+  const std::vector<double> baseline_bytes(12, 64.0 * 1048576.0);
+  const std::vector<double> candidate_bytes(12, 320.0 * 1048576.0);
+  const std::string verdict =
+      describe_verdict("stock", "custom", compare_paired_samples(baseline_bytes, candidate_bytes), MetricUnit::bytes);
+  EXPECT_TRUE(contains(verdict, "custom uses 400.0% more than stock (256.0 MiB of 64.0 MiB, more in 12 of 12 rounds)"));
+  EXPECT_TRUE(!contains(verdict, "faster"));
+  EXPECT_TRUE(!contains(verdict, "µs"));
+}
+
+void should_add_the_memory_table_and_pressure_note_when_rounds_carry_memory() {
+  PairedMeasurement paired_measurement;
+  report_fixture::populate_pair_with_memory(paired_measurement);
+  const std::string section_html = render_verdict_section(
+      "stock", "custom", compare_pair(paired_measurement), paired_measurement.output_agreement,
+      &paired_measurement.baseline_rounds, &paired_measurement.candidate_rounds);
+  EXPECT_TRUE(contains(section_html, "<h3>Memory per run</h3>"));
+  EXPECT_TRUE(contains(section_html, "Rounds custom used less"));
+  EXPECT_TRUE(contains(section_html, "more, beyond the spread"));
+  EXPECT_TRUE(contains(section_html, "custom crossed the wire limit in 1 of 12 rounds"));
+}
+
+void should_leave_memory_out_for_rounds_without_it() {
+  PairedMeasurement paired_measurement;
+  report_fixture::populate_pair(paired_measurement);
+  const std::string section_html = render_verdict_section(
+      "stock", "custom", compare_pair(paired_measurement), paired_measurement.output_agreement,
+      &paired_measurement.baseline_rounds, &paired_measurement.candidate_rounds);
+  EXPECT_TRUE(!contains(section_html, "Memory per run"));
+  EXPECT_TRUE(!contains(section_html, "memory-pressure"));
 }
 
 } // namespace
@@ -125,5 +159,8 @@ int main() {
       TEST_CASE(should_describe_equal_variants_without_dividing_by_zero),
       TEST_CASE(should_say_when_output_agreement_cannot_be_measured),
       TEST_CASE(should_escape_variant_names),
+      TEST_CASE(should_word_a_memory_verdict_in_bytes),
+      TEST_CASE(should_add_the_memory_table_and_pressure_note_when_rounds_carry_memory),
+      TEST_CASE(should_leave_memory_out_for_rounds_without_it),
   });
 }

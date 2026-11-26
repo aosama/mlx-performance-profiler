@@ -3,6 +3,30 @@
 Versions follow [`VERSIONING.md`](VERSIONING.md). Each release lists the
 MLX releases it was built and tested against.
 
+## Unreleased
+
+### Added
+- **Memory judged like time (#46).** Procedure and graph comparisons judge
+  three memory figures on the same paired rounds as their times, with the
+  same interval and verdict ("less" or "more"): each run's peak MLX working
+  set (MLX's peak active memory less its active memory as the run began),
+  what it left behind (MLX active + cache, end less start), and the
+  system's wired total at its end. They are read just before and just
+  after each run, never during it, so the timing pays nothing for them.
+  A note under the timing verdict counts the rounds in which either side
+  crossed the wire limit (the kernel refused wire requests over it, or the
+  wired total ended over it) or saw the system compress memory, since such
+  rounds are slow for a reason outside the code. Every round's figures are
+  in the JSON (`rounds[].memory`; the comparison record's `memory`), from
+  live sysctl counters (`vm.add_wire_count_over_global_limit`,
+  `vm.compressor_input_bytes`, `vm.swapusage`).
+- **C API:** `mlx_perf_memory_comparison`, and
+  `mlx_perf_procedure_comparison_summary` gains `peak_mlx_active_added`,
+  `mlx_held_change`, `system_wired_at_end` and four round counts. The struct
+  grows from 496 to 704 bytes: rebuild code that allocates it.
+  `mlx_perf_comparison_summary` (graph comparisons) is unchanged, so its
+  Rust mirror stays valid; read those figures from the JSON.
+
 ## 0.5.0 (2026-11-26)
 
 Tested MLX releases: 0.32.4, 0.32.5 (Metal, macOS).
