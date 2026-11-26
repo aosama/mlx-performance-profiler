@@ -23,6 +23,8 @@ JsonValue sample_record(const SampleSummary& sample_summary,
   return JsonValue(Object{{"median", json_number(sample_summary.median)},
                           {"min", json_number(sample_summary.minimum)},
                           {"max", json_number(sample_summary.maximum)},
+                          {"lower_quartile", json_number(sample_summary.lower_quartile)},
+                          {"upper_quartile", json_number(sample_summary.upper_quartile)},
                           {"samples", JsonValue(std::move(sample_values))}});
 }
 

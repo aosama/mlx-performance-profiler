@@ -16,10 +16,12 @@ std::string format_percent(double relative_difference) {
   return percent_text;
 }
 
-std::string format_median_and_range(const SampleSummary& sample_summary) {
+// The median beside the middle half of the rounds, the range the verdict
+// is judged on.
+std::string format_median_and_middle_half(const SampleSummary& sample_summary) {
   return format_microseconds(sample_summary.median) + " (" +
-         format_microseconds(sample_summary.minimum) + " – " +
-         format_microseconds(sample_summary.maximum) + ")";
+         format_microseconds(sample_summary.lower_quartile) + " – " +
+         format_microseconds(sample_summary.upper_quartile) + ")";
 }
 
 const char* verdict_css_class(ComparisonVerdict verdict) {
@@ -44,9 +46,9 @@ std::string render_metric_row(const char* metric_name, const PairedComparison& p
   const double median_difference = paired_comparison.median_difference;
   std::ostringstream row_html;
   row_html << "<tr><td>" << metric_name << "</td><td class=\"number\">"
-           << escape_html_text(format_median_and_range(paired_comparison.baseline))
+           << escape_html_text(format_median_and_middle_half(paired_comparison.baseline))
            << "</td><td class=\"number\">"
-           << escape_html_text(format_median_and_range(paired_comparison.candidate))
+           << escape_html_text(format_median_and_middle_half(paired_comparison.candidate))
            << "</td><td class=\"number\">" << (median_difference < 0 ? "−" : "+")
            << escape_html_text(format_microseconds(std::abs(median_difference))) << " ("
            << (median_difference < 0 ? "−" : "+")
@@ -71,9 +73,10 @@ std::string describe_output_agreement(const OutputAgreement& output_agreement) {
 std::string describe_verdict(const std::string& baseline_name, const std::string& candidate_name,
                              const PairedComparison& paired_comparison) {
   const std::string spread_clause =
-      "Spread: " + baseline_name + " " +
-      format_microseconds(paired_comparison.baseline.spread()) + ", " + candidate_name + " " +
-      format_microseconds(paired_comparison.candidate.spread()) + ".";
+      "Spread (middle half of rounds): " + baseline_name + " " +
+      format_microseconds(paired_comparison.baseline.interquartile_range()) + ", " +
+      candidate_name + " " +
+      format_microseconds(paired_comparison.candidate.interquartile_range()) + ".";
   const std::string difference =
       format_microseconds(std::abs(paired_comparison.median_difference));
   if (paired_comparison.verdict == ComparisonVerdict::within_spread) {
@@ -96,19 +99,21 @@ std::string render_verdict_section(const std::string& baseline_name,
                << "\">" << escape_html_text(describe_verdict(baseline_name, candidate_name,
                                                              pair_comparisons.job_wall))
                << "</p><div class=\"table-wrap\"><table><thead><tr><th>Metric</th><th>"
-               << escape_html_text(baseline_name) << " median (range)</th><th>"
-               << escape_html_text(candidate_name) << " median (range)</th><th>"
+               << escape_html_text(baseline_name) << " median (middle half)</th><th>"
+               << escape_html_text(candidate_name) << " median (middle half)</th><th>"
                << escape_html_text(candidate_name) << " − " << escape_html_text(baseline_name)
                << "</th><th>Verdict</th><th>Rounds " << escape_html_text(candidate_name)
                << " was faster</th></tr></thead><tbody>"
                << render_metric_row("Job duration", pair_comparisons.job_wall)
                << render_metric_row("GPU execution", pair_comparisons.gpu_execution)
                << render_metric_row("Host submission", pair_comparisons.host_submission)
-               << "</tbody></table></div><p class=\"note\">A difference counts only when every"
-               << " sample of one variant beats every sample of the other: overlapping ranges"
-               << " are run-to-run noise. Passes alternated between the variants, flipping the"
-               << " order each round. Host submission is host time inside async_eval (encoding"
-               << " and committing the work). "
+               << "</tbody></table></div><p class=\"note\">A difference counts only when the"
+               << " middle halves of the two variants' rounds (25th to 75th percentile) do not"
+               << " overlap: overlap is run-to-run noise, and one disturbed round cannot decide"
+               << " the verdict. Every sample, with the full minimum and maximum, is in the"
+               << " comparison's JSON file. Passes alternated between the variants, flipping"
+               << " the order each round. Host submission is host time inside async_eval"
+               << " (encoding and committing the work). "
                << escape_html_text(describe_output_agreement(output_agreement)) << "</p>";
   return section_html.str();
 }

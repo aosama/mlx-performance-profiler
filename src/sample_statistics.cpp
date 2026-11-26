@@ -6,17 +6,31 @@
 
 namespace mlx_perf {
 
+namespace {
+
+// The `fraction` percentile of non-empty sorted samples, interpolating
+// linearly at position fraction·(n − 1).
+double interpolate_percentile(const std::vector<double>& sorted_samples, double fraction) {
+  const double position = fraction * static_cast<double>(sorted_samples.size() - 1);
+  const std::size_t lower_index = static_cast<std::size_t>(position);
+  const std::size_t upper_index = std::min(lower_index + 1, sorted_samples.size() - 1);
+  const double upper_weight = position - static_cast<double>(lower_index);
+  return sorted_samples[lower_index] * (1.0 - upper_weight) +
+         sorted_samples[upper_index] * upper_weight;
+}
+
+} // namespace
+
 SampleSummary summarize_samples(const std::vector<double>& samples) {
   if (samples.empty()) {
     throw std::invalid_argument("summarize_samples: no samples");
   }
   std::vector<double> sorted_samples = samples;
   std::sort(sorted_samples.begin(), sorted_samples.end());
-  const std::size_t middle_index = sorted_samples.size() / 2;
   SampleSummary sample_summary;
-  sample_summary.median = sorted_samples.size() % 2 == 1
-      ? sorted_samples[middle_index]
-      : (sorted_samples[middle_index - 1] + sorted_samples[middle_index]) / 2.0;
+  sample_summary.median = interpolate_percentile(sorted_samples, 0.5);
+  sample_summary.lower_quartile = interpolate_percentile(sorted_samples, 0.25);
+  sample_summary.upper_quartile = interpolate_percentile(sorted_samples, 0.75);
   sample_summary.minimum = sorted_samples.front();
   sample_summary.maximum = sorted_samples.back();
   sample_summary.sample_count = static_cast<int>(sorted_samples.size());
@@ -53,9 +67,10 @@ PairedComparison compare_paired_samples(const std::vector<double>& baseline_samp
     paired_comparison.rounds_candidate_faster +=
         candidate_samples[round_index] < baseline_samples[round_index] ? 1 : 0;
   }
-  if (paired_comparison.candidate.maximum < paired_comparison.baseline.minimum) {
+  if (paired_comparison.candidate.upper_quartile < paired_comparison.baseline.lower_quartile) {
     paired_comparison.verdict = ComparisonVerdict::candidate_faster;
-  } else if (paired_comparison.candidate.minimum > paired_comparison.baseline.maximum) {
+  } else if (paired_comparison.candidate.lower_quartile >
+             paired_comparison.baseline.upper_quartile) {
     paired_comparison.verdict = ComparisonVerdict::candidate_slower;
   }
   return paired_comparison;

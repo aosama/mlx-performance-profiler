@@ -22,7 +22,7 @@ void should_state_which_is_faster_by_how_much_and_against_the_spread() {
   const std::string verdict = describe_verdict("stock", "custom", paired_comparison);
   EXPECT_TRUE(contains(verdict, "custom is 10.8% faster than stock"));
   EXPECT_TRUE(contains(verdict, "(11.0 µs of 102.0 µs)"));
-  EXPECT_TRUE(contains(verdict, "Spread: stock 4.0 µs, custom 3.0 µs."));
+  EXPECT_TRUE(contains(verdict, "Spread (middle half of rounds): stock 2.0 µs, custom 1.5 µs."));
   EXPECT_TRUE(contains(verdict, "The difference exceeds the spread."));
 }
 
