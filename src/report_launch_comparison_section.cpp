@@ -1,5 +1,6 @@
 #include "report_launch_comparison_section.h"
 
+#include "gpu_backend_vocabulary.h"
 #include "text_format.h"
 
 #include <algorithm>
@@ -67,8 +68,8 @@ std::string render_header(const std::string& baseline_name, const std::string& c
   }
   header_html << "</tr><tr>";
   for (int variant_index = 0; variant_index < 2; ++variant_index) {
-    header_html << "<th>Launches</th><th>Threadgroups</th><th title=\"GPU cores the launch with the"
-                << " fewest threadgroups can give work to\">Cores with work</th>";
+    header_html << "<th>Launches</th><th>" << gpu_vocabulary::WORK_GROUPS_HEADING << "</th><th title=\""
+                << gpu_vocabulary::COMPUTE_UNITS_TITLE << "\">" << gpu_vocabulary::COMPUTE_UNITS_HEADING << "</th>";
   }
   header_html << "</tr></thead>";
   return header_html.str();
@@ -96,11 +97,12 @@ std::string render_launch_comparison_section(const std::string& baseline_name,
   }
   section_html << "</tbody></table></div><p class=\"note\">Each side's kernel launches, matched by "
                << escape_html_text(key_heading == "Kernel" ? "kernel name (a custom kernel's name, otherwise"
-                                                             " the MLX operation)" : "Metal function")
-               << ". A threadgroup runs on one GPU core, so a launch with fewer threadgroups than the GPU's "
+                                                             " the MLX operation)" : gpu_vocabulary::KERNEL_FUNCTION_HEADING)
+               << ". " << gpu_vocabulary::WORK_GROUP_PLACEMENT
                // An unknown core count (0) is never printed as a number.
-               << (gpu_core_count > 0 ? std::to_string(gpu_core_count) + " cores" : std::string("cores"))
-               << " leaves cores idle (⚠): a common reason a kernel is slower"
+               << (gpu_core_count > 0 ? std::to_string(gpu_core_count) + " " + gpu_vocabulary::COMPUTE_UNITS
+                                      : std::string(gpu_vocabulary::COMPUTE_UNITS))
+               << " leaves " << gpu_vocabulary::COMPUTE_UNITS << " idle (⚠): a common reason a kernel is slower"
                << " although it does the same work. Covering every core does not prove a launch is"
                << " efficient; it only rules this reason out.</p></section>";
   return section_html.str();

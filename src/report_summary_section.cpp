@@ -1,5 +1,6 @@
 #include "report_summary_section.h"
 
+#include "gpu_backend_vocabulary.h"
 #include "latency_slices.h"
 #include "report_components.h"
 #include "text_format.h"
@@ -37,7 +38,7 @@ std::string render_cards(const ReportInputs& report_inputs) {
       "GPU execution (measured)",
       std::to_string(gpu_timeline.gpu_measured_node_count) + "/" +
           std::to_string(gpu_timeline.nodes.size()) +
-          " nodes measured from Metal command-buffer timestamps" +
+          " nodes measured from " + gpu_vocabulary::GPU_TIMESTAMP_SOURCE +
           (gpu_timeline.granularity == TimelineGranularity::per_stage
                ? std::string(", per stage (includes GPU gaps while the host"
                              " encoded the stage).")

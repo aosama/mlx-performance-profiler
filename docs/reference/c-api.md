@@ -94,7 +94,7 @@ void mlx_perf_set_console_output(int is_enabled);
 int mlx_perf_install_launch_recorder(void);
 ```
 
-Optional. Starts observing the kernel launches MLX encodes, so every kernel MLX compiles from then on is named in the launch records (`kernel_dispatches[].metal_function_name` in the [measurement file](../measurement-file.md#nodes)). Call it before your program's first MLX evaluation. Without it the first profile starts the observer, and kernels compiled earlier are recorded unnamed, though their shapes are still recorded. It never changes what MLX computes. Returns `1` when observing, `0` when this GPU's Metal classes cannot be observed (launch records are then empty). Safe to call repeatedly.
+Optional. Starts observing the kernel launches MLX encodes, so every kernel MLX compiles from then on is named in the launch records (`kernel_dispatches[].kernel_function_name` in the [measurement file](../measurement-file.md#nodes)). Call it before your program's first MLX evaluation. Without it the first profile starts the observer, and kernels compiled earlier are recorded unnamed, though their shapes are still recorded. It never changes what MLX computes. Returns `1` when observing, `0` when this GPU's Metal classes cannot be observed (launch records are then empty). Safe to call repeatedly.
 
 ### mlx_perf_version
 
@@ -145,7 +145,7 @@ typedef struct mlx_perf_job_summary {
 | `job_wall_median_us`, `job_wall_min_us`, `job_wall_max_us` | the uninstrumented job duration over 7 warm runs: the number to quote |
 | `timeline_wall_us` | the instrumented timeline pass, first issue to last completion; longer than the job duration by design |
 | `sum_of_stages_us` | the serial pass: every node run alone and synchronised, summed |
-| `measured_gpu_execution_us` | GPU execution summed over the nodes, from Metal's own timestamps |
+| `measured_gpu_execution_us` | GPU execution summed over the nodes, from the GPU's own timestamps (Metal command buffers, or CUPTI on CUDA) |
 | `cross_stream_stall_us` | time streams waited on each other's data, summed (can exceed the wall when streams stall at once) |
 | `executed_node_count`, `gpu_measured_node_count`, `stream_count` | counts |
 

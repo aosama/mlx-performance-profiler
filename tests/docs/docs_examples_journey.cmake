@@ -1,5 +1,6 @@
 # cmake -DEXAMPLES_SOURCE=... -DEXAMPLES_BUILD=... -DMLX_PERF_SOURCE_DIRECTORY=...
-#       -DMLX_PREFIX=... -DGENERATOR=... -DPYTHON=... -DDOCS_CHECK=... -P docs_examples_journey.cmake
+#       -DMLX_PREFIX=... -DGENERATOR=... -DPYTHON=... -DDOCS_CHECK=... -DGPU_BACKEND=metal|cuda
+#       -P docs_examples_journey.cmake
 #
 # What a reader of the documentation does: configure docs/examples as their
 # own project (FetchContent pointed at this checkout instead of the tag),
@@ -15,8 +16,13 @@ execute_process(
   COMMAND_ERROR_IS_FATAL ANY)
 execute_process(COMMAND "${CMAKE_COMMAND}" --build "${EXAMPLES_BUILD}" COMMAND_ERROR_IS_FATAL ANY)
 
-foreach(example_program profile_one_job compare_two_implementations compare_two_procedures measure_quietly
-                        measure_wired_memory)
+# Every example is built on both backends; measure_wired_memory runs only on
+# macOS, since Linux has no system wired memory for it to read.
+set(example_programs profile_one_job compare_two_implementations compare_two_procedures measure_quietly)
+if(NOT GPU_BACKEND STREQUAL "cuda")
+  list(APPEND example_programs measure_wired_memory)
+endif()
+foreach(example_program IN LISTS example_programs)
   execute_process(COMMAND "${EXAMPLES_BUILD}/${example_program}" "${EXAMPLES_BUILD}"
                   COMMAND_ERROR_IS_FATAL ANY)
 endforeach()

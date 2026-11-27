@@ -17,6 +17,15 @@ file(WRITE "${other_mlx_release_prefix}/include/mlx/mlx.h" "")
 file(MAKE_DIRECTORY "${other_mlx_release_prefix}/include/metal_cpp")
 file(WRITE "${other_mlx_release_prefix}/include/mlx/version.h"
      "#define MLX_VERSION_MAJOR 0\n#define MLX_VERSION_MINOR 0\n#define MLX_VERSION_PATCH 1\n")
+# Off macOS the library links MLX through MLX's own installed package and
+# reads the backend from it, so the stand-in borrows the real prefix's
+# package, libraries and fmt headers; only its version differs.
+if(MLX_PERF_GPU_BACKEND STREQUAL "cuda")
+  foreach(borrowed_path share lib include/fmt)
+    file(REMOVE "${other_mlx_release_prefix}/${borrowed_path}")
+    file(CREATE_LINK "${MLX_PREFIX}/${borrowed_path}" "${other_mlx_release_prefix}/${borrowed_path}" SYMBOLIC)
+  endforeach()
+endif()
 
 # --- positive ---
 

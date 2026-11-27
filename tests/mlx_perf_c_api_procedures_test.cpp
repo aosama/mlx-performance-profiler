@@ -4,6 +4,7 @@
 
 #include "json_value.h"
 #include "mlx_perf/mlx_perf_c_api.h"
+#include "backend_expectations.h"
 #include "test_harness.h"
 
 #include "mlx/c/array.h"
@@ -116,7 +117,8 @@ void should_compare_two_mlx_c_procedures_and_write_the_page_and_record() {
   // Memory on the same rounds (#46): each run evaluates 256 x 256 floats.
   EXPECT_TRUE(summary.peak_mlx_active_added.round_count == 12);
   EXPECT_TRUE(summary.peak_mlx_active_added.baseline_median_bytes > 0);
-  EXPECT_TRUE(summary.system_wired_at_end.candidate_median_bytes > 0);
+  EXPECT_TRUE(backend_expectations::HAS_SYSTEM_WIRED_MEMORY ? summary.system_wired_at_end.candidate_median_bytes > 0
+                                                         : summary.system_wired_at_end.candidate_median_bytes == 0);
   EXPECT_TRUE(summary.baseline_rounds_crossing_wire_limit >= 0 && summary.baseline_rounds_crossing_wire_limit <= 12);
   // One warm-up, one observed run, 12 rounds: prepare before every run.
   EXPECT_TRUE(fixture.chatty_payload.run_count == 14);

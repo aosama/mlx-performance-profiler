@@ -111,7 +111,7 @@
   };
 
   function launchSearchText(nodeRecord) {
-    return (nodeRecord.kernel_dispatches || []).map(function (launch) { return launch.metal_function_name || ""; }).join(" ");
+    return (nodeRecord.kernel_dispatches || []).map(function (launch) { return launch.kernel_function_name || ""; }).join(" ");
   }
 
   function nodeElement(nodeRecord, maximumCost, gpuCoreCount) {

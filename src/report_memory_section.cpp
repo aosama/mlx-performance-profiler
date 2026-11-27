@@ -62,7 +62,7 @@ std::string render_memory_section(const VariantMeasurement& variant_measurement)
   section_html << "<p class=\"note\">Peak memory during the serial pass: <b>"
                << format_bytes(serial_telemetry.run_peak_memory_bytes)
                << "</b>. Nodes ranked by active memory added when run alone"
-               << " (approximate: the capture keeps intermediates alive and Metal"
+               << " (approximate: the capture keeps intermediates alive and MLX"
                << " reuses buffers).</p><div class=\"table-wrap\"><table class=\"sortable\">"
                << "<thead><tr><th>Node</th><th>Op</th><th>Output</th><th>Mem added</th>"
                << "<th>Share of largest</th></tr></thead><tbody>";

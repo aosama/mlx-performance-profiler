@@ -1,5 +1,6 @@
 #include "timeline_console.h"
 
+#include "gpu_backend_vocabulary.h"
 #include "timed_units.h"
 
 #include <array>
@@ -85,13 +86,14 @@ void print_job_summary(
       " fetchWaitTime analog (stream-time; can exceed wall)\n",
       to_milliseconds(gpu_timeline.cross_stream_stall_microseconds));
   std::printf(
-      "  GPU execution (measured): %8.3f ms  summed command-buffer GPU time"
-      " over %d/%zu nodes (Metal GPUStart/EndTime%s)\n",
+      "  GPU execution (measured): %8.3f ms  summed GPU time"
+      " over %d/%zu nodes (%s%s)\n",
       to_milliseconds(gpu_timeline.measured_gpu_compute_microseconds),
       gpu_timeline.gpu_measured_node_count,
       gpu_timeline.nodes.size(),
+      gpu_vocabulary::CONSOLE_TIMESTAMP_SOURCE,
       gpu_timeline.granularity == TimelineGranularity::per_stage
-          ? "; per stage, end bounded by a marker buffer"
+          ? gpu_vocabulary::CONSOLE_STAGE_NOTE
           : "");
   print_class_counts(gpu_timeline);
 }

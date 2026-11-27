@@ -59,8 +59,8 @@ test("should_list_every_class_in_the_legend_when_colouring_by_time", () => {
 
 test("should_list_each_launch_and_flag_one_that_leaves_cores_idle", () => {
   const graphModel = graphView.buildGraphModel({ job: { gpu: { core_count: 16 } }, nodes: [timedNode({ kernel_dispatches: [
-    { metal_function_name: "custom_kernel_attention", threadgroup_count: 4, threadgroup_thread_count: 32 },
-    { metal_function_name: "block_softmax_float32", threadgroup_count: 256, threadgroup_thread_count: 64 }] })] });
+    { kernel_function_name: "custom_kernel_attention", threadgroup_count: 4, threadgroup_thread_count: 32 },
+    { kernel_function_name: "block_softmax_float32", threadgroup_count: 256, threadgroup_thread_count: 64 }] })] });
   const cardHtml = graphView.describeElementHtml(graphModel, THEME, { kind: "node", position: 0 });
   assert.match(cardHtml, /Kernel launches/);
   assert.match(cardHtml, /4 × 32 threads/);
@@ -71,7 +71,7 @@ test("should_list_each_launch_and_flag_one_that_leaves_cores_idle", () => {
 // --- edge / boundary ---
 
 test("should_show_at_most_six_launches_and_count_the_rest", () => {
-  const manyLaunches = Array.from({ length: 9 }, () => ({ metal_function_name: "k", threadgroup_count: 64, threadgroup_thread_count: 32 }));
+  const manyLaunches = Array.from({ length: 9 }, () => ({ kernel_function_name: "k", threadgroup_count: 64, threadgroup_thread_count: 32 }));
   const graphModel = graphView.buildGraphModel({ job: { gpu: { core_count: 16 } }, nodes: [timedNode({ kernel_dispatches: manyLaunches })] });
   const cardHtml = graphView.describeElementHtml(graphModel, THEME, { kind: "node", position: 0 });
   assert.match(cardHtml, /and 3 more launches/);
@@ -89,9 +89,9 @@ test("should_explain_cost_legend_entries_for_nodes_run_alone", () => {
 
 // --- negative ---
 
-test("should_escape_a_launched_metal_function_name", () => {
+test("should_escape_a_launched_kernel_function_name", () => {
   const graphModel = graphView.buildGraphModel({ nodes: [timedNode({ kernel_dispatches: [
-    { metal_function_name: "<img src=x>", threadgroup_count: 4, threadgroup_thread_count: 32 }] })] });
+    { kernel_function_name: "<img src=x>", threadgroup_count: 4, threadgroup_thread_count: 32 }] })] });
   const cardHtml = graphView.describeElementHtml(graphModel, THEME, { kind: "node", position: 0 });
   assert.doesNotMatch(cardHtml, /<img/);
 });

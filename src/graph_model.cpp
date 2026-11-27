@@ -10,6 +10,7 @@
 #include "mlx/utils.h"
 
 #include <sstream>
+#include <typeinfo>
 #include <string_view>
 #include <unordered_set>
 
@@ -35,16 +36,24 @@ void describe_output(const array& node, GraphNode& captured_node) {
   captured_node.dtype_string = dtype_text.str();
 }
 
-// The author's name for a custom Metal kernel lives in the primitive's
-// state, not in name(). A checked cast: a caller's own primitive may also
-// call itself "CustomKernel" without being MLX's class.
+// The author's name for a custom kernel (Metal or CUDA) lives in the
+// primitive's state, not in name(). The class is checked first: a caller's
+// own primitive may also call itself "CustomKernel" without being MLX's.
+//
+// Why typeid's name and not dynamic_cast: dynamic_cast needs MLX to export
+// CustomKernel's typeinfo, which a shared MLX built with hidden visibility
+// (its default, and the CUDA prefix's) does not. The dynamic type's name is
+// read through the object's own vtable and needs no exported symbol, and the
+// Itanium C++ ABI both macOS and Linux use mangles the class the same way.
+constexpr const char* CUSTOM_KERNEL_MANGLED_CLASS_NAME = "N3mlx4core4fast12CustomKernelE";
+
 std::string read_kernel_name(const mlx::core::Primitive& node_primitive) {
-  if (CUSTOM_KERNEL_PRIMITIVE_NAME != node_primitive.name()) {
+  if (CUSTOM_KERNEL_PRIMITIVE_NAME != node_primitive.name() ||
+      std::string_view(typeid(node_primitive).name()) != CUSTOM_KERNEL_MANGLED_CLASS_NAME) {
     return "";
   }
-  const auto* custom_kernel =
-      dynamic_cast<const mlx::core::fast::CustomKernel*>(&node_primitive);
-  return custom_kernel != nullptr ? std::get<0>(custom_kernel->state()) : "";
+  const auto& custom_kernel = static_cast<const mlx::core::fast::CustomKernel&>(node_primitive);
+  return std::get<0>(custom_kernel.state());
 }
 
 GraphNode build_node(const array& node, NodeNamer& plan_namer) {

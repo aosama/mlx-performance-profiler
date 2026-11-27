@@ -55,7 +55,7 @@
     var launches = nodeRecord.kernel_dispatches;
     if (!launches || launches.length === 0) { return ""; }
     var rows = launches.slice(0, MAXIMUM_LAUNCHES_SHOWN).map(function (launch) {
-      var functionName = launch.metal_function_name || "(unnamed pipeline)";
+      var functionName = launch.kernel_function_name || "(unnamed pipeline)";
       var isUnderfilling = gpuCoreCount > 0 && launch.threadgroup_count < gpuCoreCount;
       var coreText = gpuCoreCount > 0
         ? (isUnderfilling ? "⚠ " : "") + Math.min(launch.threadgroup_count, gpuCoreCount) + " of " + gpuCoreCount + " cores"

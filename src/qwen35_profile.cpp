@@ -15,7 +15,7 @@
 #include "qwen35/token_text.h"
 #include "report_bundle.h"
 #include "timeline_console.h"
-#include "metal_dispatch_recorder.h"
+#include "dispatch_recorder.h"
 
 #include <chrono>
 #include <cstdio>

@@ -17,7 +17,8 @@ namespace mlx_perf {
 struct KernelLaunchSummary {
   // What a reader recognises the kernel by. For a graph job, a custom
   // kernel's name, else the MLX operation (two variants' "Softmax" nodes pair
-  // up this way); for a procedure, the Metal function.
+  // up this way); for a procedure, the kernel function (Metal function or
+  // CUDA kernel).
   std::string kernel_key;
   int launch_count = 0;
   std::uint64_t fewest_threadgroups = 0;
@@ -34,7 +35,7 @@ std::string kernel_key_of(const GraphNode& graph_node);
 // that launched nothing (views such as a reshape) are left out.
 std::vector<KernelLaunchSummary> summarize_kernel_launches(const RunTelemetry& serial_telemetry);
 
-// One summary per Metal function, in the order each first ran: for a
+// One summary per kernel function, in the order each first ran: for a
 // procedure, whose launches belong to no captured node. Unnamed pipelines
 // share the key "(unnamed pipeline)".
 std::vector<KernelLaunchSummary> summarize_launches_by_function(

@@ -13,7 +13,7 @@ namespace mlx_perf {
 
 // Bumped on any change a reader of an older document would misread:
 // a removed or renamed field, or a changed meaning or unit.
-inline constexpr int MEASUREMENT_SCHEMA_VERSION = 1;
+inline constexpr int MEASUREMENT_SCHEMA_VERSION = 2;
 
 // Values that were not measured (a CPU node's GPU window, a stage member's
 // own timing, a serial duration whose node did not match) are null, never 0.

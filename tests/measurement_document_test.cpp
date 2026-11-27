@@ -44,7 +44,7 @@ VariantMeasurement run_with_one_launch(std::uint64_t thread_count, int gpu_core_
   VariantMeasurement variant_measurement;
   report_fixture::populate_two_stream_run(variant_measurement);
   mlx_perf::KernelDispatch kernel_dispatch;
-  kernel_dispatch.metal_function_name = "custom_kernel_four_groups";
+  kernel_dispatch.kernel_function_name = "custom_kernel_four_groups";
   kernel_dispatch.grid_unit = mlx_perf::DispatchGridUnit::threads;
   kernel_dispatch.grid = {thread_count, 1, 1};
   kernel_dispatch.threads_per_threadgroup = {32, 1, 1};
@@ -65,7 +65,7 @@ void should_describe_every_node_with_its_identity_and_timing() {
   report_fixture::populate_two_stream_run(variant_measurement);
   variant_measurement.variant_name = "eager";
   const JsonValue document = written_and_parsed(variant_measurement);
-  EXPECT_TRUE(document.at("schema_version").as_number() == 1);
+  EXPECT_TRUE(document.at("schema_version").as_number() == mlx_perf::MEASUREMENT_SCHEMA_VERSION);
   EXPECT_TRUE(document.at("granularity").as_string() == "per_node");
   EXPECT_TRUE(document.at("variant_name").as_string() == "eager");
   EXPECT_TRUE(!document.at("mlx_version").as_string().empty());
@@ -238,7 +238,7 @@ void should_null_serial_fields_when_the_serial_node_does_not_match() {
 void should_describe_each_kernel_launch_and_the_share_of_the_gpu_it_can_use() {
   const JsonValue document = written_and_parsed(run_with_one_launch(128, 16));
   const auto& launch = document.at("nodes").as_array()[0].at("kernel_dispatches").as_array()[0];
-  EXPECT_TRUE(launch.at("metal_function_name").as_string() == "custom_kernel_four_groups");
+  EXPECT_TRUE(launch.at("kernel_function_name").as_string() == "custom_kernel_four_groups");
   EXPECT_TRUE(launch.at("grid_unit").as_string() == "threads");
   EXPECT_TRUE(launch.at("grid").as_array()[0].as_number() == 128);
   EXPECT_TRUE(launch.at("threadgroup_count").as_number() == 4);

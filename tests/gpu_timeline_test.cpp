@@ -5,6 +5,9 @@
 
 #include "gpu_timeline.h"
 #include "graph_model.h"
+#include "backend_expectations.h"
+#include "dispatch_recorder.h"
+#include "telemetry.h"
 #include "test_harness.h"
 
 #include "mlx/mlx.h"
@@ -14,6 +17,8 @@
 #include <vector>
 
 namespace {
+
+using mlx_perf::install_dispatch_recorder;
 
 using namespace mlx::core;
 using mlx_perf::GpuTimeline;
@@ -45,13 +50,31 @@ TwoStreamJob build_two_stream_job() {
   return job;
 }
 
+// Which nodes launch a kernel, from the serial pass of an identical graph:
+// on CUDA only those submit GPU work, so only those get a GPU window.
+std::vector<bool> find_nodes_that_launch_kernels(const TwoStreamJob& job) {
+  install_dispatch_recorder();
+  const mlx_perf::CapturedGraph serial_graph = mlx_perf::capture_graph(job.output_nodes);
+  const mlx_perf::RunTelemetry serial_telemetry =
+      mlx_perf::run_attributed_pass(serial_graph, job.stream_index_to_stream);
+  std::vector<bool> position_to_launches_kernels;
+  for (const mlx_perf::NodeTelemetry& node_telemetry : serial_telemetry.attributed_nodes) {
+    position_to_launches_kernels.push_back(!node_telemetry.kernel_dispatches.empty());
+  }
+  return position_to_launches_kernels;
+}
+
 void should_observe_every_node_complete_with_slices_summing_to_wall() {
+  const std::vector<bool> position_to_launches_kernels = find_nodes_that_launch_kernels(build_two_stream_job());
   const TwoStreamJob job = build_two_stream_job();
   const mlx_perf::CapturedGraph job_graph = mlx_perf::capture_graph(job.output_nodes);
   const GpuTimeline gpu_timeline =
       mlx_perf::capture_gpu_timeline(job_graph, job.stream_index_to_stream);
   EXPECT_TRUE(gpu_timeline.nodes.size() == job_graph.topological.size());
-  for (const NodeTimeline& node_timeline : gpu_timeline.nodes) {
+  EXPECT_TRUE(position_to_launches_kernels.size() == gpu_timeline.nodes.size());
+  int submitting_node_count = 0;
+  for (std::size_t position = 0; position < gpu_timeline.nodes.size(); ++position) {
+    const NodeTimeline& node_timeline = gpu_timeline.nodes[position];
     const auto& breakdown = node_timeline.breakdown;
     EXPECT_TRUE(node_timeline.node->handle.is_available());
     EXPECT_TRUE(
@@ -64,17 +87,20 @@ void should_observe_every_node_complete_with_slices_summing_to_wall() {
             breakdown.compute_microseconds +
             breakdown.completion_latency_microseconds,
         breakdown.wall_microseconds, SLICE_SUM_TOLERANCE_MICROSECONDS);
-    // Every node here runs on a GPU stream, so each must carry a measured
-    // GPU window that sits inside its host window.
-    EXPECT_TRUE(node_timeline.timestamps.has_gpu_window);
-    EXPECT_TRUE(breakdown.is_compute_measured);
+    // Every node here runs on a GPU stream. On Metal each carries a measured
+    // GPU window; on CUDA each that launched a kernel does, and a node that
+    // launched none has none.
+    const bool submits_gpu_work = backend_expectations::DOES_EVERY_GPU_NODE_SUBMIT_WORK ||
+        (position < position_to_launches_kernels.size() && position_to_launches_kernels[position]);
+    submitting_node_count += submits_gpu_work ? 1 : 0;
+    EXPECT_TRUE(node_timeline.timestamps.has_gpu_window == submits_gpu_work);
+    EXPECT_TRUE(breakdown.is_compute_measured == submits_gpu_work);
     EXPECT_TRUE(
         node_timeline.timestamps.gpu_finished_microseconds >=
         node_timeline.timestamps.gpu_started_microseconds);
   }
-  // One async_eval per GPU node commits one buffer each: an exact count.
-  EXPECT_TRUE(gpu_timeline.observed_command_buffer_count ==
-              static_cast<int>(gpu_timeline.nodes.size()));
+  // One async_eval per GPU node that submits work: an exact count.
+  EXPECT_TRUE(gpu_timeline.observed_command_buffer_count == submitting_node_count);
   EXPECT_TRUE(!gpu_timeline.is_command_buffer_count_lower_bound);
 }
 

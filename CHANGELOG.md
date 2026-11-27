@@ -5,6 +5,34 @@ MLX releases it was built and tested against.
 
 ## Unreleased
 
+### Added
+- **Linux with MLX's CUDA backend (#15).** The profiler builds against an
+  MLX built with `-DMLX_BUILD_CUDA=ON` and measures NVIDIA GPUs through
+  CUPTI, NVIDIA's observation interface: one CUPTI session
+  (`cupti_session`) feeds a CUDA execution probe (each timed unit's GPU
+  window from the start of its first kernel to the end of its last, over
+  every CUDA graph launch it made), a CUDA dispatch recorder (each kernel's
+  name, grid, block and shared memory, read as MLX adds it to its CUDA
+  graph) and a CUDA submission recorder (graph launches and the host's
+  blocking waits). The GPU backend is detected from the MLX prefix at
+  configure time; the Metal implementation is unchanged behind the same
+  interfaces. Reports and console output name what each backend measures
+  (CUDA kernels, thread blocks, streaming multiprocessors, CUPTI
+  timestamps). Wired memory and the macOS memory pressure counters have no
+  Linux counterpart and read as unavailable.
+
+### Changed
+- **`schema_version` 2.** `kernel_dispatches[].metal_function_name` and the
+  procedure record's `kernel_launches[].metal_function_name` are renamed
+  `kernel_function_name`, since on CUDA they hold a CUDA kernel's name; the
+  top-level `backend` is `"metal"` or `"cuda"`. Readers of version 1 files
+  need the rename only.
+- **Backend-neutral internal headers.** `metal_dispatch_recorder.h`,
+  `metal_submission_recorder.h` and `metal_host_clock.h` become
+  `dispatch_recorder.h`, `submission_recorder.h` and `gpu_host_clock.h`
+  (`current_gpu_host_seconds`), and the timeline passes use
+  `GpuExecutionProbe`; each has one implementation per backend.
+
 ### Verified
 - **Every tested MLX release, on the current code.** The release skill
   gains a step that runs the full suite on each release in

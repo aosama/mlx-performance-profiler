@@ -27,7 +27,7 @@ enum class WiredSamplePoint {
 std::string_view wired_sample_point_name(WiredSamplePoint sample_point);
 
 struct WiredMemorySample {
-  double host_seconds = 0.0;  // the Metal host clock (metal_host_clock)
+  double host_seconds = 0.0;  // the GPU host clock (gpu_host_clock)
   WiredSamplePoint sample_point = WiredSamplePoint::interval;
   std::uint64_t system_wired_bytes = 0;
   std::uint64_t wire_limit_bytes = 0;  // 0 when unknown

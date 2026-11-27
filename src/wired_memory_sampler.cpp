@@ -1,6 +1,6 @@
 #include "wired_memory_sampler.h"
 
-#include "metal_host_clock.h"
+#include "gpu_host_clock.h"
 #include "system_wired_memory.h"
 #include "wired_memory_analysis.h"
 
@@ -39,7 +39,7 @@ WiredMemorySample take_wired_memory_sample(WiredSamplePoint sample_point) {
   const SystemWiredMemoryReading system_reading = read_system_wired_memory();
   wired_memory_sample.system_wired_bytes = system_reading.wired_bytes;
   wired_memory_sample.wire_limit_bytes = system_reading.wire_limit_bytes;
-  wired_memory_sample.host_seconds = current_metal_host_seconds();
+  wired_memory_sample.host_seconds = current_gpu_host_seconds();
   return wired_memory_sample;
 }
 

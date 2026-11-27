@@ -1,9 +1,9 @@
 #include "procedure_measurement.h"
 
 #include "console_output.h"
-#include "metal_dispatch_recorder.h"
-#include "metal_host_clock.h"
-#include "metal_submission_recorder.h"
+#include "dispatch_recorder.h"
+#include "gpu_host_clock.h"
+#include "submission_recorder.h"
 #include "progress_reporter.h"
 #include "wired_memory_sampler.h"
 #include "text_format.h"
@@ -88,9 +88,9 @@ ProcedureRun run_procedure_once(ProcedureJob& procedure_job, ObservedRunRecords*
     submission_scope.set_evaluation_boundary_listener(wired_memory_sampler.get());
     wired_memory_sampler->start();
   }
-  const double started_seconds = current_metal_host_seconds();
+  const double started_seconds = current_gpu_host_seconds();
   procedure_job.run();
-  const double run_returned_seconds = current_metal_host_seconds();
+  const double run_returned_seconds = current_gpu_host_seconds();
   const SubmissionRecord submission_record = submission_scope.finish_and_take_record();
   const double finished_seconds =
       find_run_finished_seconds(run_returned_seconds, submission_record.command_buffer_windows);
@@ -138,7 +138,7 @@ PairedProcedureMeasurement measure_procedure_pair(const ComparedProcedure& basel
   // Without the hooks every run would read as 0 command buffers and 100% GPU
   // idle: a confident wrong answer, so refuse instead.
   if (!install_submission_recorder()) {
-    throw std::runtime_error("cannot observe this GPU's Metal command buffers: procedures cannot be measured");
+    throw std::runtime_error("cannot observe this GPU's submissions: procedures cannot be measured");
   }
   install_dispatch_recorder();
   PairedProcedureMeasurement paired_measurement;

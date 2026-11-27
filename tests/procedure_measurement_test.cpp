@@ -109,7 +109,7 @@ void should_count_the_hand_offs_of_each_procedure_per_run() {
   EXPECT_TRUE(paired_measurement.baseline.observed_launches.size() >=
               paired_measurement.candidate.observed_launches.size());
   EXPECT_TRUE(!paired_measurement.candidate.observed_launches.empty());
-  EXPECT_TRUE(!paired_measurement.candidate.observed_launches.front().metal_function_name.empty());
+  EXPECT_TRUE(!paired_measurement.candidate.observed_launches.front().kernel_function_name.empty());
   EXPECT_TRUE(compare_procedure_pair(paired_measurement).duration.round_count == PROCEDURE_ROUND_COUNT);
   // The observed run carries a wired memory track, from its start to its end.
   const std::vector<WiredMemorySample>& chatty_wired_memory = paired_measurement.baseline.observed_wired_memory;

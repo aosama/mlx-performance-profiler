@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/aosama/mlx-performance-profiler/blob/main/docs/schema/procedure-comparison-record.schema.json",
-  "title": "mlx-performance-profiler procedure comparison record, schema version 1",
+  "title": "mlx-performance-profiler procedure comparison record, schema version 2",
   "description": "Written as <report_file_base>.json by mlx_perf_compare_procedures_to_report: every round of both procedures, the verdicts on duration, GPU busy and GPU idle time, and each procedure's kernel launches by Metal function.",
   "type": "object",
   "required": [
@@ -14,7 +14,7 @@
   ],
   "properties": {
     "schema_version": {
-      "const": 1
+      "const": 2
     },
     "kind": {
       "const": "procedure_comparison"
@@ -298,13 +298,13 @@
               "has_launch_unable_to_fill_gpu",
               "launch_count",
               "lowest_gpu_core_coverage",
-              "metal_function_name",
+              "kernel_function_name",
               "most_threadgroups"
             ],
             "properties": {
-              "metal_function_name": {
+              "kernel_function_name": {
                 "type": "string",
-                "description": "The Metal function, or \"(unnamed pipeline)\" for pipelines compiled before the recorder was installed."
+                "description": "The kernel function (Metal function or CUDA kernel), or \"(unnamed pipeline)\" for Metal pipelines compiled before the recorder was installed."
               },
               "launch_count": {
                 "type": "integer"
@@ -331,7 +331,7 @@
               }
             }
           },
-          "description": "The observed run's launches grouped by Metal function."
+          "description": "The observed run's launches grouped by kernel function."
         },
         "wired_memory": {
           "type": [
@@ -779,13 +779,13 @@
               "has_launch_unable_to_fill_gpu",
               "launch_count",
               "lowest_gpu_core_coverage",
-              "metal_function_name",
+              "kernel_function_name",
               "most_threadgroups"
             ],
             "properties": {
-              "metal_function_name": {
+              "kernel_function_name": {
                 "type": "string",
-                "description": "The Metal function, or \"(unnamed pipeline)\" for pipelines compiled before the recorder was installed."
+                "description": "The kernel function (Metal function or CUDA kernel), or \"(unnamed pipeline)\" for Metal pipelines compiled before the recorder was installed."
               },
               "launch_count": {
                 "type": "integer"
@@ -812,7 +812,7 @@
               }
             }
           },
-          "description": "The observed run's launches grouped by Metal function."
+          "description": "The observed run's launches grouped by kernel function."
         },
         "wired_memory": {
           "type": [

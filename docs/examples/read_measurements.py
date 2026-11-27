@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Read a measurement file (schema version 1) and answer: where did the time go?
+"""Read a measurement file (schema version 2) and answer: where did the time go?
 
 Standard library only. Usage:
     python3 read_measurements.py softmax_matmul.json [how_many_nodes]
@@ -11,7 +11,7 @@ and how much of each node's wall time was spent waiting rather than computing.
 import json
 import sys
 
-SUPPORTED_SCHEMA_VERSION = 1
+SUPPORTED_SCHEMA_VERSION = 2
 WAITING_SLICES = ("wait_on_host_us", "wait_on_own_stream_us", "wait_on_other_stream_us",
                   "gpu_scheduling_us")
 

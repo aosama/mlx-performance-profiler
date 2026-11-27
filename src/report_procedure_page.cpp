@@ -1,5 +1,6 @@
 #include "report_procedure_page.h"
 
+#include "gpu_backend_vocabulary.h"
 #include "kernel_launch_summary.h"
 #include "report_assets.h"
 #include "report_launch_comparison_section.h"
@@ -134,7 +135,7 @@ std::string build_procedure_comparison_document(const std::string& page_title,
                    summarize_launches_by_function(paired_measurement.baseline.observed_launches, gpu_core_count),
                    paired_measurement.candidate.procedure_name,
                    summarize_launches_by_function(paired_measurement.candidate.observed_launches, gpu_core_count),
-                   gpu_core_count, "Metal function")
+                   gpu_core_count, gpu_vocabulary::KERNEL_FUNCTION_HEADING)
             << "</body></html>\n";
   return page_html.str();
 }

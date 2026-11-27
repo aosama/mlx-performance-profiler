@@ -1,5 +1,6 @@
 #include "measurement_document.h"
 
+#include "gpu_backend_vocabulary.h"
 #include "mlx_perf/mlx_perf_version.h"
 #include "timed_units.h"
 #include "timeline_dependencies.h"
@@ -130,8 +131,8 @@ JsonValue build_dispatch_record(const KernelDispatch& kernel_dispatch, int gpu_c
   const std::uint64_t threadgroup_count = count_threadgroups(kernel_dispatch);
   const bool is_core_count_known = gpu_core_count > 0;
   return JsonValue(Object{
-      {"metal_function_name", kernel_dispatch.metal_function_name.empty()
-                                  ? JsonValue() : json_text(kernel_dispatch.metal_function_name)},
+      {"kernel_function_name", kernel_dispatch.kernel_function_name.empty()
+                                  ? JsonValue() : json_text(kernel_dispatch.kernel_function_name)},
       {"grid_unit", json_text(dispatch_grid_unit_name(kernel_dispatch.grid_unit))},
       {"grid", grid_array(kernel_dispatch.grid)},
       {"threads_per_threadgroup", grid_array(kernel_dispatch.threads_per_threadgroup)},
@@ -310,7 +311,7 @@ JsonValue build_measurement_document(const VariantMeasurement& variant_measureme
       {"mlx_perf_version", json_text(MLX_PERF_VERSION_STRING)},
       {"mlx_version", json_text(mlx::core::version())},
       // The only backend the probe measures today; Linux and CUDA are #15.
-      {"backend", json_text("metal")},
+      {"backend", json_text(gpu_vocabulary::BACKEND_NAME)},
       {"variant_name", json_text(variant_measurement.variant_name)},
       {"granularity", json_text(is_stage_timed ? "per_stage" : "per_node")},
       {"time_origin", json_text("microseconds since the timeline pass started")},

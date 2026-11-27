@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/aosama/mlx-performance-profiler/blob/main/docs/schema/measurement-file.schema.json",
-  "title": "mlx-performance-profiler measurement file, schema version 1",
+  "title": "mlx-performance-profiler measurement file, schema version 2",
   "description": "One measured variant, as written by mlx_perf_profile_to_report and mlx_perf_profile_to_measurements. Times are microseconds; null means not measured, never zero. New fields may appear without a version change: ignore fields you do not know.",
   "type": "object",
   "required": [
@@ -19,7 +19,7 @@
   ],
   "properties": {
     "schema_version": {
-      "const": 1
+      "const": 2
     },
     "mlx_perf_version": {
       "type": "string",
@@ -30,7 +30,10 @@
       "description": "The MLX release the job ran on."
     },
     "backend": {
-      "const": "metal"
+      "enum": [
+        "metal",
+        "cuda"
+      ]
     },
     "variant_name": {
       "type": "string",
@@ -198,7 +201,7 @@
                 "integer",
                 "null"
               ],
-              "description": "GPU cores, from the IO registry's gpu-core-count; null when unknown."
+              "description": "The GPU's compute units: on Metal its cores, from the IO registry's gpu-core-count; on CUDA its streaming multiprocessors, from the driver. Null when unknown."
             }
           }
         },
@@ -482,14 +485,14 @@
           },
           "op_name": {
             "type": "string",
-            "description": "MLX primitive name, e.g. \"Matmul\"; \"CustomKernel\" for a custom Metal kernel."
+            "description": "MLX primitive name, e.g. \"Matmul\"; \"CustomKernel\" for a custom kernel (Metal or CUDA)."
           },
           "kernel_name": {
             "type": [
               "string",
               "null"
             ],
-            "description": "For a custom Metal kernel, MLX's name for it (\"custom_kernel_\" + the author's name); otherwise null."
+            "description": "For a custom kernel, MLX's name for it (\"custom_kernel_\" + the author's name); otherwise null."
           },
           "stream_index": {
             "type": "integer",
@@ -557,14 +560,14 @@
               "number",
               "null"
             ],
-            "description": "GPU start of the unit's Metal command buffer; null without a GPU window."
+            "description": "GPU start of the unit's work (Metal: its command buffer; CUDA: its first kernel, from CUPTI); null without a GPU window."
           },
           "gpu_finished_us": {
             "type": [
               "number",
               "null"
             ],
-            "description": "GPU end of the unit's Metal command buffer."
+            "description": "GPU end of the unit's work (Metal: its command buffer; CUDA: its last kernel, from CUPTI)."
           },
           "completed_us": {
             "type": [
@@ -674,12 +677,12 @@
               "type": "object",
               "description": "One kernel launch the node's evaluation encoded, observed in the serial pass.",
               "properties": {
-                "metal_function_name": {
+                "kernel_function_name": {
                   "type": [
                     "string",
                     "null"
                   ],
-                  "description": "The Metal function the pipeline was compiled from, e.g. \"gemv_t_bfloat16_...\" or \"custom_kernel_<name>\"; null when MLX compiled the pipeline before the profiler was installed."
+                  "description": "The kernel function: on Metal the function the pipeline was compiled from, e.g. \"gemv_t_bfloat16_...\" or \"custom_kernel_<name>\"; on CUDA the kernel's mangled name as the driver reports it. Null on Metal when MLX compiled the pipeline before the profiler was installed."
                 },
                 "grid_unit": {
                   "enum": [
@@ -693,7 +696,7 @@
                   "items": {
                     "type": "integer"
                   },
-                  "description": "The grid as passed to Metal, in grid_unit."
+                  "description": "The grid as passed to the GPU, in grid_unit (always threadgroups, that is thread blocks, on CUDA)."
                 },
                 "threads_per_threadgroup": {
                   "type": "array",
@@ -749,7 +752,7 @@
                 "grid",
                 "grid_unit",
                 "max_threads_per_threadgroup",
-                "metal_function_name",
+                "kernel_function_name",
                 "thread_execution_width",
                 "threadgroup_count",
                 "threadgroup_memory_bytes",
@@ -840,14 +843,14 @@
               "number",
               "null"
             ],
-            "description": "GPU start of the unit's Metal command buffer; null without a GPU window."
+            "description": "GPU start of the unit's work (Metal: its command buffer; CUDA: its first kernel, from CUPTI); null without a GPU window."
           },
           "gpu_finished_us": {
             "type": [
               "number",
               "null"
             ],
-            "description": "GPU end of the unit's Metal command buffer."
+            "description": "GPU end of the unit's work (Metal: its command buffer; CUDA: its last kernel, from CUPTI)."
           },
           "completed_us": {
             "type": [

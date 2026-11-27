@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/aosama/mlx-performance-profiler/blob/main/docs/schema/comparison-record.schema.json",
-  "title": "mlx-performance-profiler comparison record, schema version 1",
+  "title": "mlx-performance-profiler comparison record, schema version 2",
   "description": "Written as <report_file_base>.json by mlx_perf_compare_to_report: the verdict and every round's numbers. Per-node detail is in each variant's own measurement file, which this record names.",
   "type": "object",
   "required": [
@@ -14,7 +14,7 @@
   ],
   "properties": {
     "schema_version": {
-      "const": 1
+      "const": 2
     },
     "kind": {
       "const": "comparison"

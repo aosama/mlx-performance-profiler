@@ -7,6 +7,7 @@
 #include "procedure_comparison_record.h"
 #include "procedure_fixture.h"
 #include "wired_memory_fixture.h"
+#include "measurement_document.h"
 #include "test_harness.h"
 
 #include <string>
@@ -20,9 +21,9 @@ JsonValue written_and_parsed(const PairedProcedureMeasurement& paired_measuremen
       build_procedure_comparison_record(paired_measurement, compare_procedure_pair(paired_measurement))));
 }
 
-const JsonValue* find_function(const JsonValue& procedure_record, const std::string& metal_function_name) {
+const JsonValue* find_function(const JsonValue& procedure_record, const std::string& kernel_function_name) {
   for (const JsonValue& launch_record : procedure_record.at("kernel_launches").as_array()) {
-    if (launch_record.at("metal_function_name").as_string() == metal_function_name) return &launch_record;
+    if (launch_record.at("kernel_function_name").as_string() == kernel_function_name) return &launch_record;
   }
   return nullptr;
 }
@@ -32,7 +33,7 @@ const JsonValue* find_function(const JsonValue& procedure_record, const std::str
 void should_name_the_kind_the_gpu_and_both_procedures() {
   const JsonValue record = written_and_parsed(procedure_fixture::make_chatty_vs_batched());
   EXPECT_TRUE(record.at("kind").as_string() == "procedure_comparison");
-  EXPECT_TRUE(record.at("schema_version").as_number() == 1);
+  EXPECT_TRUE(record.at("schema_version").as_number() == mlx_perf::MEASUREMENT_SCHEMA_VERSION);
   EXPECT_TRUE(record.at("gpu").at("name").as_string() == "Apple M5 Pro");
   EXPECT_TRUE(record.at("gpu").at("core_count").as_number() == 16);
   EXPECT_TRUE(record.at("baseline").at("procedure_name").as_string() == "chatty");

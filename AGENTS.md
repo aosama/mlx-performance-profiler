@@ -18,12 +18,27 @@ sidecar: it observes, it never changes MLX semantics.
 - C++20, one job per file: graph capture, telemetry, DOT writing, the graph
   view section, and HTML report writing are separate modules with separate
   headers. `main`-level files only orchestrate.
-- Kernel launches are observed by `metal_dispatch_recorder`: Objective-C
+- Two GPU backends, chosen at configure time from the MLX prefix
+  (`mlx_perf_detect_gpu_backend`, #15): Metal on macOS, CUDA on Linux. What
+  observes the GPU has one backend-neutral header and one implementation per
+  backend (`metal_*.cpp` or `cuda_*.cpp`, listed in `CMakeLists.txt`): the
+  execution probe (`gpu_execution_probe.h`), the dispatch and submission
+  recorders, the host clock (`gpu_host_clock.h`), `gpu_device_facts` and the
+  system memory readings (`macos_*`, `linux_*`). Everything else is shared;
+  backend wording in reports comes from `gpu_backend_vocabulary.h` and
+  backend differences in shared tests from `tests/backend_expectations.h`.
+- Kernel launches are observed by the dispatch recorder
+  (`dispatch_recorder.h`). On Metal, `metal_dispatch_recorder`: Objective-C
   runtime hooks on the concrete classes of MLX's Metal compute encoder and
-  device, which call the original first and record only inside a
-  `DispatchRecordingScope` on the calling thread. Keep them observation-only;
+  device, which call the original first. On CUDA, `cuda_dispatch_recorder`:
+  CUPTI driver callbacks on graph kernel nodes and launches. Both record only
+  inside a `DispatchRecordingScope`. Keep them observation-only;
   `dispatch_occupancy` holds the pure arithmetic, `gpu_device_facts` the
-  core count.
+  core (CUDA: multiprocessor) count.
+- On CUDA, `cupti_session` owns the process's one CUPTI subscription and
+  routes driver calls and GPU activity to the probe and the recorders;
+  `cuda_mlx_streams` is the only module that reads MLX's CUDA backend
+  internals.
 - The interactive graph view is JavaScript in `src/graph_view/` (model,
   style, panels, mounting: one job per file), embedded into the library at
   build time with `third_party/`'s vendored libraries
@@ -80,15 +95,17 @@ sidecar: it observes, it never changes MLX semantics.
   `ctest --test-dir build --output-on-failure`. Register a test with
   `mlx_perf_add_test` in `tests/CMakeLists.txt`.
 - Procedure comparisons (#38) measure code that evaluates many graphs:
-  `metal_submission_recorder` hooks MLX's command buffer commits and
-  blocking waits (observation-only, like `metal_dispatch_recorder`);
+  the submission recorder (`submission_recorder.h`) observes MLX's GPU
+  submissions and host waits (Metal command buffer commits, CUDA graph
+  launches; observation-only, like the dispatch recorder);
   `procedure_measurement` runs the rounds; the page, the record and the
   files are separate modules (`report_procedure_page`,
   `procedure_comparison_record`, `procedure_report_files`). The C entry
   point is `mlx_perf_c_api_procedures.cpp`; plumbing every entry point
   shares is in `c_api_support`.
 - Wired memory (#45): `system_wired_memory` reads the kernel (sysctl, not
-  the rate-limited `host_statistics64`); `wired_memory_sample` and
+  the rate-limited `host_statistics64`; Linux has no such line and reads as
+  unavailable); `wired_memory_sample` and
   `wired_memory_analysis` are pure; `wired_memory_sampler` takes samples
   (an `EvaluationBoundaryListener` the submission recorder calls after each
   blocking wait); `wired_memory_record` and `report_wired_memory_section`

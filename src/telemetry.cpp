@@ -1,6 +1,6 @@
 #include "telemetry.h"
 
-#include "metal_dispatch_recorder.h"
+#include "dispatch_recorder.h"
 #include "wired_memory_sampler.h"
 
 #include "console_output.h"

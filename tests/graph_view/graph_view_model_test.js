@@ -110,7 +110,7 @@ test("should_lay_a_chain_out_as_a_snake", () => {
 });
 
 function launchRecord(threadgroupCount, metalFunctionName) {
-  return { metal_function_name: metalFunctionName || "custom_kernel_attention", threadgroup_count: threadgroupCount,
+  return { kernel_function_name: metalFunctionName || "custom_kernel_attention", threadgroup_count: threadgroupCount,
            threadgroup_thread_count: 32 };
 }
 

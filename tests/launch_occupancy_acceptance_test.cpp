@@ -9,6 +9,7 @@
 #include "json_value.h"
 #include "paired_measurement.h"
 #include "report_bundle.h"
+#include "custom_kernel_fixture.h"
 #include "test_harness.h"
 
 #include "mlx/fast.h"
@@ -30,12 +31,7 @@ constexpr int THREADS_PER_THREADGROUP = 32;
 
 // Each thread doubles every grid-stride element, so any launch size does the
 // same total work: only the number of threadgroups differs between variants.
-const auto scale_elements = fast::metal_kernel(
-    "grid_stride_double", {"input_values"}, {"output_values"},
-    "for (uint element_index = thread_position_in_grid.x; element_index < input_values_shape[0];\n"
-    "     element_index += threads_per_grid.x) {\n"
-    "  output_values[element_index] = 2.0f * input_values[element_index];\n"
-    "}\n");
+const auto scale_elements = custom_kernel_fixture::make_grid_stride_doubling_kernel("grid_stride_double");
 
 class GridStrideFactory final : public GraphFactory {
  public:
@@ -89,7 +85,7 @@ void should_show_both_launch_shapes_and_flag_the_one_that_cannot_fill_the_gpu() 
   EXPECT_TRUE(!four_groups_launch.at("can_fill_gpu").as_bool());
   EXPECT_TRUE(many_groups_launch.at("threadgroup_count").as_number() == 512);
   EXPECT_TRUE(many_groups_launch.at("can_fill_gpu").as_bool());
-  EXPECT_TRUE(four_groups_launch.at("metal_function_name").as_string().find("grid_stride_double") !=
+  EXPECT_TRUE(four_groups_launch.at("kernel_function_name").as_string().find("grid_stride_double") !=
               std::string::npos);
 
   // One page shows both shapes side by side and flags the 4-threadgroup one.

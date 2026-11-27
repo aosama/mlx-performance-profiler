@@ -96,7 +96,22 @@ cmake --build build
 ctest --test-dir build --output-on-failure
 ```
 
-The suite needs a Metal GPU. It includes unit, component, integration and acceptance tests, packaging tests that build consumers against the installed package and through FetchContent, the examples on these pages (built and run), and the documentation checks.
+The suite needs a GPU of the backend the prefix was built for: a Metal GPU on macOS, an NVIDIA GPU on Linux. It includes unit, component, integration and acceptance tests, packaging tests that build consumers against the installed package and through FetchContent, the examples on these pages (built and run), and the documentation checks.
+
+## On Linux with an NVIDIA GPU
+
+The library measures MLX's CUDA backend through CUPTI, NVIDIA's observation interface, which ships with the CUDA toolkit. Configure detects the backend from the prefix's MLX, so the commands are the same as on macOS. The prefix differs in three ways:
+
+- **MLX built with `-DMLX_BUILD_CUDA=ON`** (CUDA 12 or later, compute capability 7.5 or later), with MLX-C built against it and installed into the same prefix. The library links MLX through MLX's own installed CMake package there, which carries its CUDA, cuDNN and BLAS dependencies.
+- **MLX as a shared library** (`-DBUILD_SHARED_LIBS=ON`, giving `lib/libmlx.so`). MLX compiles some CUDA kernels at run time, such as its quantized matrix multiplies, and looks for their headers in the `include/` folder beside the library it is loaded from. Linked statically, MLX looks beside your executable instead and cannot compile them.
+- **fmt headers in `include/fmt`**: MLX's CUDA headers include them, and MLX's install leaves them out. Copy the ones MLX was built with from its build tree's `_deps/fmt-src/include/fmt`.
+
+Two things to know when measuring:
+
+- **CUPTI keeps tracing.** Once the library starts observing, CUPTI records every kernel's start and end for the rest of the process, including the uninstrumented rounds of a comparison. Both sides of a comparison carry the same cost, so verdicts stay fair, but absolute durations include it.
+- **One CUDA profiler at a time.** CUPTI accepts one subscriber per process, so the library cannot measure inside Nsight Systems or Nsight Compute, and they cannot profile a process that is using it.
+
+Wired memory is a macOS concept: on Linux the wired memory sections read as unavailable.
 
 ## Related
 

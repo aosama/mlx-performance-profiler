@@ -1,6 +1,6 @@
 #include "stage_timeline.h"
 
-#include "metal_command_buffer_probe.h"
+#include "gpu_execution_probe.h"
 #include "progress_reporter.h"
 #include "timed_units.h"
 #include "timeline_dependencies.h"
@@ -151,7 +151,7 @@ void dispatch_one_stage(
     int stage_index,
     TimelineClock::time_point pass_started_at,
     StageTaskInstants& task_instants,
-    MetalCommandBufferProbe& command_buffer_probe) {
+    GpuExecutionProbe& command_buffer_probe) {
   const std::vector<int>& stage_tasks = layout.stage_to_tasks[stage_index];
   for (const int task_position : stage_tasks) {
     command_buffer_probe.hold_buffer_for(
@@ -178,7 +178,7 @@ StageTaskInstants dispatch_and_observe_stages(
     const StagePlan& stage_plan,
     const StageTaskLayout& layout,
     TimelineClock::time_point pass_started_at,
-    MetalCommandBufferProbe& command_buffer_probe) {
+    GpuExecutionProbe& command_buffer_probe) {
   const int task_count = static_cast<int>(layout.stage_tasks.size());
   StageTaskInstants task_instants;
   task_instants.task_to_issue_started_microseconds.assign(task_count, 0.0);
@@ -324,7 +324,7 @@ GpuTimeline capture_stage_timeline(
   const std::vector<StageTaskDependencies> task_to_dependencies =
       derive_task_dependencies(layout, position_to_dependencies);
   const TimelineClock::time_point pass_started_at = TimelineClock::now();
-  MetalCommandBufferProbe command_buffer_probe(
+  GpuExecutionProbe command_buffer_probe(
       static_cast<int>(layout.stage_tasks.size()), pass_started_at);
   const StageTaskInstants task_instants = dispatch_and_observe_stages(
       captured_graph, stream_index_to_stream, stage_plan, layout, pass_started_at,

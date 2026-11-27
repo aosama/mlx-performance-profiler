@@ -5,6 +5,7 @@
 #include "json_value.h"
 #include "json_writer.h"
 #include "report_fixture.h"
+#include "measurement_document.h"
 #include "test_harness.h"
 
 #include <string>
@@ -25,7 +26,7 @@ void should_name_both_variants_and_their_measurement_files() {
   report_fixture::populate_pair(paired_measurement);
   const JsonValue record = written_and_parsed(paired_measurement);
   EXPECT_TRUE(record.at("kind").as_string() == "comparison");
-  EXPECT_TRUE(record.at("schema_version").as_number() == 1);
+  EXPECT_TRUE(record.at("schema_version").as_number() == mlx_perf::MEASUREMENT_SCHEMA_VERSION);
   EXPECT_TRUE(record.at("baseline").at("variant_name").as_string() == "stock");
   EXPECT_TRUE(record.at("candidate").at("measurement_file").as_string() == "base_custom.json");
 }

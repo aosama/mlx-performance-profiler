@@ -29,21 +29,14 @@
 //    from producer end times, not by the probe.
 //  - CPU-device streams have no command buffer; they report no window.
 
+#include "gpu_execution_window.h"
+
 #include "mlx/stream.h"
 
 #include <chrono>
 #include <vector>
 
 namespace mlx_perf {
-
-struct GpuExecutionWindow {
-  bool is_measured = false;
-  // True when `finished_microseconds` came from an end marker (an upper
-  // bound on the last buffer's end) rather than the held buffer's own end.
-  bool is_end_bounded_by_marker = false;
-  double started_microseconds = 0.0;   // since the pass anchor
-  double finished_microseconds = 0.0;  // since the pass anchor
-};
 
 class MetalCommandBufferProbe {
  public:

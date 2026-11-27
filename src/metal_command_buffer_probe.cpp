@@ -1,6 +1,6 @@
 #include "metal_command_buffer_probe.h"
 
-#include "metal_host_clock.h"
+#include "gpu_host_clock.h"
 
 #include "mlx/backend/metal/device.h"
 
@@ -17,7 +17,7 @@ constexpr double MICROSECONDS_PER_SECOND = 1e6;
 // steady_clock and mach_absolute_time tick at the same rate while the machine
 // is awake; they differ only across sleep, which a millisecond pass never spans.
 double anchor_host_seconds(std::chrono::steady_clock::time_point pass_started_at) {
-  const double host_seconds_now = current_metal_host_seconds();
+  const double host_seconds_now = current_gpu_host_seconds();
   const double seconds_since_pass_start = std::chrono::duration<double>(
       std::chrono::steady_clock::now() - pass_started_at).count();
   return host_seconds_now - seconds_since_pass_start;

@@ -46,7 +46,9 @@ It is an observer: it never changes MLX semantics. Formerly named `mlx-visual-pl
 
 ## Build
 
-Requires macOS on Apple silicon, CMake ≥ 3.24, a C++20 compiler, and a
+Requires macOS on Apple silicon, or Linux with an NVIDIA GPU and MLX's CUDA
+backend (see [Building and linking](docs/building-and-linking.md#on-linux-with-an-nvidia-gpu)),
+CMake ≥ 3.24, a C++20 compiler, and a
 prebuilt MLX installation prefix (containing `include/` and `lib/`) of a
 tested release (see **MLX compatibility**). `MLX_PREFIX` is a required CMake
 cache variable; it is never read from the environment.
@@ -134,7 +136,7 @@ program against it. It also builds and links the program through the
 | | |
 |---|---|
 | Tested MLX releases | 0.32.4, 0.32.5: the full test suite and a Qwen3.5 run pass on each |
-| Backend | Metal (macOS); Linux and CUDA are tracked in #15 |
+| Backend | Metal (macOS); CUDA (Linux, NVIDIA compute capability 7.5 and later, through CUPTI, #15) |
 
 Configure prints the MLX release it found and warns, without failing, when
 it is not a tested one. Beyond MLX's public API, the library relies on five
@@ -148,8 +150,12 @@ things; a locally patched MLX that keeps them works:
 4. MLX-C's handle layout: an `mlx_array`'s context is a heap
    `mlx::core::array` (pinned by a test in `mlx_perf_c_api_test`).
 5. `mlx::core::fast::CustomKernel`'s `state()` holding the kernel's name
-   first (read through a checked `dynamic_cast`; without it, custom kernels
+   first (checked by the dynamic type's mangled name; without it, custom kernels
    simply get no `kernel_name`).
+
+On CUDA, item 1 is instead `mlx/backend/cuda/device.h`:
+`get_command_encoder(stream).stream()`, and every `async_eval` ending by
+launching each used stream's CUDA graph (`cuGraphLaunch`) on that stream.
 
 ## Run
 

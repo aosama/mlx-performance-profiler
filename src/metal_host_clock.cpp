@@ -1,4 +1,4 @@
-#include "metal_host_clock.h"
+#include "gpu_host_clock.h"
 
 #include <mach/mach_time.h>
 
@@ -13,7 +13,7 @@ mach_timebase_info_data_t query_timebase() {
 
 } // namespace
 
-double current_metal_host_seconds() {
+double current_gpu_host_seconds() {
   static const mach_timebase_info_data_t timebase = query_timebase();
   const double nanoseconds = static_cast<double>(mach_absolute_time()) * timebase.numer / timebase.denom;
   return nanoseconds / 1e9;
