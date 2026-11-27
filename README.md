@@ -139,7 +139,7 @@ program against it. It also builds and links the program through the
 | Backend | Metal (macOS); CUDA (Linux, NVIDIA compute capability 7.5 and later, through CUPTI, #15) |
 
 Configure prints the MLX release it found and warns, without failing, when
-it is not a tested one. Beyond MLX's public API, the library relies on five
+it is not a tested one. Beyond MLX's public API, the library relies on six
 things; a locally patched MLX that keeps them works:
 
 1. `mlx/backend/metal/device.h`: `get_command_encoder(stream).get_command_buffer()`,
@@ -152,6 +152,13 @@ things; a locally patched MLX that keeps them works:
 5. `mlx::core::fast::CustomKernel`'s `state()` holding the kernel's name
    first (checked by the dynamic type's mangled name; without it, custom kernels
    simply get no `kernel_name`).
+6. For the data-and-arithmetic figures (#59): the matrix-multiply primitives
+   (`Matmul`, `AddMM`, `QuantizedMatmul`, `GatherQMM`, `GatherMM`) taking the
+   activations first, with the shared dimension last, and the gathered ones
+   taking their expert weights between the activations and the two index
+   arrays; and `mlx::core::fast::ScaledDotProductAttention`'s `state()` holding
+   whether it is causal third (checked by the dynamic type's mangled name;
+   without it, attention's arithmetic is simply not counted).
 
 On CUDA, item 1 is instead `mlx/backend/cuda/device.h`:
 `get_command_encoder(stream).stream()`, and every `async_eval` ending by
