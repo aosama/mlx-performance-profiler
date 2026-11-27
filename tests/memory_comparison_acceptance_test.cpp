@@ -10,6 +10,7 @@
 #include "json_value.h"
 #include "procedure_measurement.h"
 #include "procedure_report_files.h"
+#include "backend_expectations.h"
 #include "test_harness.h"
 
 #include "mlx/mlx.h"
@@ -70,7 +71,8 @@ void should_judge_the_larger_working_set_and_what_the_run_keeps_beyond_the_sprea
   EXPECT_TRUE(metrics.at("mlx_held_change_bytes").at("median_difference_bytes").as_number() >= 24 * MIB);
   const mlx_perf::JsonValue& first_round_memory = record.at("candidate").at("rounds").as_array().at(0).at("memory");
   EXPECT_TRUE(first_round_memory.at("peak_mlx_active_added_bytes").as_number() >= 256 * MIB);
-  EXPECT_TRUE(first_round_memory.at("wire_limit_bytes").as_number() > 0);
+  EXPECT_TRUE(backend_expectations::HAS_SYSTEM_WIRED_MEMORY ? first_round_memory.at("wire_limit_bytes").as_number() > 0
+                                                         : first_round_memory.at("wire_limit_bytes").is_null());
   EXPECT_TRUE(record.at("candidate").at("rounds_crossing_wire_limit").as_number() >= 0);
   const std::string comparison_page = read_file("acceptance_memory_comparison.html");
   EXPECT_TRUE(comparison_page.find("<h2>Memory per run</h2>") != std::string::npos);

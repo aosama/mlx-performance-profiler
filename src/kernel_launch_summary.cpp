@@ -53,8 +53,8 @@ std::vector<KernelLaunchSummary> summarize_launches_by_function(
     const std::vector<KernelDispatch>& kernel_dispatches, int gpu_core_count) {
   std::vector<KernelLaunchSummary> function_summaries;
   for (const KernelDispatch& kernel_dispatch : kernel_dispatches) {
-    const std::string function_key = kernel_dispatch.metal_function_name.empty()
-        ? std::string("(unnamed pipeline)") : kernel_dispatch.metal_function_name;
+    const std::string function_key = kernel_dispatch.kernel_function_name.empty()
+        ? std::string("(unnamed pipeline)") : kernel_dispatch.kernel_function_name;
     add_launch(find_or_add_summary(function_summaries, function_key), kernel_dispatch, gpu_core_count);
   }
   return function_summaries;

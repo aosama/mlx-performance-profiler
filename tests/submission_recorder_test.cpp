@@ -1,8 +1,8 @@
-// Integration tests for metal_submission_recorder: real MLX evaluations on
-// the Metal GPU, their command buffer commits and blocking waits recorded.
+// Integration tests for the submission recorder: real MLX evaluations on
+// the GPU (Metal or CUDA), their submissions and blocking waits recorded.
 
-#include "metal_host_clock.h"
-#include "metal_submission_recorder.h"
+#include "gpu_host_clock.h"
+#include "submission_recorder.h"
 #include "test_harness.h"
 
 #include "mlx/mlx.h"
@@ -27,7 +27,7 @@ void run_blocking_steps(int step_count) {
 
 // --- positive ---
 
-void should_install_the_hooks_on_this_gpu() {
+void should_install_the_observers_on_this_gpu() {
   EXPECT_TRUE(mlx_perf::install_submission_recorder());
   EXPECT_TRUE(mlx_perf::install_submission_recorder());
 }
@@ -36,10 +36,10 @@ void should_count_each_blocking_evaluation_and_its_command_buffer() {
   mlx_perf::install_submission_recorder();
   run_blocking_steps(1); // warm the kernels outside the scope
   SubmissionRecordingScope recording_scope;
-  const double started_seconds = mlx_perf::current_metal_host_seconds();
+  const double started_seconds = mlx_perf::current_gpu_host_seconds();
   run_blocking_steps(4);
   const SubmissionRecord submission_record = recording_scope.finish_and_take_record();
-  const double finished_seconds = mlx_perf::current_metal_host_seconds();
+  const double finished_seconds = mlx_perf::current_gpu_host_seconds();
   EXPECT_TRUE(submission_record.blocking_wait_count >= 4);
   EXPECT_TRUE(submission_record.committed_command_buffer_count >= 4);
   EXPECT_TRUE(static_cast<int>(submission_record.command_buffer_windows.size()) ==
@@ -158,7 +158,7 @@ void should_record_nothing_from_another_thread() {
 
 int main() {
   return test_harness::run_all({
-      TEST_CASE(should_install_the_hooks_on_this_gpu),
+      TEST_CASE(should_install_the_observers_on_this_gpu),
       TEST_CASE(should_count_each_blocking_evaluation_and_its_command_buffer),
       TEST_CASE(should_wait_for_unwaited_async_work_without_counting_that_wait),
       TEST_CASE(should_record_nothing_for_a_scope_without_mlx_work),

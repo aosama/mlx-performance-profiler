@@ -2,6 +2,7 @@
 // Graphs are built but never evaluated, so no GPU work runs.
 
 #include "graph_model.h"
+#include "custom_kernel_fixture.h"
 #include "test_harness.h"
 
 #include "mlx/mlx.h"
@@ -62,18 +63,15 @@ void should_label_edges_with_bytes_read_and_collect_streams() {
   EXPECT_TRUE(stream_index_to_stream.size() == 2);
 }
 
-// A one-input custom Metal kernel named `author_kernel_name`; only built
-// into the graph here, never compiled or run.
+// A one-input custom kernel named `author_kernel_name`; only built into the
+// graph here, never compiled or run.
 array apply_custom_kernel(const std::string& author_kernel_name, const array& input_values) {
-  const auto custom_kernel = fast::metal_kernel(
-      author_kernel_name, {"input_values"}, {"output_values"},
-      "uint element_index = thread_position_in_grid.x;\n"
-      "output_values[element_index] = 2.0f * input_values[element_index];\n");
+  const auto custom_kernel = custom_kernel_fixture::make_doubling_kernel(author_kernel_name);
   return custom_kernel({input_values}, {input_values.shape()}, {float32}, {8, 1, 1},
                        {8, 1, 1}, {}, std::nullopt, false, {})[0];
 }
 
-void should_name_each_custom_metal_kernel_by_its_authors_name() {
+void should_name_each_custom_kernel_by_its_authors_name() {
   const array doubled = apply_custom_kernel("double_values", ones({8}));
   const array doubled_again = apply_custom_kernel("double_again", doubled);
   const CapturedGraph captured_graph = capture_graph({doubled_again});
@@ -180,7 +178,7 @@ int main() {
   return test_harness::run_all({
       TEST_CASE(should_order_every_primitive_after_its_primitive_inputs),
       TEST_CASE(should_label_edges_with_bytes_read_and_collect_streams),
-      TEST_CASE(should_name_each_custom_metal_kernel_by_its_authors_name),
+      TEST_CASE(should_name_each_custom_kernel_by_its_authors_name),
       TEST_CASE(should_keep_each_output_shape_as_integers),
       TEST_CASE(should_give_a_scalar_output_no_dimensions),
       TEST_CASE(should_capture_a_shared_input_once),

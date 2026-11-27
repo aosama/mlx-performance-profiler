@@ -74,7 +74,7 @@ struct PipelinePassTiming {
 // async_eval (MLX batches the whole graph, streams overlap) and observes
 // completion by polling like the timeline pass. Run it on a freshly built
 // graph, and only after a warm-up run: the first eval in a process pays
-// one-time Metal library load and kernel compilation, which is not the
+// one-time GPU library load and kernel compilation, which is not the
 // job's cost.
 PipelinePassTiming run_pipeline_pass(std::vector<mlx::core::array> output_nodes);
 

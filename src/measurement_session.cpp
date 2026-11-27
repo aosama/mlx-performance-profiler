@@ -4,7 +4,7 @@
 #include "progress_reporter.h"
 #include "sample_statistics.h"
 #include "stage_timeline.h"
-#include "metal_dispatch_recorder.h"
+#include "dispatch_recorder.h"
 
 #include <cstdio>
 #include <string>

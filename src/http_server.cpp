@@ -10,6 +10,16 @@
 #include <functional>
 #include <sstream>
 
+// A client closing mid-stream must surface as a failed send, not SIGPIPE.
+// macOS has no MSG_NOSIGNAL, so there the socket carries SO_NOSIGPIPE
+// instead (set as each connection is accepted); Linux has no SO_NOSIGPIPE
+// and asks per send.
+#if defined(MSG_NOSIGNAL)
+constexpr int NO_SIGPIPE_SEND_FLAGS = MSG_NOSIGNAL;
+#else
+constexpr int NO_SIGPIPE_SEND_FLAGS = 0;
+#endif
+
 namespace mlx_perf {
 namespace {
 
@@ -94,9 +104,8 @@ HttpConnection::~HttpConnection() { close(socket_descriptor_); }
 bool HttpConnection::write_all(const std::string& payload) {
   std::size_t written_total = 0;
   while (written_total < payload.size()) {
-    // MSG_NOSIGNAL is not on macOS; SO_NOSIGPIPE is set on the socket instead.
     const ssize_t written_count = send(socket_descriptor_, payload.data() + written_total,
-                                       payload.size() - written_total, 0);
+                                       payload.size() - written_total, NO_SIGPIPE_SEND_FLAGS);
     if (written_count <= 0) {
       return false;
     }
@@ -179,10 +188,12 @@ void HttpServer::accept_loop() {
     if (client_descriptor < 0) {
       continue;
     }
+#if defined(SO_NOSIGPIPE)
     const int enable_option = 1;
     // A client closing mid-stream must surface as a failed send, not SIGPIPE.
     setsockopt(client_descriptor, SOL_SOCKET, SO_NOSIGPIPE, &enable_option,
                sizeof(enable_option));
+#endif
     // One thread per connection: the event stream is long-lived, and a local
     // single-user view never has more than a handful of connections.
     std::thread(serve_connection, std::ref(request_handler_), client_descriptor)

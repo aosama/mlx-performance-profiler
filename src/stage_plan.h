@@ -6,7 +6,8 @@
 // rules are unit-tested without a GPU.
 //
 // Why stages exist: the timeline pass dispatches one async_eval per timed
-// unit, and every async_eval commits at least one Metal command buffer. At
+// unit, and every async_eval commits at least one GPU submission (a Metal
+// command buffer, a CUDA graph launch). At
 // ~1,000 nodes per step (a real decoder) one buffer per node costs several
 // times the step itself, so per-node waiting slices mostly measure the
 // instrumentation's own queue. Timing a stage (one decoder layer) costs one

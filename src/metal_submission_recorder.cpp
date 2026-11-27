@@ -1,6 +1,6 @@
-#include "metal_submission_recorder.h"
+#include "submission_recorder.h"
 
-#include "metal_host_clock.h"
+#include "gpu_host_clock.h"
 #include "metal_object_classes.h"
 #include "objc_method_hooks.h"
 #include "recording_slots.h"
@@ -39,7 +39,7 @@ WaitUntilSignaledValueImp original_wait_until_signaled_value = nullptr;
 // lock must not be held while a thread blocks on the GPU. A wait counts when
 // a recording is open as it ends.
 void count_blocking_wait(double wait_started_seconds) {
-  const double wait_finished_seconds = current_metal_host_seconds();
+  const double wait_finished_seconds = current_gpu_host_seconds();
   const ActiveRecording active_recording;
   if (active_recording.recording_state() != nullptr) {
     RecordingState& recording_state = *active_recording.recording_state();
@@ -70,14 +70,14 @@ void commit_hook(id command_buffer_object, SEL selector) {
 // The clock is read around every wait, recording or not: two reads of
 // mach_absolute_time, negligible beside a wait for the GPU.
 void wait_until_completed_hook(id command_buffer_object, SEL selector) {
-  const double wait_started_seconds = current_metal_host_seconds();
+  const double wait_started_seconds = current_gpu_host_seconds();
   original_wait_until_completed(command_buffer_object, selector);
   count_blocking_wait(wait_started_seconds);
 }
 
 bool wait_until_signaled_value_hook(id shared_event_object, SEL selector, std::uint64_t awaited_value,
                                     std::uint64_t timeout_milliseconds) {
-  const double wait_started_seconds = current_metal_host_seconds();
+  const double wait_started_seconds = current_gpu_host_seconds();
   const bool is_signaled =
       original_wait_until_signaled_value(shared_event_object, selector, awaited_value, timeout_milliseconds);
   count_blocking_wait(wait_started_seconds);

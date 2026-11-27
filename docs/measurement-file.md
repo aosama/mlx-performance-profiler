@@ -1,4 +1,4 @@
-# The measurement file (schema version 1)
+# The measurement file (schema version 2)
 
 Every profile writes its measurements as JSON beside the HTML report:
 
@@ -42,10 +42,10 @@ by the test suite:
 
 | Field | Meaning |
 |---|---|
-| `schema_version` | `1` |
+| `schema_version` | `2` |
 | `mlx_perf_version` | the library version that wrote the file |
 | `mlx_version` | the MLX release the job ran on |
-| `backend` | `"metal"` |
+| `backend` | `"metal"` on macOS, `"cuda"` on Linux with MLX's CUDA backend |
 | `variant_name` | the caller's name for this run |
 | `granularity` | `"per_node"`: every node timed alone. `"per_stage"`: stage tasks timed, see `stages` |
 | `time_origin` | what instants count from |
@@ -104,7 +104,7 @@ Identity and structure:
 |---|---|
 | `position`, `label` | execution order, and the plan's variable name (as in the report's graph) |
 | `op_name` | the primitive's name, e.g. `"Matmul"` |
-| `kernel_name` | for a custom Metal kernel (`op_name` `"CustomKernel"`): MLX's name for it, `"custom_kernel_"` plus the author's name. Otherwise `null` |
+| `kernel_name` | for a custom kernel, Metal or CUDA (`op_name` `"CustomKernel"`): MLX's name for it, `"custom_kernel_"` plus the author's name. Otherwise `null` |
 | `stream_index`, `shape`, `dtype`, `output_bytes` | where it ran and what it produced |
 | `input_positions` | every producer it reads |
 | `cross_stream_input_positions` | the producers that are on other streams |
@@ -116,7 +116,7 @@ Timing (`null` in a `per_stage` run, where `stages` holds it):
 | Field | Meaning |
 |---|---|
 | `issue_started_us`, `issue_finished_us` | the host inside `async_eval` for this node |
-| `gpu_started_us`, `gpu_finished_us` | the GPU's own execution window, from the node's Metal command buffer |
+| `gpu_started_us`, `gpu_finished_us` | the GPU's own execution window: on Metal from the node's command buffer, on CUDA from the first kernel start to the last kernel end of the node's graph launches (CUPTI) |
 | `completed_us` | when the host observed the node complete |
 | `wait_on_host_us` | host time issuing the node |
 | `wait_on_own_stream_us` | earlier work on the same stream still running |
@@ -141,16 +141,16 @@ Each kernel launch (`kernel_dispatches[]`):
 
 | Field | Meaning |
 |---|---|
-| `metal_function_name` | the Metal function the pipeline was compiled from, such as `"gemv_t_bfloat16_bm8_bn32_sm1_sn32_tm4_tn4"` or `"custom_kernel_<name>"`; `null` when MLX compiled it before the profiler was installed in the process |
-| `grid_unit`, `grid` | the grid as Metal received it, `[width, height, depth]`: in `"threadgroups"` (`dispatchThreadgroups`) or `"threads"` (`dispatchThreads`, which custom kernels use) |
+| `kernel_function_name` | the kernel function: on Metal the function the pipeline was compiled from, such as `"gemv_t_bfloat16_bm8_bn32_sm1_sn32_tm4_tn4"` or `"custom_kernel_<name>"`; on CUDA the kernel's mangled name as the driver reports it. `null` on Metal when MLX compiled it before the profiler was installed in the process |
+| `grid_unit`, `grid` | the grid as the GPU received it, `[width, height, depth]`: in `"threadgroups"` (Metal `dispatchThreadgroups`, and every CUDA launch, whose grid counts thread blocks) or `"threads"` (Metal `dispatchThreads`, which Metal custom kernels use) |
 | `threads_per_threadgroup`, `threadgroup_thread_count` | the threadgroup size, and the threads in each |
 | `threadgroup_count` | the threadgroups the launch formed (a thread grid is rounded up per dimension) |
-| `max_threads_per_threadgroup`, `thread_execution_width` | the pipeline's limit and its SIMD group width |
-| `threadgroup_memory_bytes` | static plus dynamically set threadgroup memory |
+| `max_threads_per_threadgroup`, `thread_execution_width` | the pipeline's (CUDA: the kernel's) thread limit and its SIMD group (warp) width |
+| `threadgroup_memory_bytes` | static plus dynamically set threadgroup (CUDA: shared) memory |
 | `gpu_core_coverage` | `threadgroup_count` / `job.gpu.core_count`, at most 1: the share of GPU cores the launch can give work to |
 | `can_fill_gpu` | `false` when the launch has fewer threadgroups than the GPU has cores, so some cores have nothing to do |
 
-**Reading `gpu_core_coverage`.** A threadgroup runs on one GPU core, so a launch with fewer threadgroups than cores leaves cores idle, whatever else is true: on a 16-core GPU, 4 threadgroups can use at most a quarter of it. The converse does not hold. A launch that covers every core can still be limited by threads per core or threadgroup memory, which Apple does not document per core, so the profiler does not estimate them. The launches are recorded in the serial pass, where each node runs alone, so they belong to the node exactly in per-node and per-stage runs alike.
+**Reading `gpu_core_coverage`.** A threadgroup runs on one GPU core, so a launch with fewer threadgroups than cores leaves cores idle, whatever else is true: on a 16-core GPU, 4 threadgroups can use at most a quarter of it. The converse does not hold. A launch that covers every core can still be limited by threads per core or threadgroup memory, which Apple does not document per core, so the profiler does not estimate them. The launches are recorded in the serial pass, where each node runs alone, so they belong to the node exactly in per-node and per-stage runs alike. On CUDA the same holds with a thread block for a threadgroup and a streaming multiprocessor (SM) for a core: `job.gpu.core_count` is then the GPU's SM count.
 
 **Reading `gpu_idle_before_us`.** The timeline pass submits each node
 separately so that it can time each one, and the gaps include that
@@ -181,7 +181,7 @@ each variant's own file, which the record names.
 
 | Field | Meaning |
 |---|---|
-| `schema_version`, `kind` | `1`, `"comparison"` |
+| `schema_version`, `kind` | `2`, `"comparison"` |
 | `baseline`, `candidate` | `variant_name`, and `measurement_file`: that variant's measurement file, relative to this one |
 | `metrics.job_wall_us`, `metrics.gpu_span_us`, `metrics.host_submission_us` | one record per metric, below |
 | `output_agreement` | `output_count`, and `max_absolute_difference` between the two variants' outputs (float32) |
@@ -217,7 +217,7 @@ is no per-node file; the record holds every run.
 
 | Field | Meaning |
 |---|---|
-| `schema_version`, `kind` | `1`, `"procedure_comparison"` |
+| `schema_version`, `kind` | `2`, `"procedure_comparison"` |
 | `gpu` | `name` and `core_count` of the GPU, each `null` when unknown |
 | `baseline`, `candidate` | one procedure record each, below |
 | `metrics.duration_us`, `metrics.gpu_busy_us`, `metrics.gpu_idle_us` | one metric record each, exactly as in the comparison record above |
@@ -233,7 +233,7 @@ Each procedure record:
 | `kernel_launch_count` | launches in the observed run |
 | `rounds_crossing_wire_limit`, `rounds_with_compression` | of the 12 rounds, how many runs crossed the wire limit and how many saw the system compress memory (see each run's `memory`) |
 | `wired_memory` | the observed run's wired memory, the same record as [`job.wired_memory`](#jobwired_memory): sampled as it began, after every blocking wait on any thread, every millisecond, as its GPU work completed, and after it until macOS un-wired what it released (at most 3 s) |
-| `kernel_launches[]` | the observed run's launches grouped by Metal function: `metal_function_name` (`"(unnamed pipeline)"` for pipelines MLX compiled before the recorder started), `launch_count`, `fewest_threadgroups`, `most_threadgroups`, `lowest_gpu_core_coverage` and `has_launch_unable_to_fill_gpu` (both `null` when the core count is unknown) |
+| `kernel_launches[]` | the observed run's launches grouped by kernel function: `kernel_function_name` (`"(unnamed pipeline)"` for Metal pipelines MLX compiled before the recorder started), `launch_count`, `fewest_threadgroups`, `most_threadgroups`, `lowest_gpu_core_coverage` and `has_launch_unable_to_fill_gpu` (both `null` when the core count is unknown) |
 
 Each run (`rounds[]` and `observed_run`):
 
@@ -278,7 +278,7 @@ measured". Run it on any measurement file:
 <!-- example: docs/examples/read_measurements.py -->
 ```python
 #!/usr/bin/env python3
-"""Read a measurement file (schema version 1) and answer: where did the time go?
+"""Read a measurement file (schema version 2) and answer: where did the time go?
 
 Standard library only. Usage:
     python3 read_measurements.py softmax_matmul.json [how_many_nodes]
@@ -290,7 +290,7 @@ and how much of each node's wall time was spent waiting rather than computing.
 import json
 import sys
 
-SUPPORTED_SCHEMA_VERSION = 1
+SUPPORTED_SCHEMA_VERSION = 2
 WAITING_SLICES = ("wait_on_host_us", "wait_on_own_stream_us", "wait_on_other_stream_us",
                   "gpu_scheduling_us")
 

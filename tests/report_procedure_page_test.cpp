@@ -2,6 +2,7 @@
 // from a synthetic pair (no GPU).
 
 #include "procedure_fixture.h"
+#include "gpu_backend_vocabulary.h"
 #include "wired_memory_fixture.h"
 #include "report_procedure_page.h"
 #include "test_harness.h"
@@ -40,10 +41,10 @@ void should_show_each_procedures_hand_offs_per_run() {
   EXPECT_TRUE(contains(page_html, "<tr><td>batched</td><td class=\"number\">1</td><td class=\"number\">1</td>"));
 }
 
-void should_compare_launches_by_metal_function() {
+void should_compare_launches_by_kernel_function() {
   const std::string page_html = page_for(procedure_fixture::make_chatty_vs_batched());
   EXPECT_TRUE(contains(page_html, "id=\"launches\""));
-  EXPECT_TRUE(contains(page_html, "Metal function"));
+  EXPECT_TRUE(contains(page_html, mlx_perf::gpu_vocabulary::KERNEL_FUNCTION_HEADING));
   EXPECT_TRUE(contains(page_html, "v_Add_float32"));
   EXPECT_TRUE(contains(page_html, "gemv_float32"));
 }
@@ -88,8 +89,10 @@ void should_show_launches_without_coverage_when_the_core_count_is_unknown() {
   const std::string page_html = page_for(paired_measurement);
   EXPECT_TRUE(contains(page_html, "v_Add_float32"));
   EXPECT_TRUE(!contains(page_html, "class=\"number underfills-gpu\""));
-  EXPECT_TRUE(!contains(page_html, "GPU's 0 cores"));
-  EXPECT_TRUE(contains(page_html, "fewer threadgroups than the GPU's cores"));
+  // An unknown count is never printed as a number, on either backend.
+  const std::string compute_units = mlx_perf::gpu_vocabulary::COMPUTE_UNITS;
+  EXPECT_TRUE(!contains(page_html, "GPU's 0 " + compute_units));
+  EXPECT_TRUE(contains(page_html, "than the GPU's " + compute_units + " leaves"));
 }
 
 void should_draw_a_wired_memory_lane_only_for_a_procedure_with_samples() {
@@ -119,7 +122,7 @@ int main() {
   return test_harness::run_all({
       TEST_CASE(should_lead_with_the_duration_verdict_and_judge_three_metrics),
       TEST_CASE(should_show_each_procedures_hand_offs_per_run),
-      TEST_CASE(should_compare_launches_by_metal_function),
+      TEST_CASE(should_compare_launches_by_kernel_function),
       TEST_CASE(should_judge_memory_per_run_in_its_own_section),
       TEST_CASE(should_note_rounds_that_crossed_the_wire_limit_beside_the_timing_verdict),
       TEST_CASE(should_show_zero_percent_busy_for_a_zero_length_run),

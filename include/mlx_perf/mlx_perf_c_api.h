@@ -210,7 +210,7 @@ typedef struct mlx_perf_procedure_comparison_summary {
 /* Measures two procedures the way mlx_perf_compare_to_report measures two
  * jobs (one warm-up and one observed run each, then 12 rounds, order flipped
  * every round) and writes `<report_file_base>.html` (the verdict, the
- * hand-offs per run, and the kernel launches by Metal function) and
+ * hand-offs per run, and the kernel launches by kernel function) and
  * `<report_file_base>.json` (`"kind": "procedure_comparison"`). Use it when
  * an implementation is more than one graph; for one graph,
  * mlx_perf_compare_to_report shows more. `summary` may be NULL. */
@@ -276,12 +276,15 @@ void mlx_perf_set_console_output(int is_enabled);
 
 /* Optional: starts observing the kernel launches MLX encodes, so that every
  * kernel MLX compiles from now on is named in the launch records
- * (`kernel_dispatches[].metal_function_name` in the measurement file). Call
+ * (`kernel_dispatches[].kernel_function_name` in the measurement file). Call
  * it before your program's first MLX evaluation. Without it the first
  * profile starts the observer, and kernels compiled earlier are recorded
- * unnamed (their shapes are still recorded). It never changes what MLX
- * computes. Returns 1 when observing, 0 when this GPU's Metal classes could
- * not be observed (launch records are then empty). Safe to call repeatedly. */
+ * unnamed on Metal (their shapes are still recorded; on CUDA every launch is
+ * named whenever the observer starts). It never changes what MLX computes.
+ * Returns 1 when observing, 0 when the GPU could not be observed (Metal: its
+ * classes lack the expected methods; CUDA: CUPTI refused the subscription,
+ * for example inside another CUDA profiler); launch records are then empty.
+ * Safe to call repeatedly. */
 int mlx_perf_install_launch_recorder(void);
 
 /* The library version, "MAJOR.MINOR.PATCH" (MLX_PERF_VERSION_STRING of the

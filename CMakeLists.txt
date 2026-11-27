@@ -68,27 +68,52 @@ add_custom_command(
     COMMENT "Embedding the graph view's scripts and stylesheet"
     VERBATIM)
 
+# What observes the GPU, for the backend the MLX prefix was built with
+# (mlx_perf_detect_gpu_backend): the execution probe, the dispatch and
+# submission recorders, the clock their timestamps are on, the device facts
+# and the system memory readings. Every other source is portable.
+set(MLX_PERF_METAL_BACKEND_SOURCES
+    src/metal_command_buffer_probe.cpp
+    src/metal_gpu_device_facts.cpp
+    src/metal_dispatch_recorder.cpp
+    src/metal_object_classes.cpp
+    src/metal_host_clock.cpp
+    src/metal_submission_recorder.cpp
+    src/macos_system_wired_memory.cpp
+    src/macos_system_memory_pressure.cpp)
+set(MLX_PERF_CUDA_BACKEND_SOURCES
+    src/cupti_session.cpp
+    src/cuda_execution_probe.cpp
+    src/cuda_mlx_streams.cpp
+    src/cuda_gpu_synchronization.cpp
+    src/cuda_host_hand_off.cpp
+    src/cuda_gpu_device_facts.cpp
+    src/cuda_dispatch_recorder.cpp
+    src/cuda_host_clock.cpp
+    src/cuda_submission_recorder.cpp
+    src/linux_system_wired_memory.cpp
+    src/linux_system_memory_pressure.cpp)
+if(MLX_PERF_GPU_BACKEND STREQUAL "cuda")
+  set(MLX_PERF_GPU_BACKEND_SOURCES ${MLX_PERF_CUDA_BACKEND_SOURCES})
+else()
+  set(MLX_PERF_GPU_BACKEND_SOURCES ${MLX_PERF_METAL_BACKEND_SOURCES})
+endif()
+message(STATUS "mlx_perf: GPU backend ${MLX_PERF_GPU_BACKEND}")
+
 # The profiler: capture, timelines, reports and the C API. The only target
 # that is installed; it never depends on the demo, server or model code.
 add_library(mlx_perf STATIC
+    ${MLX_PERF_GPU_BACKEND_SOURCES}
     src/graph_model.cpp
     src/graph_build_timer.cpp
     src/telemetry.cpp
     src/latency_breakdown.cpp
     src/progress_reporter.cpp
-    src/metal_command_buffer_probe.cpp
     src/dispatch_occupancy.cpp
-    src/gpu_device_facts.cpp
-    src/metal_dispatch_recorder.cpp
-    src/metal_object_classes.cpp
-    src/metal_host_clock.cpp
-    src/metal_submission_recorder.cpp
     src/gpu_busy_time.cpp
     src/procedure_measurement.cpp
-    src/system_memory_pressure.cpp
     src/run_memory_meter.cpp
     src/run_memory_record.cpp
-    src/system_wired_memory.cpp
     src/wired_memory_sample.cpp
     src/wired_memory_analysis.cpp
     src/wired_memory_sampler.cpp

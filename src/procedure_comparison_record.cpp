@@ -27,7 +27,7 @@ JsonValue run_record(const ProcedureRun& procedure_run) {
 JsonValue launch_summary_record(const KernelLaunchSummary& function_summary) {
   const bool is_coverage_known = function_summary.lowest_core_coverage >= 0.0;
   return JsonValue(Object{
-      {"metal_function_name", json_text(function_summary.kernel_key)},
+      {"kernel_function_name", json_text(function_summary.kernel_key)},
       {"launch_count", json_number(function_summary.launch_count)},
       {"fewest_threadgroups", json_number(static_cast<double>(function_summary.fewest_threadgroups))},
       {"most_threadgroups", json_number(static_cast<double>(function_summary.most_threadgroups))},

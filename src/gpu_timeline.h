@@ -16,8 +16,8 @@
 //  - Completion is HOST-OBSERVED: it trails true kernel end by the event
 //    signal latency plus the polling gap (one node's issue time while still
 //    dispatching; a spin-yield afterwards).
-//  - Per-node async_eval commits one Metal command buffer per node, which a
-//    plain eval batches. The timeline wall therefore exceeds the
+//  - Per-node async_eval commits one GPU submission per node (a Metal command
+//    buffer, a CUDA graph launch), which a plain eval batches. The timeline wall therefore exceeds the
 //    uninstrumented job wall; report both, never one as the whole truth. On
 //    ~1,000-node graphs that cost dominates (Qwen3.5 decode: 23 ms vs a
 //    3 ms step), so stage_timeline times job-supplied stages instead; this

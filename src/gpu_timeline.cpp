@@ -1,6 +1,6 @@
 #include "gpu_timeline.h"
 
-#include "metal_command_buffer_probe.h"
+#include "gpu_execution_probe.h"
 #include "progress_reporter.h"
 #include "timed_units.h"
 #include "timeline_dependencies.h"
@@ -58,7 +58,7 @@ CompletionTracker dispatch_and_observe(
     const std::unordered_map<int, mlx::core::Stream>& stream_index_to_stream,
     Clock::time_point pass_started_at,
     IssueInstants& issue_instants,
-    MetalCommandBufferProbe& command_buffer_probe) {
+    GpuExecutionProbe& command_buffer_probe) {
   const int node_count = static_cast<int>(captured_graph.topological.size());
   CompletionTracker tracker;
   tracker.position_to_completed_microseconds.assign(node_count, 0.0);
@@ -136,7 +136,7 @@ GpuTimeline capture_gpu_timeline(
   IssueInstants issue_instants;
   const int node_count = static_cast<int>(captured_graph.topological.size());
   const Clock::time_point pass_started_at = Clock::now();
-  MetalCommandBufferProbe command_buffer_probe(node_count, pass_started_at);
+  GpuExecutionProbe command_buffer_probe(node_count, pass_started_at);
   const CompletionTracker tracker = dispatch_and_observe(
       captured_graph, stream_index_to_stream, pass_started_at, issue_instants,
       command_buffer_probe);

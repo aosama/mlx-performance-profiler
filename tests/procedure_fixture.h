@@ -11,10 +11,10 @@
 
 namespace procedure_fixture {
 
-inline mlx_perf::KernelDispatch launch_of(const std::string& metal_function_name,
+inline mlx_perf::KernelDispatch launch_of(const std::string& kernel_function_name,
                                           std::uint64_t threadgroup_count) {
   mlx_perf::KernelDispatch kernel_dispatch;
-  kernel_dispatch.metal_function_name = metal_function_name;
+  kernel_dispatch.kernel_function_name = kernel_function_name;
   kernel_dispatch.grid = {threadgroup_count, 1, 1};
   kernel_dispatch.threads_per_threadgroup = {32, 1, 1};
   return kernel_dispatch;

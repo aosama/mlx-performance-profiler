@@ -4,6 +4,7 @@
 // never exact sizes.
 
 #include "run_memory_meter.h"
+#include "backend_expectations.h"
 #include "test_harness.h"
 
 #include "mlx/mlx.h"
@@ -41,9 +42,15 @@ void should_measure_a_runs_own_working_set_and_what_it_kept() {
   EXPECT_TRUE(memory_figures.peak_mlx_active_added_bytes >= 255 * MIB);
   EXPECT_TRUE(memory_figures.peak_mlx_active_bytes >= memory_figures.peak_mlx_active_added_bytes);
   EXPECT_TRUE(memory_figures.mlx_held_change_bytes >= static_cast<std::int64_t>(256 * MIB));
-  EXPECT_TRUE(memory_figures.system_wired_at_end_bytes > 0);
-  EXPECT_TRUE(memory_figures.wire_limit_bytes > memory_figures.system_wired_at_end_bytes);
-  EXPECT_TRUE(memory_figures.are_pressure_counters_readable);
+  if (backend_expectations::HAS_SYSTEM_WIRED_MEMORY) {
+    EXPECT_TRUE(memory_figures.system_wired_at_end_bytes > 0);
+    EXPECT_TRUE(memory_figures.wire_limit_bytes > memory_figures.system_wired_at_end_bytes);
+    EXPECT_TRUE(memory_figures.are_pressure_counters_readable);
+  } else {
+    EXPECT_TRUE(memory_figures.system_wired_at_end_bytes == 0);
+    EXPECT_TRUE(memory_figures.wire_limit_bytes == 0);
+    EXPECT_TRUE(!memory_figures.are_pressure_counters_readable);
+  }
 }
 
 void should_see_a_negative_change_when_a_run_frees_what_it_found() {

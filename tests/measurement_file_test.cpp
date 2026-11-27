@@ -5,6 +5,7 @@
 #include "json_value.h"
 #include "measurement_file.h"
 #include "measurement_session.h"
+#include "measurement_document.h"
 #include "test_harness.h"
 
 #include "mlx/mlx.h"
@@ -95,7 +96,7 @@ void should_replace_an_earlier_file_of_the_same_name() {
   const VariantMeasurement variant_measurement = measure_small_job(GranularityChoice::per_node);
   const std::string measurement_path =
       write_measurement_file(variant_measurement, ".", "measurement_file_replaced");
-  EXPECT_TRUE(parse_json_file(measurement_path).at("schema_version").as_number() == 1);
+  EXPECT_TRUE(parse_json_file(measurement_path).at("schema_version").as_number() == mlx_perf::MEASUREMENT_SCHEMA_VERSION);
 }
 
 // --- negative ---

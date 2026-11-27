@@ -15,7 +15,7 @@
 #include "server_options.h"
 
 #include "mlx/memory.h"
-#include "metal_dispatch_recorder.h"
+#include "dispatch_recorder.h"
 
 #include <atomic>
 #include <chrono>

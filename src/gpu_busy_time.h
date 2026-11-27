@@ -15,8 +15,8 @@
 namespace mlx_perf {
 
 struct GpuWindow {
-  double started_seconds = 0.0;   // GPUStartTime, on the Metal host clock
-  double finished_seconds = 0.0;  // GPUEndTime
+  double started_seconds = 0.0;   // GPU start, on the GPU host clock (gpu_host_clock)
+  double finished_seconds = 0.0;  // GPU end, on the same clock
 };
 
 // The microseconds inside [span_started_seconds, span_finished_seconds]

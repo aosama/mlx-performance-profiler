@@ -14,7 +14,7 @@
 #include "measurement_session.h"
 #include "mlx_c_interop.h"
 #include "report_writer.h"
-#include "metal_dispatch_recorder.h"
+#include "dispatch_recorder.h"
 
 #include <exception>
 #include <initializer_list>

@@ -7,7 +7,7 @@
 
 #include "gpu_timeline.h"
 #include "graph_model.h"
-#include "metal_command_buffer_probe.h"
+#include "gpu_execution_window.h"
 
 #include "mlx/stream.h"
 

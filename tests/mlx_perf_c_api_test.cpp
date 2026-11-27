@@ -5,6 +5,7 @@
 #include "json_value.h"
 #include "mlx_c_interop.h"
 #include "mlx_perf/mlx_perf_c_api.h"
+#include "backend_expectations.h"
 #include "test_harness.h"
 
 #include "mlx/c/array.h"
@@ -142,7 +143,12 @@ void should_measure_an_mlx_c_job_and_write_its_report() {
   EXPECT_TRUE(std::string(mlx_perf_last_error()).empty());
   EXPECT_TRUE(std::ifstream("c_api_test_report.html").good());
   EXPECT_TRUE(summary.executed_node_count > 0);
-  EXPECT_TRUE(summary.gpu_measured_node_count == summary.executed_node_count);
+  // Every node is measured on Metal; on CUDA every node that launched a
+  // kernel is (a broadcast that only describes a view launches none).
+  EXPECT_TRUE(backend_expectations::DOES_EVERY_GPU_NODE_SUBMIT_WORK
+                  ? summary.gpu_measured_node_count == summary.executed_node_count
+                  : summary.gpu_measured_node_count > 0 &&
+                        summary.gpu_measured_node_count <= summary.executed_node_count);
   EXPECT_TRUE(summary.stream_count == 2);
   EXPECT_TRUE(summary.job_wall_min_us <= summary.job_wall_median_us &&
               summary.job_wall_median_us <= summary.job_wall_max_us);
@@ -177,7 +183,7 @@ void should_install_the_launch_recorder_and_name_every_launch_after_it() {
   int launch_count = 0;
   for (const mlx_perf::JsonValue& node_record : document.at("nodes").as_array()) {
     for (const mlx_perf::JsonValue& launch : node_record.at("kernel_dispatches").as_array()) {
-      EXPECT_TRUE(!launch.at("metal_function_name").is_null());
+      EXPECT_TRUE(!launch.at("kernel_function_name").is_null());
       EXPECT_TRUE(launch.at("threadgroup_count").as_number() > 0);
       ++launch_count;
     }
@@ -210,13 +216,23 @@ void should_write_per_node_measurements_a_caller_can_read_without_the_report() {
   std::map<double, const mlx_perf::JsonValue*> stream_to_previous_node;
   int checked_gap_count = 0;
   for (const mlx_perf::JsonValue& node_record : node_records) {
+    const double stream_index = node_record.at("stream_index").as_number();
+    // On CUDA a node that launched no kernel made no graph launch, so it has
+    // no GPU window and the next node on its stream no gap.
+    if (node_record.at("gpu_started_us").is_null()) {
+      EXPECT_TRUE(!backend_expectations::DOES_EVERY_GPU_NODE_SUBMIT_WORK);
+      EXPECT_TRUE(node_record.at("kernel_dispatches").as_array().empty());
+      EXPECT_TRUE(!node_record.at("is_compute_gpu_measured").as_bool());
+      EXPECT_TRUE(node_record.at("gpu_idle_before_us").is_null());
+      stream_to_previous_node[stream_index] = &node_record;
+      continue;
+    }
     const double gpu_started = node_record.at("gpu_started_us").as_number();
     const double gpu_finished = node_record.at("gpu_finished_us").as_number();
     EXPECT_TRUE(gpu_finished >= gpu_started);
     EXPECT_TRUE(node_record.at("is_compute_gpu_measured").as_bool());
-    const double stream_index = node_record.at("stream_index").as_number();
     const auto previous_entry = stream_to_previous_node.find(stream_index);
-    if (previous_entry != stream_to_previous_node.end()) {
+    if (previous_entry != stream_to_previous_node.end() && !previous_entry->second->at("gpu_finished_us").is_null()) {
       const double expected_gap =
           gpu_started - previous_entry->second->at("gpu_finished_us").as_number();
       EXPECT_TRUE(std::abs(node_record.at("gpu_idle_before_us").as_number() - expected_gap) <

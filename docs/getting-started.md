@@ -14,6 +14,8 @@ The simplest source is [mlx-bridge](https://github.com/aosama/mlx-bridge), whose
 
 Alternatively, build [MLX](https://github.com/ml-explore/mlx) and [MLX-C](https://github.com/ml-explore/mlx-c) as static libraries yourself and install both into the same prefix with `cmake --install`.
 
+On Linux with an NVIDIA GPU, the prefix holds MLX built with its CUDA backend; [Building and linking](building-and-linking.md#on-linux-with-an-nvidia-gpu) lists what that prefix needs.
+
 ## Step 2: build the profiler
 
 ```sh

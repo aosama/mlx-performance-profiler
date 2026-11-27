@@ -1,7 +1,7 @@
 // Integration tests for metal_dispatch_recorder: real MLX launches on the
 // Metal GPU, recorded with their exact shapes and names.
 
-#include "metal_dispatch_recorder.h"
+#include "dispatch_recorder.h"
 #include "test_harness.h"
 
 #include "mlx/fast.h"
@@ -54,7 +54,7 @@ void should_record_a_custom_kernel_launch_with_its_exact_shape() {
   EXPECT_TRUE(launch.grid_unit == DispatchGridUnit::threads);
   EXPECT_TRUE(launch.grid.width == 128 && launch.threads_per_threadgroup.width == 32);
   EXPECT_TRUE(mlx_perf::count_threadgroups(launch) == 4);
-  EXPECT_TRUE(launch.metal_function_name.find("four_groups") != std::string::npos);
+  EXPECT_TRUE(launch.kernel_function_name.find("four_groups") != std::string::npos);
   EXPECT_TRUE(launch.max_threads_per_threadgroup >= 32);
   EXPECT_TRUE(launch.thread_execution_width > 0);
 }
@@ -66,7 +66,7 @@ void should_record_and_name_a_stock_mlx_kernel() {
   const auto recorded_dispatches = record_evaluation(matmul(left, left));
   EXPECT_TRUE(!recorded_dispatches.empty());
   EXPECT_TRUE(mlx_perf::count_threadgroups(recorded_dispatches.front()) > 0);
-  EXPECT_TRUE(!recorded_dispatches.front().metal_function_name.empty());
+  EXPECT_TRUE(!recorded_dispatches.front().kernel_function_name.empty());
 }
 
 // --- edge / boundary ---
@@ -86,7 +86,7 @@ void should_record_into_the_innermost_scope_then_resume_the_outer() {
   synchronize();
   const auto outer_dispatches = outer_scope.take_recorded_dispatches();
   EXPECT_TRUE(outer_dispatches.size() == 1);
-  EXPECT_TRUE(outer_dispatches.front().metal_function_name.find("outer_launch") != std::string::npos);
+  EXPECT_TRUE(outer_dispatches.front().kernel_function_name.find("outer_launch") != std::string::npos);
 }
 
 // #44: a procedure that evaluates on a worker thread, recorded process-wide.
@@ -103,7 +103,7 @@ void should_record_another_threads_launches_in_a_whole_process_scope() {
   const std::vector<KernelDispatch> recorded_dispatches = recording_scope.take_recorded_dispatches();
   EXPECT_TRUE(recorded_dispatches.size() == 1);
   EXPECT_TRUE(!recorded_dispatches.empty() &&
-              recorded_dispatches[0].metal_function_name.find("worker_thread") != std::string::npos);
+              recorded_dispatches[0].kernel_function_name.find("worker_thread") != std::string::npos);
 }
 
 // --- edge / boundary ---

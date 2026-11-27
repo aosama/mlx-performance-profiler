@@ -1,13 +1,17 @@
 #pragma once
 
-// Dispatch occupancy: one concern only — describe a Metal kernel launch (its
-// grid and threadgroup shape, and its pipeline's limits) and say how much of
-// the GPU it could keep busy. Pure arithmetic, no Metal: the recorder that
-// observes launches lives in metal_dispatch_recorder.
+// Dispatch occupancy: one concern only — describe a kernel launch (its grid
+// and threadgroup shape, and its kernel's limits) and say how much of the GPU
+// it could keep busy. Pure arithmetic, no GPU API: the recorders that observe
+// launches live in metal_dispatch_recorder and cuda_dispatch_recorder.
+//
+// The words are Metal's; on CUDA a threadgroup is a thread block, a GPU core
+// is a streaming multiprocessor, and a SIMD group is a warp.
 //
 // Why core coverage, and nothing finer: a threadgroup runs on one GPU core,
 // so a launch with fewer threadgroups than the GPU has cores leaves cores with
-// nothing to do, whatever else is true. That bound is exact on every Mac. How
+// nothing to do, whatever else is true. That bound is exact on every Mac, and
+// on NVIDIA GPUs with blocks and multiprocessors. How
 // many threadgroups one core can hold at once depends on per-core thread and
 // memory limits Apple does not document, so this module does not guess them:
 // a launch that covers every core can still be limited in other ways.
@@ -25,15 +29,18 @@ struct GridSize {
 
 // What a launch's grid counts: dispatchThreadgroups passes threadgroups,
 // dispatchThreads passes threads (Metal forms the threadgroups, rounding up).
+// CUDA launches always count blocks, so they record threadgroups.
 enum class DispatchGridUnit { threadgroups, threads };
 
 struct KernelDispatch {
-  // The Metal function the pipeline was compiled from, e.g.
+  // The kernel function: on Metal the function the pipeline was compiled
+  // from, on CUDA the kernel's mangled name as the driver reports it, e.g.
   // "gemv_t_bfloat16_bm8_bn32_sm1_sn32_tm4_tn4" or "custom_kernel_rmsnorm".
-  // Empty when MLX compiled the pipeline before the recorder was installed.
-  std::string metal_function_name;
+  // Empty on Metal when MLX compiled the pipeline before the recorder was
+  // installed.
+  std::string kernel_function_name;
   DispatchGridUnit grid_unit = DispatchGridUnit::threadgroups;
-  GridSize grid;                  // as passed to Metal, in grid_unit
+  GridSize grid;                  // as passed to the GPU, in grid_unit
   GridSize threads_per_threadgroup;
   // The pipeline's limits; 0 when the pipeline was not seen being set.
   std::uint64_t max_threads_per_threadgroup = 0;

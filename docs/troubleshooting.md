@@ -86,9 +86,9 @@ Procedure names follow the rules of variant names: non-empty, no `/`, and distin
 
 ### Procedures cannot be measured on this GPU
 
-> error: `cannot observe this GPU's Metal command buffers: procedures cannot be measured`
+> error: `cannot observe this GPU's submissions: procedures cannot be measured`
 
-The profiler could not find, or could not observe, the Metal command buffer and shared event classes MLX uses, for example on a Mac without a Metal GPU. Without them every run would read as all GPU idle, so the comparison refuses instead of reporting that. Graph comparisons (`mlx_perf_compare_to_report`) do not need these hooks.
+The profiler could not observe how MLX submits work to the GPU and waits for it. On macOS it could not find the Metal command buffer and shared event classes MLX uses, for example on a Mac without a Metal GPU. On Linux, CUPTI refused the subscription: there is no CUDA device, or another profiler, such as Nsight Systems or Nsight Compute, already holds this process's CUPTI subscription (only one is allowed). Without these observations every run would read as all GPU idle, so the comparison refuses instead of reporting that. Graph comparisons (`mlx_perf_compare_to_report`) do not need them.
 
 ### The procedure comparison cannot be written
 
@@ -130,7 +130,19 @@ Add `-DMLX_PREFIX=/path/to/prefix` to the `cmake` command. It is never read from
 
 > configure: `does not contain include/mlx/mlx.h. Point it at a prebuilt MLX prefix (containing include/ and lib/).`
 
-`MLX_PREFIX` must hold MLX and MLX-C together: `include/mlx/`, `include/mlx/c/`, `include/metal_cpp/`, `lib/libmlx.a` and `lib/libmlxc.a`. See [Getting started](getting-started.md#step-1-get-an-mlx-prefix).
+`MLX_PREFIX` must hold MLX and MLX-C together: `include/mlx/`, `include/mlx/c/`, `include/metal_cpp/`, `lib/libmlx.a` and `lib/libmlxc.a`. See [Getting started](getting-started.md#step-1-get-an-mlx-prefix). On Linux the prefix holds MLX's CUDA build instead; see [Building and linking](building-and-linking.md#on-linux-with-an-nvidia-gpu).
+
+### The prefix's MLX has no GPU backend to measure
+
+> configure: `holds an MLX built without a GPU backend this library measures.`
+
+Off macOS the library measures MLX's CUDA backend only. Build MLX with `-DMLX_BUILD_CUDA=ON` and install it into the prefix; its `share/cmake/MLX/MLXConfig.cmake` then finds `CUDAToolkit`, which is how configure recognises it. An MLX built for its CPU backend alone has no GPU to measure.
+
+### The CUDA prefix has no fmt headers
+
+> configure: `has no include/fmt/format.h.`
+
+MLX's CUDA headers include `<fmt/format.h>`, and MLX's install leaves fmt out. Copy the fmt headers MLX was built with, from its build tree's `_deps/fmt-src/include/fmt`, into `<prefix>/include/fmt`.
 
 ### An untested MLX release
 
@@ -174,7 +186,7 @@ Expected: clocks, temperature and other work on the machine move every measureme
 
 Operations that only describe a view of existing memory, such as a broadcast or a squeeze, run no kernel and show 0.0 µs compute. Their wall time is waiting, which their classification shows.
 
-### A kernel launch has no `metal_function_name`
+### A kernel launch has no `kernel_function_name`
 
 The pipeline's name is captured when MLX compiles it. A kernel compiled before the profiler started observing (by MLX work your program did before its first profile) is recorded with its shape but `null` for its name. Call `mlx_perf_install_launch_recorder()` before your program's first MLX evaluation to name every launch. See the [C API reference](reference/c-api.md#mlx_perf_install_launch_recorder).
 

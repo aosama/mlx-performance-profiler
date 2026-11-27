@@ -28,6 +28,7 @@ add_test(NAME docs_examples_journey
                  "-DGENERATOR=${CMAKE_GENERATOR}"
                  "-DPYTHON=${Python3_EXECUTABLE}"
                  "-DDOCS_CHECK=${docs_check_script}"
+                 "-DGPU_BACKEND=${MLX_PERF_GPU_BACKEND}"
                  -P "${CMAKE_CURRENT_SOURCE_DIR}/docs_examples_journey.cmake")
 set_tests_properties(docs_examples_journey PROPERTIES
   PASS_REGULAR_EXPRESSION "docs examples: built, ran, read and matched the schemas"

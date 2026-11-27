@@ -1,5 +1,6 @@
 #include "report_writer.h"
 
+#include "gpu_backend_vocabulary.h"
 #include "dot_writer.h"
 #include "graph_view_section.h"
 #include "report_assets.h"
@@ -40,22 +41,17 @@ std::string render_method_section(TimelineGranularity granularity) {
         " decoder, one per layer), and the timeline pass issued one"
         " <code>async_eval</code> per stage instead of per node, because at this"
         " graph size per-node command buffers would cost several times the job and"
-        " every node would read as queued behind the instrumentation. A stage's GPU"
-        " window runs from its first command buffer's GPU start to the end of its"
-        " last buffer, bounded by an empty marker buffer queued behind it (MLX"
-        " commits mid-stage when a buffer exceeds its op budget, and those middle"
-        " buffers are not observable) and by host-observed completion."
+        " every node would read as queued behind the instrumentation." +
+        std::string(gpu_vocabulary::STAGE_WINDOW_SENTENCE)
       : std::string();
   return "<section id=\"method\"><h2>How these numbers were measured</h2>"
          "<p class=\"note\">Four passes run on identical, freshly built graphs."
-         " <b>Warm-up</b> absorbs Metal kernel compilation and is discarded."
+         " <b>Warm-up</b> absorbs " + std::string(gpu_vocabulary::KERNEL_COMPILATION) +
+         " and is discarded."
          " <b>Job duration</b> is the median of several uninstrumented evals. The <b>timeline</b>"
          " pass issues one <code>async_eval</code> per node (streams keep"
-         " overlapping) and reads each node's Metal command-buffer"
-         " <code>GPUStartTime/GPUEndTime</code>: compute is GPU-measured at"
-         " command-buffer granularity, and producers count as ready at their GPU"
-         " end. Its per-node command buffers add submission cost a plain eval"
-         " batches away — hence the gap between instrumented and job duration."
+         " overlapping) and" + std::string(gpu_vocabulary::TIMELINE_WINDOW_SENTENCE) +
+         " — hence the gap between instrumented and job duration."
          " <b>Sum of stages</b> times each node alone. Never read one of these"
          " as the whole truth; that is why all are shown." + stage_note +
       "</p></section>";

@@ -1,4 +1,4 @@
-#include "metal_dispatch_recorder.h"
+#include "dispatch_recorder.h"
 
 #include "metal_object_classes.h"
 #include "objc_method_hooks.h"
@@ -17,7 +17,7 @@ namespace mlx_perf {
 
 struct DispatchRecordingScope::RecordingState {
   struct EncoderPipeline {
-    std::string metal_function_name;
+    std::string kernel_function_name;
     std::uint64_t max_threads_per_threadgroup = 0;
     std::uint64_t thread_execution_width = 0;
     std::uint64_t static_threadgroup_memory_bytes = 0;
@@ -86,7 +86,7 @@ void record_dispatch(RecordingState& recording_state, id encoder, DispatchGridUn
   const auto pipeline_entry = recording_state.encoder_to_pipeline.find(encoder);
   if (pipeline_entry != recording_state.encoder_to_pipeline.end()) {
     const RecordingState::EncoderPipeline& encoder_pipeline = pipeline_entry->second;
-    kernel_dispatch.metal_function_name = encoder_pipeline.metal_function_name;
+    kernel_dispatch.kernel_function_name = encoder_pipeline.kernel_function_name;
     kernel_dispatch.max_threads_per_threadgroup = encoder_pipeline.max_threads_per_threadgroup;
     kernel_dispatch.thread_execution_width = encoder_pipeline.thread_execution_width;
     kernel_dispatch.threadgroup_memory_bytes = encoder_pipeline.static_threadgroup_memory_bytes;
@@ -124,7 +124,7 @@ void set_compute_pipeline_state_hook(id encoder, SEL selector, id pipeline_objec
   }
   const auto* pipeline = reinterpret_cast<MTL::ComputePipelineState*>(pipeline_object);
   RecordingState::EncoderPipeline encoder_pipeline;
-  encoder_pipeline.metal_function_name = find_pipeline_name(pipeline_object);
+  encoder_pipeline.kernel_function_name = find_pipeline_name(pipeline_object);
   encoder_pipeline.max_threads_per_threadgroup = pipeline->maxTotalThreadsPerThreadgroup();
   encoder_pipeline.thread_execution_width = pipeline->threadExecutionWidth();
   encoder_pipeline.static_threadgroup_memory_bytes = pipeline->staticThreadgroupMemoryLength();
