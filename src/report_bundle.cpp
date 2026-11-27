@@ -32,7 +32,8 @@ ReportPaths write_variant(const ReportBundleRequest& bundle_request,
   const ReportInputs report_inputs{
       bundle_request.job_title + " (" + variant_measurement.variant_name + ")",
       variant_measurement.timeline_graph, variant_measurement.gpu_timeline,
-      variant_measurement.serial_telemetry, variant_measurement.job_totals};
+      variant_measurement.serial_telemetry, variant_measurement.job_totals,
+      variant_measurement.machine_ceilings};
   const ReportPaths report_paths =
       write_report(report_inputs, measurement_document_json, bundle_request.output_directory,
                    variant_file_base(bundle_request, variant_measurement));

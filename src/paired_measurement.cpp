@@ -159,6 +159,8 @@ PairedMeasurement measure_pair(
   run_illustrative_timelines(baseline_side, candidate_side, stream_index_to_stream,
                              timeline_options, schedule_progress);
   run_serial_passes(baseline_side, candidate_side, stream_index_to_stream, schedule_progress);
+  record_machine_ceilings(paired_measurement.baseline);
+  record_machine_ceilings(paired_measurement.candidate);
   schedule_progress.progress.finish(schedule_progress.completed_steps);
   return paired_measurement;
 }

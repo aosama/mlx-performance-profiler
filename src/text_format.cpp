@@ -28,6 +28,37 @@ std::string format_microseconds(double duration_microseconds) {
   return formatted_duration;
 }
 
+std::string format_operation_count(double operation_count) {
+  char formatted_count[48];
+  if (operation_count >= 1e12) {
+    std::snprintf(formatted_count, sizeof(formatted_count), "%.2f T", operation_count / 1e12);
+  } else if (operation_count >= 1e9) {
+    std::snprintf(formatted_count, sizeof(formatted_count), "%.2f G", operation_count / 1e9);
+  } else if (operation_count >= 1e6) {
+    std::snprintf(formatted_count, sizeof(formatted_count), "%.0f M", operation_count / 1e6);
+  } else {
+    std::snprintf(formatted_count, sizeof(formatted_count), "%.0f", operation_count);
+  }
+  return formatted_count;
+}
+
+std::string format_bytes_per_second(double bytes_per_second) {
+  char formatted_rate[48];
+  std::snprintf(formatted_rate, sizeof(formatted_rate), "%.1f GiB/s",
+                bytes_per_second / BYTES_PER_GIBIBYTE);
+  return formatted_rate;
+}
+
+std::string format_operations_per_second(double operations_per_second) {
+  char formatted_rate[48];
+  if (operations_per_second >= 1e12) {
+    std::snprintf(formatted_rate, sizeof(formatted_rate), "%.1f TFLOP/s", operations_per_second / 1e12);
+  } else {
+    std::snprintf(formatted_rate, sizeof(formatted_rate), "%.1f GFLOP/s", operations_per_second / 1e9);
+  }
+  return formatted_rate;
+}
+
 std::string format_bytes(std::size_t byte_count) {
   char formatted_size[48];
   const double byte_amount = static_cast<double>(byte_count);

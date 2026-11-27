@@ -90,6 +90,28 @@ void should_neutralize_script_injection_in_html_text() {
 
 } // namespace
 
+void should_format_operation_counts_and_rates() {
+  EXPECT_TRUE(format_operation_count(820e6) == "820 M");
+  EXPECT_TRUE(format_operation_count(1.37e9) == "1.37 G");
+  EXPECT_TRUE(format_operation_count(4.4e12) == "4.40 T");
+  EXPECT_TRUE(format_bytes_per_second(266.0 * (1ull << 30)) == "266.0 GiB/s");
+  EXPECT_TRUE(format_operations_per_second(25.4e12) == "25.4 TFLOP/s");
+  EXPECT_TRUE(format_operations_per_second(512e9) == "512.0 GFLOP/s");
+}
+
+void should_switch_operation_units_exactly_at_each_thousand() {
+  EXPECT_TRUE(format_operation_count(999'999) == "999999");
+  EXPECT_TRUE(format_operation_count(1e6) == "1 M");
+  EXPECT_TRUE(format_operation_count(1e9) == "1.00 G");
+  EXPECT_TRUE(format_operations_per_second(1e12) == "1.0 TFLOP/s");
+}
+
+void should_format_zero_operations_and_rates() {
+  EXPECT_TRUE(format_operation_count(0.0) == "0");
+  EXPECT_TRUE(format_bytes_per_second(0.0) == "0.0 GiB/s");
+  EXPECT_TRUE(format_operations_per_second(0.0) == "0.0 GFLOP/s");
+}
+
 int main() {
   return test_harness::run_all({
       TEST_CASE(should_format_sub_millisecond_durations_in_microseconds),
@@ -106,5 +128,8 @@ int main() {
       TEST_CASE(should_encode_every_byte_of_non_ascii_text),
       TEST_CASE(should_keep_the_sign_of_negative_durations_rather_than_hide_them),
       TEST_CASE(should_neutralize_script_injection_in_html_text),
+      TEST_CASE(should_format_operation_counts_and_rates),
+      TEST_CASE(should_switch_operation_units_exactly_at_each_thousand),
+      TEST_CASE(should_format_zero_operations_and_rates),
   });
 }

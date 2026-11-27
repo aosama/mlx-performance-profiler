@@ -3,8 +3,10 @@
 #include "gpu_backend_vocabulary.h"
 #include "mlx_perf/mlx_perf_version.h"
 #include "timed_units.h"
+#include "timed_unit_work.h"
 #include "timeline_dependencies.h"
 #include "wired_memory_record.h"
+#include "work_record.h"
 
 #include "mlx/version.h"
 
@@ -205,13 +207,19 @@ JsonValue build_node_records(const VariantMeasurement& variant_measurement,
     add_serial_measurement(variant_measurement.serial_telemetry, position,
                            node_timeline.node->op_name,
                            variant_measurement.serial_telemetry.gpu_device_facts.gpu_core_count, node_record);
+    node_record["data_and_arithmetic"] = build_work_record(
+        work_of_node(gpu_timeline, position, variant_measurement.serial_telemetry),
+        judge_node(gpu_timeline, position, variant_measurement.serial_telemetry,
+                   variant_measurement.machine_ceilings));
     node_records.push_back(JsonValue(std::move(node_record)));
   }
   return JsonValue(std::move(node_records));
 }
 
-JsonValue build_stage_records(const GpuTimeline& gpu_timeline,
+JsonValue build_stage_records(const VariantMeasurement& variant_measurement,
                               const std::vector<JsonValue>& unit_to_gpu_idle_before) {
+  const GpuTimeline& gpu_timeline = variant_measurement.gpu_timeline;
+  const RunTelemetry& serial_telemetry = variant_measurement.serial_telemetry;
   Array stage_records;
   for (std::size_t stage_position = 0; stage_position < gpu_timeline.stages.size();
        ++stage_position) {
@@ -226,6 +234,9 @@ JsonValue build_stage_records(const GpuTimeline& gpu_timeline,
         number_array(stage_task.cross_stream_producer_stage_positions);
     add_unit_timing(stage_task.timestamps, stage_task.breakdown, stage_record);
     stage_record["gpu_idle_before_us"] = unit_to_gpu_idle_before[stage_position];
+    stage_record["data_and_arithmetic"] = build_work_record(
+        work_of_stage(gpu_timeline, stage_task, serial_telemetry),
+        judge_stage(gpu_timeline, stage_task, serial_telemetry, variant_measurement.machine_ceilings));
     stage_records.push_back(JsonValue(std::move(stage_record)));
   }
   return JsonValue(std::move(stage_records));
@@ -295,6 +306,7 @@ JsonValue build_job_record(const VariantMeasurement& variant_measurement,
           {"is_lower_bound", JsonValue(gpu_timeline.is_command_buffer_count_lower_bound)}})},
       {"graph_build", build_graph_build_records(variant_measurement.graph_build_passes)},
       {"gpu", build_gpu_record(variant_measurement.serial_telemetry.gpu_device_facts)},
+      {"machine_ceilings", build_machine_ceilings_record(variant_measurement.machine_ceilings)},
       {"wired_memory", build_wired_memory_record(variant_measurement.serial_telemetry.wired_memory_samples)}});
 }
 
@@ -310,7 +322,7 @@ JsonValue build_measurement_document(const VariantMeasurement& variant_measureme
       {"schema_version", json_number(MEASUREMENT_SCHEMA_VERSION)},
       {"mlx_perf_version", json_text(MLX_PERF_VERSION_STRING)},
       {"mlx_version", json_text(mlx::core::version())},
-      // The only backend the probe measures today; Linux and CUDA are #15.
+      // "metal" or "cuda": the backend this library was built for.
       {"backend", json_text(gpu_vocabulary::BACKEND_NAME)},
       {"variant_name", json_text(variant_measurement.variant_name)},
       {"granularity", json_text(is_stage_timed ? "per_stage" : "per_node")},
@@ -319,7 +331,7 @@ JsonValue build_measurement_document(const VariantMeasurement& variant_measureme
       {"streams", build_stream_records(gpu_timeline)},
       {"nodes", build_node_records(variant_measurement,
                                    is_stage_timed ? no_unit_timing : unit_to_gpu_idle_before)},
-      {"stages", build_stage_records(gpu_timeline,
+      {"stages", build_stage_records(variant_measurement,
                                      is_stage_timed ? unit_to_gpu_idle_before : no_unit_timing)}});
 }
 

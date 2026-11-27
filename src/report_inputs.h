@@ -7,6 +7,7 @@
 #include "gpu_timeline.h"
 #include "graph_model.h"
 #include "job_totals.h"
+#include "machine_ceilings.h"
 #include "telemetry.h"
 
 #include <string>
@@ -22,6 +23,9 @@ struct ReportInputs {
   // peak memory. Joined to the timeline by topological position.
   const RunTelemetry& serial_telemetry;
   JobTotals job_totals;
+  // The ceilings the data-and-arithmetic section judges each unit against;
+  // unmeasured (and the section says so) when left default.
+  MachineCeilings machine_ceilings;
 };
 
 } // namespace mlx_perf

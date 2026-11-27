@@ -11,6 +11,7 @@
 #include "graph_factory.h"
 #include "graph_model.h"
 #include "job_totals.h"
+#include "machine_ceilings.h"
 #include "stage_plan.h"
 #include "telemetry.h"
 
@@ -32,6 +33,9 @@ struct VariantMeasurement {
   CapturedGraph serial_graph;
   RunTelemetry serial_telemetry;
   JobTotals job_totals;
+  // This machine's reading and arithmetic ceilings, against which every
+  // timed unit's work is judged (work_limits). Calibrated once per process.
+  MachineCeilings machine_ceilings;
   // Time spent inside the job's own graph-building code, per pass
   // ("warm_up", "job_wall", "timeline", "serial"), outside every pass clock.
   // The C API puts its own "stream_discovery" build first.
@@ -114,6 +118,11 @@ TimelineCapture capture_timeline(
 void run_serial_pass(const GraphFactory& graph_factory,
                      const std::unordered_map<int, mlx::core::Stream>& stream_index_to_stream,
                      VariantMeasurement& variant_measurement);
+
+// This machine's ceilings into `variant_measurement`, calibrated on first use
+// in the process. Called after every pass, so the calibration never shares a
+// pass's clock or its memory readings.
+void record_machine_ceilings(VariantMeasurement& variant_measurement);
 
 VariantMeasurement measure_variant(
     const std::string& variant_name,

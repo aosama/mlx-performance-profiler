@@ -78,6 +78,8 @@ void should_measure_all_passes_with_an_ordered_job_wall_range() {
   EXPECT_TRUE(variant_measurement.gpu_timeline.nodes.size() == primitive_count);
   EXPECT_TRUE(variant_measurement.serial_telemetry.attributed_nodes.size() ==
               primitive_count);
+  // The machine's ceilings travel with every measurement.
+  EXPECT_TRUE(variant_measurement.machine_ceilings.is_measured);
 }
 
 void should_keep_every_job_wall_sample_and_time_every_graph_build() {

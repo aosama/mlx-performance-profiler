@@ -70,6 +70,7 @@ by the test suite:
 | `command_buffers.is_lower_bound` | `true` when MLX may have committed buffers the probe never held (stage-timed runs) |
 | `graph_build[]` | per pass (`stream_discovery`, `warm_up`, `job_wall`, `timeline`, `serial`, and `gpu_span` in a comparison): `calls_us`, the time each call spent inside the job's own graph-building code, and `total_us` |
 | `gpu.name`, `gpu.core_count` | the GPU the job ran on, e.g. `"Apple M5 Pro"` with 16 cores; `null` when unknown |
+| `machine_ceilings` | this machine's ceilings, measured once per process with MLX's own kernels: `memory_read_bytes_per_second` (the fastest of several reductions over 512 MiB), `arithmetic_operations_per_second` (the fastest of several 4096 × 4096 × 4096 multiplies, two operations per multiply-add) and `arithmetic_dtype` (`"float16"` or `"bfloat16"`, the faster). `null` when not measured |
 
 Graph building happens between the passes' clocks: no other number includes
 it. `job_wall_us` is evaluation only. Add the `job_wall` calls to it to get
@@ -149,6 +150,20 @@ Each kernel launch (`kernel_dispatches[]`):
 | `threadgroup_memory_bytes` | static plus dynamically set threadgroup (CUDA: shared) memory |
 | `gpu_core_coverage` | `threadgroup_count` / `job.gpu.core_count`, at most 1: the share of GPU cores the launch can give work to |
 | `can_fill_gpu` | `false` when the launch has fewer threadgroups than the GPU has cores, so some cores have nothing to do |
+
+Data and arithmetic (`data_and_arithmetic`, also on every stage record, where it sums the members):
+
+| Field | Meaning |
+|---|---|
+| `bytes_read` | every distinct input at its stored size (a broadcast counts its source, quantized weights as packed); a gathered multiply counts only the experts its indices used |
+| `bytes_written` | every output |
+| `arithmetic_operations` | two per multiply-add, for the matrix-multiply family and fused attention; `null` for operations whose arithmetic is not counted |
+| `gathered_experts_total`, `gathered_experts_used` | for `GatherQMM` and `GatherMM`: the experts, and the distinct ones the indices named. `used` is `null` when the indices could not be read, and `bytes_read` then counts every expert |
+| `data_movement_at_ceiling_us`, `arithmetic_at_ceiling_us` | the bytes at the reading ceiling, and the arithmetic at the arithmetic ceiling; `null` without ceilings (or counted arithmetic) |
+| `data_movement_share`, `arithmetic_share` | each of those over `compute_us`; `null` without a GPU window. Above 1 when a kernel beat the calibration |
+| `limited_by` | `"data_movement"` or `"arithmetic"` when that share is at least 0.5, else `"neither"`; `null` when the unit was not judged |
+
+The whole object is `null` for a node that moved nothing (a view such as a reshape, which launches no kernel). In a `per_stage` run a node's own shares and `limited_by` are `null`, since it has no GPU window of its own; its stage carries the judgement. [Reading the report](reading-the-report.md#data-movement-or-arithmetic-what-held-a-kernel-back) explains how to read it.
 
 **Reading `gpu_core_coverage`.** A threadgroup runs on one GPU core, so a launch with fewer threadgroups than cores leaves cores idle, whatever else is true: on a 16-core GPU, 4 threadgroups can use at most a quarter of it. The converse does not hold. A launch that covers every core can still be limited by threads per core or threadgroup memory, which Apple does not document per core, so the profiler does not estimate them. The launches are recorded in the serial pass, where each node runs alone, so they belong to the node exactly in per-node and per-stage runs alike. On CUDA the same holds with a thread block for a threadgroup and a streaming multiprocessor (SM) for a core: `job.gpu.core_count` is then the GPU's SM count.
 
