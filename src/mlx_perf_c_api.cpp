@@ -124,7 +124,7 @@ void profile_to_report(mlx_perf_build_graph_fn build_graph, void* builder_payloa
   const ReportInputs report_inputs{
       report_title, variant_measurement.timeline_graph,
       variant_measurement.gpu_timeline, variant_measurement.serial_telemetry,
-      variant_measurement.job_totals};
+      variant_measurement.job_totals, variant_measurement.machine_ceilings};
   const ReportPaths report_paths =
       write_report(report_inputs, write_json(build_measurement_document(variant_measurement)),
                    output_directory, report_file_base);

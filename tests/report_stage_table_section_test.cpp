@@ -14,7 +14,7 @@ using report_fixture::SyntheticRun;
 std::string render_stage_table(SyntheticRun& synthetic_run) {
   const mlx_perf::ReportInputs report_inputs{
       "staged", synthetic_run.timeline_graph, synthetic_run.gpu_timeline,
-      synthetic_run.serial_telemetry, synthetic_run.job_totals};
+      synthetic_run.serial_telemetry, synthetic_run.job_totals, {}};
   return mlx_perf::render_stage_table_section(report_inputs);
 }
 

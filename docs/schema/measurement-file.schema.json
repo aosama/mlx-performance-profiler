@@ -60,6 +60,7 @@
         "gpu_measured_node_count",
         "graph_build",
         "job_wall_us",
+        "machine_ceilings",
         "measured_gpu_execution_us",
         "peak_memory_bytes",
         "stream_count",
@@ -384,6 +385,36 @@
               }
             }
           }
+        },
+        "machine_ceilings": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "description": "This machine's ceilings, measured once per process with MLX's own kernels, which every timed unit's work is judged against. Null when they could not be measured (the GPU gave no execution window).",
+          "required": [
+            "arithmetic_dtype",
+            "arithmetic_operations_per_second",
+            "memory_read_bytes_per_second"
+          ],
+          "properties": {
+            "memory_read_bytes_per_second": {
+              "type": "number",
+              "description": "The fastest of several reductions over a 512 MiB buffer, far larger than any system level cache: how fast the GPU reads its memory (unified memory on Apple silicon)."
+            },
+            "arithmetic_operations_per_second": {
+              "type": "number",
+              "description": "The fastest of several 4096 x 4096 x 4096 matrix multiplies, two operations per multiply-add."
+            },
+            "arithmetic_dtype": {
+              "type": "string",
+              "enum": [
+                "float16",
+                "bfloat16"
+              ],
+              "description": "The type of the faster calibration multiply."
+            }
+          }
         }
       }
     },
@@ -447,6 +478,7 @@
           "completed_us",
           "compute_us",
           "cross_stream_input_positions",
+          "data_and_arithmetic",
           "dtype",
           "gpu_finished_us",
           "gpu_idle_before_us",
@@ -761,6 +793,97 @@
               ]
             },
             "description": "Every kernel launch the node's evaluation encoded, in order, from the serial pass. [] when it launched none (a view such as a reshape); null when the serial pass did not match the node."
+          },
+          "data_and_arithmetic": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "What the unit moved and computed, judged against job.machine_ceilings. Null when it moved nothing (a view, which launches no kernel).",
+            "required": [
+              "arithmetic_at_ceiling_us",
+              "arithmetic_operations",
+              "arithmetic_share",
+              "bytes_read",
+              "bytes_written",
+              "data_movement_at_ceiling_us",
+              "data_movement_share",
+              "gathered_experts_total",
+              "gathered_experts_used",
+              "limited_by"
+            ],
+            "properties": {
+              "bytes_read": {
+                "type": "integer",
+                "description": "Every distinct input at its stored size (a broadcast counts its source); a gathered multiply counts only the experts its indices used."
+              },
+              "bytes_written": {
+                "type": "integer",
+                "description": "Every output."
+              },
+              "arithmetic_operations": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "Two per multiply-add, for the matrix-multiply family and fused attention; null for operations whose arithmetic is not counted."
+              },
+              "gathered_experts_total": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "description": "A gathered multiply's expert count; null for other operations."
+              },
+              "gathered_experts_used": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "description": "The distinct experts its indices named; null when not gathered or when the indices could not be read (bytes_read then counts every expert)."
+              },
+              "data_movement_at_ceiling_us": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "bytes_read + bytes_written at the reading ceiling; null without ceilings."
+              },
+              "arithmetic_at_ceiling_us": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "arithmetic_operations at the arithmetic ceiling; null without ceilings or counted arithmetic."
+              },
+              "data_movement_share": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "data_movement_at_ceiling_us over compute_us; null without a GPU window. Above 1 when a kernel beat the calibration."
+              },
+              "arithmetic_share": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "arithmetic_at_ceiling_us over compute_us; null without a GPU window or counted arithmetic."
+              },
+              "limited_by": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "data_movement",
+                  "arithmetic",
+                  "neither",
+                  null
+                ],
+                "description": "The larger share when it is at least 0.5, else neither; null when the unit was not judged."
+              }
+            }
           }
         }
       }
@@ -775,6 +898,7 @@
           "completed_us",
           "compute_us",
           "cross_stream_input_stage_positions",
+          "data_and_arithmetic",
           "gpu_finished_us",
           "gpu_idle_before_us",
           "gpu_scheduling_us",
@@ -936,6 +1060,97 @@
               "null"
             ],
             "description": "This unit's GPU start minus the previous unit's GPU end on the same stream; null for the first."
+          },
+          "data_and_arithmetic": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "What the unit moved and computed, judged against job.machine_ceilings. Null when it moved nothing (a view, which launches no kernel).",
+            "required": [
+              "arithmetic_at_ceiling_us",
+              "arithmetic_operations",
+              "arithmetic_share",
+              "bytes_read",
+              "bytes_written",
+              "data_movement_at_ceiling_us",
+              "data_movement_share",
+              "gathered_experts_total",
+              "gathered_experts_used",
+              "limited_by"
+            ],
+            "properties": {
+              "bytes_read": {
+                "type": "integer",
+                "description": "Every distinct input at its stored size (a broadcast counts its source); a gathered multiply counts only the experts its indices used."
+              },
+              "bytes_written": {
+                "type": "integer",
+                "description": "Every output."
+              },
+              "arithmetic_operations": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "Two per multiply-add, for the matrix-multiply family and fused attention; null for operations whose arithmetic is not counted."
+              },
+              "gathered_experts_total": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "description": "A gathered multiply's expert count; null for other operations."
+              },
+              "gathered_experts_used": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "description": "The distinct experts its indices named; null when not gathered or when the indices could not be read (bytes_read then counts every expert)."
+              },
+              "data_movement_at_ceiling_us": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "bytes_read + bytes_written at the reading ceiling; null without ceilings."
+              },
+              "arithmetic_at_ceiling_us": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "arithmetic_operations at the arithmetic ceiling; null without ceilings or counted arithmetic."
+              },
+              "data_movement_share": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "data_movement_at_ceiling_us over compute_us; null without a GPU window. Above 1 when a kernel beat the calibration."
+              },
+              "arithmetic_share": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "arithmetic_at_ceiling_us over compute_us; null without a GPU window or counted arithmetic."
+              },
+              "limited_by": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "data_movement",
+                  "arithmetic",
+                  "neither",
+                  null
+                ],
+                "description": "The larger share when it is at least 0.5, else neither; null when the unit was not judged."
+              }
+            }
           }
         }
       },

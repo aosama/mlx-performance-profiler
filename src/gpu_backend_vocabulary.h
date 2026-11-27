@@ -30,6 +30,8 @@ inline constexpr const char* COMPUTE_UNITS = "SMs";
 inline constexpr const char* WORK_GROUPS_HEADING = "Blocks";
 inline constexpr const char* COMPUTE_UNITS_HEADING = "SMs with work";
 inline constexpr const char* COMPUTE_UNITS_TITLE = "Multiprocessors the launch with the fewest blocks can give work to";
+// The memory a kernel's data is read from: the GPU's own on CUDA.
+inline constexpr const char* MEMORY_NAME = "GPU memory";
 #else
 inline constexpr const char* BACKEND_NAME = "metal";
 inline constexpr const char* KERNEL_FUNCTION_HEADING = "Metal function";
@@ -53,6 +55,9 @@ inline constexpr const char* COMPUTE_UNITS = "cores";
 inline constexpr const char* WORK_GROUPS_HEADING = "Threadgroups";
 inline constexpr const char* COMPUTE_UNITS_HEADING = "Cores with work";
 inline constexpr const char* COMPUTE_UNITS_TITLE = "GPU cores the launch with the fewest threadgroups can give work to";
+// The memory a kernel's data is read from: on Apple silicon the CPU and GPU
+// share it, and the GPU reads it directly, with no copy before a kernel.
+inline constexpr const char* MEMORY_NAME = "unified memory";
 #endif
 
 } // namespace mlx_perf::gpu_vocabulary

@@ -285,6 +285,48 @@ void should_null_launches_when_the_serial_node_does_not_match() {
 
 } // namespace
 
+// The first node read 80,000 bytes on a machine that reads 1,000 bytes a
+// microsecond: 80 µs of its 100 µs GPU window.
+template <typename MeasuredRun>
+void give_the_producer_work(MeasuredRun& variant_measurement) {
+  variant_measurement.timeline_graph.nodes[0].work.bytes_read = 80'000;
+  variant_measurement.timeline_graph.nodes[0].work.is_arithmetic_counted = true;
+  variant_measurement.timeline_graph.nodes[0].work.arithmetic_operations = 10e6;
+  variant_measurement.machine_ceilings = {true, 1e9, 1e12, "bfloat16"};
+}
+
+void should_judge_each_node_against_the_machine_ceilings() {
+  VariantMeasurement variant_measurement;
+  report_fixture::populate_two_stream_run(variant_measurement);
+  give_the_producer_work(variant_measurement);
+  const JsonValue document = written_and_parsed(variant_measurement);
+  EXPECT_TRUE(document.at("job").at("machine_ceilings").at("arithmetic_dtype").as_string() == "bfloat16");
+  const JsonValue& producer_work = document.at("nodes").as_array()[0].at("data_and_arithmetic");
+  EXPECT_NEAR(producer_work.at("data_movement_share").as_number(), 0.8, 1e-9);
+  EXPECT_NEAR(producer_work.at("arithmetic_share").as_number(), 0.1, 1e-9);
+  EXPECT_TRUE(producer_work.at("limited_by").as_string() == "data_movement");
+}
+
+void should_judge_stage_tasks_and_leave_member_nodes_unjudged() {
+  VariantMeasurement variant_measurement;
+  report_fixture::populate_two_stage_run(variant_measurement);
+  give_the_producer_work(variant_measurement);
+  const JsonValue document = written_and_parsed(variant_measurement);
+  const JsonValue& stage_work = document.at("stages").as_array()[0].at("data_and_arithmetic");
+  EXPECT_TRUE(stage_work.at("limited_by").as_string() == "data_movement");
+  const JsonValue& member_work = document.at("nodes").as_array()[0].at("data_and_arithmetic");
+  EXPECT_TRUE(member_work.at("bytes_read").as_number() == 80'000);
+  EXPECT_TRUE(member_work.at("limited_by").is_null());
+}
+
+void should_null_the_work_of_a_node_that_moved_nothing_and_unmeasured_ceilings() {
+  VariantMeasurement variant_measurement;
+  report_fixture::populate_two_stream_run(variant_measurement);
+  const JsonValue document = written_and_parsed(variant_measurement);
+  EXPECT_TRUE(document.at("job").at("machine_ceilings").is_null());
+  EXPECT_TRUE(document.at("nodes").as_array()[1].at("data_and_arithmetic").is_null());
+}
+
 int main() {
   return test_harness::run_all({
       TEST_CASE(should_describe_every_node_with_its_identity_and_timing),
@@ -303,5 +345,8 @@ int main() {
       TEST_CASE(should_fill_the_gpu_with_one_threadgroup_per_core),
       TEST_CASE(should_null_coverage_when_the_gpu_core_count_is_unknown),
       TEST_CASE(should_null_launches_when_the_serial_node_does_not_match),
+      TEST_CASE(should_judge_each_node_against_the_machine_ceilings),
+      TEST_CASE(should_judge_stage_tasks_and_leave_member_nodes_unjudged),
+      TEST_CASE(should_null_the_work_of_a_node_that_moved_nothing_and_unmeasured_ceilings),
   });
 }

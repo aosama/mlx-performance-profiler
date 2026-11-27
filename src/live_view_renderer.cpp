@@ -19,7 +19,8 @@ ReportInputs make_report_inputs(const std::string& job_title,
                       variant_measurement.timeline_graph,
                       variant_measurement.gpu_timeline,
                       variant_measurement.serial_telemetry,
-                      variant_measurement.job_totals};
+                      variant_measurement.job_totals,
+                      variant_measurement.machine_ceilings};
 }
 
 std::string variant_heading(const VariantMeasurement& variant_measurement) {

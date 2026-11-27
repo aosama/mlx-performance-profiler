@@ -6,6 +6,17 @@ MLX releases it was built and tested against.
 ## Unreleased
 
 ### Added
+- **Data movement or arithmetic, per operation (#59).** The profiler
+  measures this machine's ceilings once per process with MLX's own kernels
+  (`machine_ceilings`: reading unified memory, and a half-precision matrix
+  multiply), works out each operation's bytes and arithmetic from the
+  captured graph (`node_work_estimate`; a gathered expert multiply counts
+  only the experts its indices used), and judges every node, or stage task,
+  against them (`work_limits`): how much of its GPU time moving its data and
+  doing its arithmetic would each take at the ceilings, and which one held
+  it back, or neither. A new report section, **Data and arithmetic**, and
+  new fields in the measurement file (`job.machine_ceilings`,
+  `nodes[].data_and_arithmetic`, `stages[].data_and_arithmetic`) carry it.
 - **Linux with MLX's CUDA backend (#15).** The profiler builds against an
   MLX built with `-DMLX_BUILD_CUDA=ON` and measures NVIDIA GPUs through
   CUPTI, NVIDIA's observation interface: one CUPTI session

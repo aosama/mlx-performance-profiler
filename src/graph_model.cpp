@@ -1,5 +1,7 @@
 #include "graph_model.h"
 
+#include "node_work_estimate.h"
+
 // fast_primitives.h declares CustomKernel, whose state names a custom kernel;
 // graph_utils.h supplies NodeNamer for the plan's variable names;
 // primitives.h completes the Primitive type for op/stream access; utils.h
@@ -66,6 +68,7 @@ GraphNode build_node(const array& node, NodeNamer& plan_namer) {
     captured_node.op_name = node.primitive().name();
     captured_node.stream_index = node.primitive().stream().index;
     captured_node.kernel_name = read_kernel_name(node.primitive());
+    captured_node.work = estimate_node_work(node);
   }
   return captured_node;
 }

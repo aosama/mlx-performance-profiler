@@ -1,6 +1,7 @@
 #include "measurement_session.h"
 
 #include "console_output.h"
+#include "node_work_estimate.h"
 #include "progress_reporter.h"
 #include "sample_statistics.h"
 #include "stage_timeline.h"
@@ -112,6 +113,9 @@ TimelineCapture capture_timeline(
       ? capture_stage_timeline(timeline_graph, stream_index_to_stream, stage_cuts,
                                final_stage_name)
       : capture_gpu_timeline(timeline_graph, stream_index_to_stream);
+  // The pass has evaluated every gathered multiply's indices: narrow each
+  // one's bytes to the experts it used.
+  resolve_gathered_experts(timeline_capture.timeline_graph);
   return timeline_capture;
 }
 
@@ -123,6 +127,10 @@ void run_serial_pass(const GraphFactory& graph_factory,
       variant_measurement.serial_graph, stream_index_to_stream);
   variant_measurement.job_totals.sum_of_stages_microseconds =
       variant_measurement.serial_telemetry.attributed_total_microseconds;
+}
+
+void record_machine_ceilings(VariantMeasurement& variant_measurement) {
+  variant_measurement.machine_ceilings = read_machine_ceilings();
 }
 
 VariantMeasurement measure_variant(
@@ -161,6 +169,7 @@ VariantMeasurement measure_variant(
   timed_factory.begin_pass("serial");
   run_serial_pass(timed_factory, stream_index_to_stream, variant_measurement);
   variant_measurement.graph_build_passes = timed_factory.build_passes();
+  record_machine_ceilings(variant_measurement);
   return variant_measurement;
 }
 

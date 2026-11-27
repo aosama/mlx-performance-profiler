@@ -1,7 +1,7 @@
 #pragma once
 
 // Measurement document: one concern only — express one measured variant as
-// a JSON tree (schema version 1, described in docs/measurement-file.md). Pure:
+// a JSON tree (schema version 2, described in docs/measurement-file.md). Pure:
 // no files and no GPU, so every field is tested from synthetic measurements.
 // The HTML report and this document read the same VariantMeasurement in the
 // same call, so the two can never disagree.

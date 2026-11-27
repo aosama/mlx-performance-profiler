@@ -3,6 +3,8 @@
 // Graph capture: turns a set of MLX output arrays into the structured "plan"
 // every other module consumes. One concern only: walking the graph.
 
+#include "node_work.h"
+
 #include "mlx/array.h"
 #include "mlx/stream.h"
 
@@ -32,6 +34,9 @@ struct GraphNode {
   // author's name (+ a template-argument hash), empty for other primitives,
   // so two custom kernels in one job stay distinguishable.
   std::string kernel_name;
+  // What the operation moves and computes, worked out at capture time
+  // (node_work_estimate); zero for input leaves.
+  NodeWork work;
 };
 
 // A data-dependency edge in the Spark "shuffle bytes" sense: the consumer

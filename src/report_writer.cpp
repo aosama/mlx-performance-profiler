@@ -9,6 +9,7 @@
 #include "report_summary_section.h"
 #include "report_task_table_section.h"
 #include "report_wired_memory_section.h"
+#include "report_work_limits_section.h"
 #include "text_format.h"
 
 #include <fstream>
@@ -23,6 +24,7 @@ std::string render_page_header(const std::string& report_title) {
               << "</h1><p>mlx-performance-profiler — what MLX actually did, and what it"
               << " was waiting for</p></header><nav><a href=\"#job\">Job</a>"
               << "<a href=\"#timeline\">Timeline</a><a href=\"#tasks\">Tasks</a>"
+              << "<a href=\"#data-and-arithmetic\">Data and arithmetic</a>"
               << "<a href=\"#dag\">Graph</a><a href=\"#method\">Method</a></nav>";
   return header_html.str();
 }
@@ -92,6 +94,7 @@ std::string build_report_document(
                       " the lane shows how close the job runs to the wire limit."},
                      report_inputs.serial_telemetry.wired_memory_samples)
               << render_tasks_section(report_inputs)
+              << render_work_limits_section(report_inputs)
               << render_dag_section(measurement_document_json)
               << render_method_section(report_inputs.gpu_timeline.granularity)
               << "<script>" << report_sort_script() << "</script>"

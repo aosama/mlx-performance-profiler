@@ -17,7 +17,7 @@ std::string render_synthetic_document(SyntheticRun& synthetic_run,
                                       const std::string& report_title) {
   const mlx_perf::ReportInputs report_inputs{
       report_title, synthetic_run.timeline_graph, synthetic_run.gpu_timeline,
-      synthetic_run.serial_telemetry, synthetic_run.job_totals};
+      synthetic_run.serial_telemetry, synthetic_run.job_totals, {}};
   return mlx_perf::build_report_document(report_inputs, "{\"nodes\": []}");
 }
 
@@ -38,7 +38,7 @@ void should_render_every_spark_view() {
   const std::string document = render_synthetic_document(synthetic_run, "Run");
   for (const char* section_id :
        {"id=\"job\"", "id=\"timeline\"", "id=\"tasks\"", "id=\"dag\"",
-        "id=\"method\""}) {
+        "id=\"method\"", "id=\"data-and-arithmetic\"", "href=\"#data-and-arithmetic\""}) {
     EXPECT_TRUE(document.find(section_id) != std::string::npos);
   }
   EXPECT_TRUE(document.find("<table class=\"sortable\">") != std::string::npos);

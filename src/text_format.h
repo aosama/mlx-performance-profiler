@@ -13,6 +13,12 @@ namespace mlx_perf {
 std::string format_microseconds(double duration_microseconds);
 // "512 B", "3.5 KiB", "1.2 MiB".
 std::string format_bytes(std::size_t byte_count);
+// Arithmetic, in operations (two per multiply-add): "820 M", "1.37 G", "4.40 T".
+std::string format_operation_count(double operation_count);
+// "412.5 GiB/s": a reading speed, in the same binary units as format_bytes.
+std::string format_bytes_per_second(double bytes_per_second);
+// "23.4 TFLOP/s" at or above a trillion, "512.0 GFLOP/s" below.
+std::string format_operations_per_second(double operations_per_second);
 std::string escape_html_text(const std::string& raw_text);
 // For a JSON string body: quotes, backslashes and control characters.
 std::string escape_json_text(const std::string& raw_text);

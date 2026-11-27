@@ -22,8 +22,9 @@ A node's **classification** is its largest slice other than result: `compute`, `
 1. **Job summary.** Cards for job duration (the honest end-to-end number, uninstrumented), GPU execution, cross-stream stall, instrumented duration, sum of stages (every node run alone) and peak memory. Under them, **where node time went** is one bar of the six slices summed over all nodes.
 2. **Timeline.** One lane for the host thread that issues nodes, and one lane per MLX stream. On a stream lane, red is stalled, amber is GPU scheduling, green is GPU compute, and blank means nothing was runnable on that stream. An arrow runs from a producer's GPU end to where its consumer on another stream stopped waiting. Under it, a table per stream gives wall, busy, stalled and utilization.
 3. **Tasks.** One sortable row per node: every slice, the wall, the node run alone ("Serial"), its class and a stacked bar.
-4. **Execution graph.** Every operation MLX executed, interactive (below).
-5. **How these numbers were measured.** The passes, and what each number does and does not include.
+4. **Data and arithmetic.** This machine's reading and arithmetic ceilings, and for every node (or stage) whether moving its data or doing its arithmetic held it back (below).
+5. **Execution graph.** Every operation MLX executed, interactive (below).
+6. **How these numbers were measured.** The passes, and what each number does and does not include.
 
 ## Use the execution graph
 
@@ -48,6 +49,20 @@ The profiler records every kernel launch MLX encodes for each node: the Metal fu
 - The hover card lists the node's launches: function name, `threadgroups × threads`, and cores with work.
 
 Covering every core rules this reason out but does not prove the launch is efficient: per-core thread and memory limits are not documented, so the profiler does not estimate them. The launches come from the serial pass, where each node runs alone, so they belong to the node exactly, in stage-timed reports too.
+
+## Data movement or arithmetic: what held a kernel back
+
+On Apple silicon the GPU reads unified memory directly. There is no copy step before a kernel: data moves up into the GPU's caches and registers while the kernel runs, overlapped with its arithmetic, as many threadgroups cover each other's waits. So no clock can split a kernel's time between moving data and computing. The **Data and arithmetic** section answers the question that can be answered exactly: how much of its GPU time would each need on its own, at full speed?
+
+- **Ceilings.** Once per process, the profiler measures this machine with MLX's own kernels: how fast the GPU reads unified memory (a reduction over 512 MiB, far larger than any cache), and how fast it multiplies matrices (a 4096 × 4096 × 4096 multiply in `float16` and `bfloat16`, the faster one). The fastest of several runs is kept. They are measured, not taken from a specification, because no kernel reaches an advertised peak.
+- **Bytes moved** count every distinct input once at its stored size (a broadcast counts its source, quantized weights count as packed) and every output. A gathered expert multiply (`GatherQMM`, `GatherMM`) counts only the experts its indices named in this run.
+- **Arithmetic** is two operations per multiply-add, counted for matrix multiplies and fused attention. Other operations show "not counted" rather than a guess; their arithmetic is small beside their data.
+- **Data share** and **arithmetic share** are each need at the ceiling over the unit's GPU-measured compute. The two bars show them side by side.
+- **Limited by** names the larger share when it fills at least half the time. **Neither** means more than half the time went to something else: too few threadgroups (see the launch shape above), launch and synchronization costs, or a serial dependency inside the kernel. That is often where a kernel can be made faster, because neither ceiling is in the way.
+
+A share above 100% means the kernel beat the calibration kernel, for example a quantized multiply outrunning the dense one. The ceilings are practical, not physical. Bytes are counted as traffic to unified memory: a small intermediate that stays in a cache between kernels is counted all the same, so for small tensors the data share can read high. Traffic between the caches themselves needs the GPU's hardware counters, which Apple exposes through Instruments, and is not measured here.
+
+In a stage-timed report the section has one row per stage task: its members' bytes and arithmetic summed, judged against the stage's GPU window.
 
 ## Stage-timed reports
 
@@ -82,5 +97,6 @@ Under the timeline, the **Wired memory** lane plots the system's wired total, ML
 | Are my streams waiting on each other? | cross-stream stall, and red in the timeline |
 | Is the host or the GPU the bottleneck? | the classification mix: mostly host issue means host-bound; mostly queued means the GPU is the bottleneck |
 | Which operation is the most expensive? | the hot path, or the cost colours in the graph |
+| Is a kernel held back by memory or by arithmetic? | its "Limited by" in Data and arithmetic |
 
 The instrumented duration is always longer than the job duration, because the timeline pass submits nodes one at a time. Do not quote it as the job's duration.

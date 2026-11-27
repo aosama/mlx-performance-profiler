@@ -105,6 +105,12 @@ message(STATUS "mlx_perf: GPU backend ${MLX_PERF_GPU_BACKEND}")
 add_library(mlx_perf STATIC
     ${MLX_PERF_GPU_BACKEND_SOURCES}
     src/graph_model.cpp
+    src/node_work.cpp
+    src/node_work_estimate.cpp
+    src/machine_ceilings.cpp
+    src/work_limits.cpp
+    src/timed_unit_work.cpp
+    src/work_record.cpp
     src/graph_build_timer.cpp
     src/telemetry.cpp
     src/latency_breakdown.cpp
@@ -140,6 +146,7 @@ add_library(mlx_perf STATIC
     src/report_components.cpp
     src/report_summary_section.cpp
     src/report_task_table_section.cpp
+    src/report_work_limits_section.cpp
     src/report_stage_table_section.cpp
     src/report_gantt_section.cpp
     src/report_comparison_page.cpp
