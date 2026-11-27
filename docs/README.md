@@ -19,6 +19,7 @@ Every C program and CMake project on these pages is a file in [`examples/`](exam
 | Measure inside a test, benchmark or CI job, silently | [Measuring from code](measuring-from-code.md) |
 | Read per-node numbers as data (Python, jq, any language) | [The measurement file](measurement-file.md) |
 | Understand the report: the six slices, the timeline, the graph | [Reading the report](reading-the-report.md) |
+| Know whether a kernel is held back by moving its data or by its arithmetic | [Reading the report: data and arithmetic](reading-the-report.md#data-movement-or-arithmetic-what-held-a-kernel-back) |
 | Add it to your CMake project, or install it | [Building and linking](building-and-linking.md) |
 | Use it from Rust | [Using it from Rust](using-from-rust.md) |
 | Fix an error message or a surprising number | [Troubleshooting](troubleshooting.md) |
@@ -34,4 +35,4 @@ Every C program and CMake project on these pages is a file in [`examples/`](exam
 
 ## Versions
 
-These pages describe the current release, 0.6.0 (MLX 0.32.4 and 0.32.5). 0.4.0 to 0.6.0 added to the C API (procedure comparisons, `mlx_perf_install_launch_recorder`, the wired memory reading and probe, and memory comparisons) without changing any existing function; 0.6.0 grew `mlx_perf_procedure_comparison_summary`, so code that allocates it must be rebuilt. The JSON files are still `schema_version` 1, with new fields only. What changed in each release is in the [changelog](../CHANGELOG.md) and the [release notes](https://github.com/aosama/mlx-performance-profiler/releases).
+These pages describe the current release, 0.7.0 (MLX 0.32.4 and 0.32.5, Metal on macOS and CUDA on Linux). 0.4.0 to 0.6.0 added to the C API (procedure comparisons, `mlx_perf_install_launch_recorder`, the wired memory reading and probe, and memory comparisons) without changing any existing function; 0.6.0 grew `mlx_perf_procedure_comparison_summary`, so code that allocates it must be rebuilt. 0.7.0 leaves the C API unchanged; its JSON files are `schema_version` 2, which renames `metal_function_name` to `kernel_function_name` and adds the data-and-arithmetic fields. What changed in each release is in the [changelog](../CHANGELOG.md) and the [release notes](https://github.com/aosama/mlx-performance-profiler/releases).

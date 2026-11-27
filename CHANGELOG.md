@@ -3,7 +3,15 @@
 Versions follow [`VERSIONING.md`](VERSIONING.md). Each release lists the
 MLX releases it was built and tested against.
 
-## Unreleased
+## 0.7.0 (2026-11-27)
+
+Tested MLX releases: 0.32.4, 0.32.5 (Metal, macOS; CUDA on Linux with
+0.32.5).
+
+A minor release under `VERSIONING.md`: the C API is unchanged; the JSON
+files move to `schema_version` 2 (one field renamed, below) and gain the
+data-and-arithmetic fields. Consumers pinning `0.6` move to
+`find_package(mlx_perf 0.7)`.
 
 ### Added
 - **Data movement or arithmetic, per operation (#59).** The profiler

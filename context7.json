@@ -18,13 +18,14 @@
     "To decide whether one implementation is faster, call mlx_perf_compare_to_report with both variants. Never compare durations from two separate profiles: they drift and are order-biased.",
     "To compare code that evaluates many graphs (a token loop, a sampler), call mlx_perf_compare_procedures_to_report: run is timed whole; prepare runs untimed before each run. gpu_idle_us and blocking waits show host-GPU hand-off cost.",
     "A verdict of MLX_PERF_VERDICT_WITHIN_SPREAD (\"within_spread\" in JSON) means the difference did not beat run-to-run noise: report no difference found, never slightly faster or slower.",
-    "In the measurement JSON, null means not measured (a CPU-stream node, or a node timed as part of its stage), never zero. Check schema_version is 1, and look fields up by name.",
+    "In the measurement JSON, null means not measured (a CPU-stream node, or a node timed as part of its stage), never zero. Check schema_version is 2, and look fields up by name.",
     "Quote job_wall_median_us as the job's duration. timeline_wall_us is the instrumented pass and is longer by design.",
     "Call mlx_perf_set_console_output(0) to stop the library printing when it runs inside tests, tools or other programs; failures still come back as return codes.",
     "Comparison variant names become file names: non-empty, no '/', and distinct from each other ignoring case. Both variants must produce the same number of outputs with the same shapes and dtypes.",
-    "Enable C++ in a C consumer's CMake project (LANGUAGES C CXX) and link mlx_perf::mlx_perf; the library is C++ inside. Requires macOS on Apple silicon with MLX's Metal backend.",
+    "Enable C++ in a C consumer's CMake project (LANGUAGES C CXX) and link mlx_perf::mlx_perf; the library is C++ inside. Runs on macOS with Metal, or Linux with MLX's CUDA backend.",
     "To find why a kernel is slow, read kernel_dispatches[] in the measurement JSON: can_fill_gpu false (gpu_core_coverage below 1) means fewer threadgroups than GPU cores, so cores sat idle. Coverage 1 does not prove the launch efficient.",
     "Apple silicon GPU memory is wired; macOS un-wires released memory ~0.2 s late and held memory after ~1 s idle. Read mlx_perf_read_wired_memory; treat wired_outside_mlx_bytes as unreliable just after a release.",
-    "Comparisons judge memory too: peak MLX working set (peak active less start), what a run left behind, wired at its end. A note counts rounds that crossed the wire limit or compressed memory: such slow rounds aren't the code's."
+    "Comparisons judge memory too: peak MLX working set (peak active less start), what a run left behind, wired at its end. A note counts rounds that crossed the wire limit or compressed memory: such slow rounds aren't the code's.",
+    "For memory versus arithmetic, read nodes[].data_and_arithmetic: limited_by is data_movement or arithmetic when that share of compute_us at job.machine_ceilings is at least 0.5, else neither (GPU not kept busy)."
   ]
 }

@@ -18,6 +18,10 @@ struct WorkRow {
   std::string unit_name;
   std::string operation_description;
   double gpu_compute_microseconds = 0.0;
+  // False when the unit had no GPU window (a CPU stream): its time is then
+  // shown as not measured, never as a GPU time of zero. A window of zero
+  // length (work too small to register) is shown the same way.
+  bool is_compute_gpu_measured = false;
   NodeWork unit_work;
   WorkJudgement work_judgement;
 };
@@ -36,7 +40,8 @@ std::vector<WorkRow> collect_node_rows(const ReportInputs& report_inputs) {
     }
     const NodeTimeline& node_timeline = gpu_timeline.nodes[position];
     work_rows.push_back({node_timeline.node->label, describe_node_operation(*node_timeline.node),
-                         node_timeline.breakdown.compute_microseconds, node_work,
+                         node_timeline.breakdown.compute_microseconds,
+                         node_timeline.breakdown.is_compute_measured, node_work,
                          judge_node(gpu_timeline, position, report_inputs.serial_telemetry,
                                     report_inputs.machine_ceilings)});
   }
@@ -55,7 +60,8 @@ std::vector<WorkRow> collect_stage_rows(const ReportInputs& report_inputs) {
     work_rows.push_back({stage_task.stage_name,
                          std::to_string(member_count) + (member_count == 1 ? " node" : " nodes") +
                              ", stream " + std::to_string(stage_task.stream_index),
-                         stage_task.breakdown.compute_microseconds, stage_work,
+                         stage_task.breakdown.compute_microseconds,
+                         stage_task.breakdown.is_compute_measured, stage_work,
                          judge_stage(gpu_timeline, stage_task, report_inputs.serial_telemetry,
                                      report_inputs.machine_ceilings)});
   }
@@ -109,7 +115,9 @@ std::string render_work_row(std::size_t row_number, const WorkRow& work_row) {
   row_html << "<tr>" << render_number_cell(static_cast<double>(row_number), std::to_string(row_number))
            << "<td>" << escape_html_text(work_row.unit_name) << "</td><td>"
            << escape_html_text(work_row.operation_description) << "</td>"
-           << render_duration_cell(work_row.gpu_compute_microseconds)
+           << (work_row.is_compute_gpu_measured && work_row.gpu_compute_microseconds > 0.0
+                   ? render_duration_cell(work_row.gpu_compute_microseconds)
+                                                : "<td class=\"number\" data-sort-value=\"-1\">—</td>")
            << render_number_cell(static_cast<double>(unit_work.bytes_read + unit_work.bytes_written),
                                  format_bytes(unit_work.bytes_read + unit_work.bytes_written))
            << (unit_work.is_arithmetic_counted
