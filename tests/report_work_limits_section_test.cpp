@@ -92,6 +92,27 @@ void should_say_so_when_the_ceilings_were_not_measured() {
   EXPECT_TRUE(!contains(section_html, "<table"));
 }
 
+void should_show_no_gpu_time_for_a_unit_without_a_gpu_window() {
+  report_fixture::SyntheticRun synthetic_run;
+  report_fixture::populate_two_stream_run(synthetic_run);
+  give_the_producer_work(synthetic_run);
+  synthetic_run.gpu_timeline.nodes[0].breakdown.is_compute_measured = false;
+  const std::string section_html = render_with(synthetic_run, ROUND_CEILINGS);
+  EXPECT_TRUE(contains(section_html, "data-sort-value=\"-1\">—</td>"));
+  EXPECT_TRUE(!contains(section_html, "limit-badge"));
+}
+
+void should_show_no_gpu_time_for_a_zero_length_window() {
+  report_fixture::SyntheticRun synthetic_run;
+  report_fixture::populate_two_stream_run(synthetic_run);
+  give_the_producer_work(synthetic_run);
+  synthetic_run.gpu_timeline.nodes[0].breakdown.compute_microseconds = 0.0;
+  const std::string section_html = render_with(synthetic_run, ROUND_CEILINGS);
+  EXPECT_TRUE(!contains(section_html, "data-sort-value=\"0\">0.0 µs</td>"));
+  EXPECT_TRUE(contains(section_html, "data-sort-value=\"-1\">—</td>"));
+  EXPECT_TRUE(!contains(section_html, "limit-badge"));
+}
+
 void should_escape_a_custom_kernel_name() {
   report_fixture::SyntheticRun synthetic_run;
   report_fixture::populate_two_stream_run(synthetic_run);
@@ -112,6 +133,8 @@ int main() {
       TEST_CASE(should_mark_neither_when_the_gpu_was_not_kept_busy),
       TEST_CASE(should_show_a_share_above_one_hundred_percent_with_a_capped_bar),
       TEST_CASE(should_say_so_when_the_ceilings_were_not_measured),
+      TEST_CASE(should_show_no_gpu_time_for_a_unit_without_a_gpu_window),
+      TEST_CASE(should_show_no_gpu_time_for_a_zero_length_window),
       TEST_CASE(should_escape_a_custom_kernel_name),
   });
 }

@@ -37,7 +37,7 @@ project(mlx_perf_examples LANGUAGES C CXX)
 include(FetchContent)
 FetchContent_Declare(mlx_perf
   GIT_REPOSITORY https://github.com/aosama/mlx-performance-profiler.git
-  GIT_TAG v0.6.0)
+  GIT_TAG v0.7.0)
 FetchContent_MakeAvailable(mlx_perf)
 
 foreach(example_name profile_one_job compare_two_implementations compare_two_procedures measure_quietly
@@ -54,7 +54,7 @@ Pulled in this way, only the library is built: no tools, no tests, no install ru
 Build and install the library once:
 
 ```sh
-git clone --branch v0.6.0 https://github.com/aosama/mlx-performance-profiler.git
+git clone --branch v0.7.0 https://github.com/aosama/mlx-performance-profiler.git
 cd mlx-performance-profiler
 cmake -S . -B build -DMLX_PREFIX=/path/to/mlx/prefix \
       -DMLX_PERF_BUILD_TOOLS=OFF -DMLX_PERF_BUILD_TESTS=OFF
@@ -68,12 +68,12 @@ Then find it from your project, with the same MLX prefix:
 # cmake -S . -B build -DMLX_PREFIX=/path/to/mlx/prefix -DCMAKE_PREFIX_PATH=/path/to/install
 cmake_minimum_required(VERSION 3.24)
 project(my_profiled_app LANGUAGES C CXX)
-find_package(mlx_perf 0.6 REQUIRED)
+find_package(mlx_perf 0.7 REQUIRED)
 add_executable(my_profiled_app main.c)
 target_link_libraries(my_profiled_app PRIVATE mlx_perf::mlx_perf)
 ```
 
-- `find_package(mlx_perf 0.6)` accepts any 0.6.x. Before 1.0, a different minor version is refused, because a minor release may change the C API.
+- `find_package(mlx_perf 0.7)` accepts any 0.7.x. Before 1.0, a different minor version is refused, because a minor release may change the C API.
 - The installed files are `include/mlx_perf/mlx_perf_c_api.h`, `include/mlx_perf/mlx_perf_version.h`, `lib/libmlx_perf.a` and the CMake package.
 - Without `REQUIRED`, a missing `MLX_PREFIX` makes the package report itself not found instead of stopping your configure, so profiling can be an optional feature.
 - Enable `CXX` in your project even for a C program: the library is C++ and needs the C++ linker.

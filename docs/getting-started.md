@@ -19,7 +19,7 @@ On Linux with an NVIDIA GPU, the prefix holds MLX built with its CUDA backend; [
 ## Step 2: build the profiler
 
 ```sh
-git clone --branch v0.6.0 https://github.com/aosama/mlx-performance-profiler.git
+git clone --branch v0.7.0 https://github.com/aosama/mlx-performance-profiler.git
 cd mlx-performance-profiler
 cmake -S . -B build -DMLX_PREFIX=/path/to/mlx/prefix
 cmake --build build
